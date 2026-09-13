@@ -174,7 +174,7 @@
       <div class="ritem"><span>Pendente</span><b id="rPend">—</b></div>
       <div class="ritem no"><span>Atrasado</span><b id="rAtras">—</b></div>
     </div>
-    <div class="card"><h2>Gastos por categoria (pagos)</h2><canvas id="chCat"></canvas></div>
+    <div class="card"><h2>A pagar — próximos meses</h2><div id="rkMeses"></div></div>
     <div class="card"><h2>Pago por mês (6 meses)</h2><canvas id="chMes"></canvas></div>
     <div class="card"><h2>Próximos vencimentos (30 dias)</h2><div id="rkProx"></div></div>
   </section>
@@ -673,13 +673,19 @@ function renderRel(){
   if(window.Chart){
     Chart.defaults.color = '#9DB8A4'; Chart.defaults.borderColor = '#24402F';
     Chart.defaults.font.family = 'Inter,sans-serif';
-    const porCat = {};
-    pagos.forEach(b=>{ const c = b.categoria||'Outros'; porCat[c]=(porCat[c]||0)+num(b.valor); });
-    const kc = Object.keys(porCat);
-    if(window._chC) window._chC.destroy();
-    if(kc.length) window._chC = new Chart(document.getElementById('chCat'), {type:'bar',
-      data:{labels:kc, datasets:[{data:kc.map(k=>Math.round(porCat[k]*100)/100), backgroundColor:'#3D7A5C', borderRadius:6}]},
-      options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
+    const d0 = new Date(); d0.setDate(1);
+    const proxM = [];
+    for(let i=0;i<6;i++){
+      const m = new Date(d0); m.setMonth(d0.getMonth()+i);
+      const ym = m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
+      const tot = pend.filter(b=>isoD(b.vencimento).slice(0,7)===ym).reduce((a,b)=>a+num(b.valor),0);
+      proxM.push({ym, tot});
+    }
+    const MES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    document.getElementById('rkMeses').innerHTML = proxM.map(x=>{
+      const nm = MES_CURTO[+x.ym.slice(5)-1]+'/'+x.ym.slice(2,4);
+      return '<div class="rank"><span>'+nm+'</span><b>'+BRL(x.tot)+'</b></div>';
+    }).join('');
     const ms = [], lbl = [], d0 = new Date(); d0.setDate(1);
     for(let i=5;i>=0;i--){ const m = new Date(d0); m.setMonth(d0.getMonth()-i);
       const ym = m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');

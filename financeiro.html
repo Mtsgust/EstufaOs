@@ -92,6 +92,10 @@
   .loading{text-align:center; color:var(--dim); font-size:13px; margin-top:20px;}
   .ocr-text{background:#0E1F14; border:1px solid var(--line); border-radius:12px; padding:10px; font-size:11.5px;
     color:var(--mut); max-height:130px; overflow-y:auto; white-space:pre-wrap; margin-top:8px;}
+  .cand{display:block; width:100%; text-align:left; margin-top:8px; padding:10px 12px; border-radius:12px; cursor:pointer;
+    background:#0E1F14; border:1px solid var(--leaf); color:var(--ink); font-size:13.5px; font-weight:700; font-family:inherit;}
+  .cand small{display:block; font-weight:400; color:var(--mut); font-size:11px; margin-top:2px; word-break:break-all;}
+  .cand .okv{color:var(--lime); font-size:11px; font-weight:700;}
   /* Calendário mensal */
   .cal-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
   .cal-head b{flex:1; text-align:center; font-size:15px; text-transform:capitalize;}
@@ -133,11 +137,11 @@
   <h1>Financeiro / Boletos</h1>
   <p>Contas da fazenda com lembretes no Google Agenda.</p>
   <div class="tabs">
-    <div class="tab active" data-t="boletos">Boletos</div>
+    <div class="tab active" data-t="relatorios">Relatórios</div>
     <div class="tab" data-t="calendario">Calendário</div>
-    <div class="tab" data-t="relatorios">Relatórios</div>
+    <div class="tab" data-t="boletos">Boletos</div>
   </div>
-  <div class="filters" id="filtrosBol">
+  <div class="filters" id="filtrosBol" style="display:none">
     <input id="buscaBol" type="text" placeholder="Buscar conta ou empresa...">
     <select id="fCatBol"><option value="todas">Todas categ.</option></select>
     <select id="fStBol">
@@ -147,11 +151,7 @@
   </div>
 </header>
 <main>
-  <section id="aba-boletos">
-    <div style="display:flex; gap:8px">
-      <button class="imp-btn" style="flex:1" onclick="openImpAgenda()">📥 Importar boletos do Google Agenda</button>
-      <button class="imp-btn" style="flex:1" onclick="pagarAnteriores()">✓ Marcar anteriores como pagos</button>
-    </div>
+  <section id="aba-boletos" style="display:none">
     <div class="res">
       <div class="ritem"><span>Boletos no mês</span><b id="kMes">—</b></div>
       <div class="ritem"><span>A pagar</span><b id="kPagar">—</b></div>
@@ -168,7 +168,7 @@
     </div>
     <div class="cal-grid" id="calGrid"></div>
   </section>
-  <section id="aba-relatorios" style="display:none">
+  <section id="aba-relatorios">
     <div class="res">
       <div class="ritem ok"><span>Pago no mês</span><b id="rPago">—</b></div>
       <div class="ritem"><span>Pendente</span><b id="rPend">—</b></div>
@@ -232,6 +232,7 @@
         <div class="field"><label>Categoria</label><select id="oCat"></select></div>
       </div>
       <div class="field"><label>Linha digitável</label><input id="oLinha" type="text"></div>
+      <div id="ocrCands"></div>
       <div class="ocr-text" id="ocrText"></div>
       <div class="sheet-actions">
         <button class="btn-save" onclick="usarOCR()">Usar estes dados</button>
@@ -276,7 +277,7 @@
 <script>
 const CATS = ['Fertilizantes','Defensivos','Bancos','Energia','Máquinas','Internet','Outros'];
 let boletos = [];
-let aba = 'boletos';
+let aba = 'relatorios';
 let editBolId = null, curAnexoUrl = '', curAnexoNome = '';
 let calAno = 0, calMes = 0;
 
@@ -309,7 +310,14 @@ async function carregar(){
   try{
     const r = await apiGet('boletos');
     boletos = r.data || [];
-    boletos.sort((a,b)=> String(a.vencimento||'') < String(b.vencimento||'') ? -1 : 1);
+    // A vencer primeiro; pagos por último (mais recentes antes).
+    boletos.sort((a,b)=>{
+      const pa = String(a.status)==='pago'?1:0, pb = String(b.status)==='pago'?1:0;
+      if(pa!==pb) return pa-pb;
+      const va = a.vencimento||'', vb = b.vencimento||'';
+      if(pa===1) return va<vb?1:-1;
+      return va<vb?-1:1;
+    });
     render();
   }catch(e){
     document.getElementById('listBol').innerHTML = '<div class="loading">Erro ao carregar. Confira config.js e publique o Code.gs novo.</div>';
@@ -461,20 +469,61 @@ function fatorVenc(f){
   const b = new Date(1997,9,7); b.setDate(b.getDate()+n);
   return b.getFullYear()+'-'+String(b.getMonth()+1).padStart(2,'0')+'-'+String(b.getDate()).padStart(2,'0');
 }
+// Dígito verificador módulo 10 (valida linha digitável de verdade x número da nota).
+function mod10Valido(num, dv){
+  let soma = 0, peso = 2;
+  for(let i=num.length-1;i>=0;i--){
+    let m = parseInt(num[i],10)*peso;
+    if(m>9) m -= 9;
+    soma += m; peso = peso===2?1:2;
+  }
+  const r = soma%10;
+  return String(r===0?0:10-r) === String(dv);
+}
+function candidatosBoleto(txt){
+  const t = String(txt||'');
+  const re = /[0-9][0-9\s.\-]{42,62}[0-9]/g;
+  const vistos = new Set(), out = [];
+  let m;
+  while((m = re.exec(t))){
+    const d = soDig(m[1]);
+    if(d.length<44 || d.length>48 || vistos.has(d)) continue;
+    vistos.add(d);
+    if(d.length===47){
+      let score = 0;
+      if(mod10Valido(d.slice(0,9), d[9])) score++;
+      if(mod10Valido(d.slice(10,20), d[20])) score++;
+      if(mod10Valido(d.slice(21,31), d[31])) score++;
+      if(score < 2) continue; // número solto, não é linha digitável
+      out.push({linha:m[1].trim().replace(/\s+/g,' '),
+        valor:Math.round(parseInt(d.slice(37),10))/100, venc:fatorVenc(d.slice(33,37)), score});
+    }else if(d.length===44){
+      if(d.slice(20,22)==='55' || d.slice(20,22)==='65') continue; // chave de nota fiscal, não boleto
+      out.push({linha:m[1].trim().replace(/\s+/g,' '),
+        valor:Math.round(parseInt(d.slice(9,19),10))/100, venc:fatorVenc(d.slice(5,9)), score:2});
+    }
+  }
+  out.sort((a,b)=>b.score-a.score);
+  return out.slice(0,6);
+}
 function parseBoletoTexto(txt){
   const t = String(txt||'');
-  let linha = '', dig = '';
-  const m = t.match(/([0-9][0-9\s\.\-]{42,62}[0-9])/);
-  if(m){ const d = soDig(m[1]); if(d.length>=44 && d.length<=48){ dig = d; linha = m[1].trim().replace(/\s+/g,' '); } }
-  let valor = 0, venc = '';
-  if(dig.length===47){ valor = parseInt(dig.slice(37),10)/100; venc = fatorVenc(dig.slice(33,37)); }
-  else if(dig.length===44){ valor = parseInt(dig.slice(9,19),10)/100; venc = fatorVenc(dig.slice(5,9)); }
+  const cands = candidatosBoleto(t);
+  const p = cands[0] || {linha:'', valor:0, venc:''};
   let empresa = '';
   for(const lin of t.split('\n')){
     const c = lin.trim();
     if(/[A-Za-z]{3,}/.test(c) && c.length>=4 && c.length<=60 && !/linha digit/i.test(c)){ empresa = c.slice(0,60); break; }
   }
-  return {linha, valor:Math.round(valor*100)/100, venc, empresa, texto:t.slice(0,2000)};
+  return {linha:p.linha, valor:p.valor, venc:p.venc, empresa, texto:t.slice(0,2000), candidatos:cands};
+}
+let _cands = [];
+function usarCand(i){
+  const c = _cands[i]; if(!c) return;
+  document.getElementById('oValor').value = c.valor || '';
+  document.getElementById('oVenc').value = c.venc;
+  document.getElementById('oLinha').value = c.linha;
+  document.getElementById('ocrStatus').textContent = 'Dados da opção escolhida!';
 }
 function openOCR(){
   document.getElementById('ocrFile').value='';
@@ -508,11 +557,17 @@ async function processarOCR(){
     }
     if(!texto.trim()) throw new Error('nada legível encontrado');
     const p = parseBoletoTexto(texto);
+    _cands = p.candidatos || [];
     document.getElementById('oEmpresa').value = p.empresa;
     document.getElementById('oValor').value = p.valor || '';
     document.getElementById('oVenc').value = p.venc;
     document.getElementById('oLinha').value = p.linha;
     document.getElementById('ocrText').textContent = texto.slice(0,1200);
+    document.getElementById('ocrCands').innerHTML = _cands.length > 1
+      ? '<div style="font-size:12px;color:var(--mut);margin-top:8px">Achei '+_cands.length+' números — toque no boleto certo:</div>' +
+        _cands.map((c,i)=>'<button class="cand" onclick="usarCand('+i+')">'+BRL(c.valor)+' · '+(c.venc?fmtData(c.venc):'sem data') +
+          (c.score>=3?' <span class="okv">✓ válida</span>':'')+'<small>'+esc(c.linha.slice(0,52))+'…</small></button>').join('')
+      : '';
     document.getElementById('ocrResult').style.display = '';
     st.textContent = p.linha ? 'Linha digitável encontrada! Confira e use os dados.'
       : 'Não achei linha digitável — complete à mão (texto abaixo ajuda).';

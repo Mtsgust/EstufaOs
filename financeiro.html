@@ -115,7 +115,14 @@
   .card h2{margin:0 0 10px; font-size:15px;}
   canvas{max-height:230px;}
   .rank{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13.5px;}
-  .rank:last-child{border:none;} .rank b{color:var(--lime);}
+  .rank:last-child{border:none;}   .rank b{color:var(--lime);}
+  .imp-btn{display:block; width:100%; margin:0 0 12px; padding:11px; border-radius:14px; cursor:pointer;
+    background:transparent; color:var(--lime); border:1px dashed var(--leaf); font-size:13px; font-weight:600; font-family:inherit;}
+  .imp-li{display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .imp-li:last-child{border:none;}
+  .imp-li input[type=checkbox]{width:20px; height:20px; margin-top:2px; accent-color:var(--leaf);}
+  .imp-li small{display:block; color:var(--mut); font-size:11.5px;}
+  .imp-li .dupe{color:var(--gold); font-size:11px; font-weight:700;}
   @media (max-width:860px){ .cal-day{min-height:46px;} }
 </style>
 <link rel="stylesheet" href="sidebar.css">
@@ -141,6 +148,7 @@
 </header>
 <main>
   <section id="aba-boletos">
+    <button class="imp-btn" onclick="openImpAgenda()">📥 Importar boletos do Google Agenda</button>
     <div class="res">
       <div class="ritem"><span>Boletos no mês</span><b id="kMes">—</b></div>
       <div class="ritem"><span>A pagar</span><b id="kPagar">—</b></div>
@@ -231,6 +239,26 @@
     <div id="diaList"></div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgDia').close()">Fechar</button>
+    </div>
+  </div>
+</dialog>
+<dialog id="dlgImpAge">
+  <div class="sheet">
+    <h2>Importar da Agenda</h2>
+    <p class="sub">Busca os eventos do período e cria os boletos vinculados (sem duplicar evento nem boleto).</p>
+    <div class="row2">
+      <div class="field"><label>De</label><input id="impDe" type="date"></div>
+      <div class="field"><label>Até</label><input id="impAte" type="date"></div>
+    </div>
+    <div class="field"><label>Categoria padrão</label><select id="impCat"></select></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgImpAge').close()">Fechar</button>
+      <button class="btn-save" onclick="buscarAgenda()">Buscar</button>
+    </div>
+    <div class="imp-status" id="impAgeStatus" style="font-size:12.5px;color:var(--mut);white-space:pre-line;margin:8px 0"></div>
+    <div id="impAgeList"></div>
+    <div class="sheet-actions" id="impAgeBar" style="display:none">
+      <button class="btn-save" onclick="importarAgenda()">Importar selecionados</button>
     </div>
   </div>
 </dialog>
@@ -591,6 +619,101 @@ function renderRel(){
   document.getElementById('rkProx').innerHTML = prox.length
     ? prox.map(b=>'<div class="rank"><span>'+fmtData(b.vencimento)+' · '+esc(b.nome)+'</span><b>'+BRL(b.valor)+'</b></div>').join('')
     : '<div class="empty">Nada nos próximos 30 dias.</div>';
+}
+
+// ---- Importar eventos do Google Agenda como boletos ----
+let impAgeEventos = [];
+function parseNumBR(s){
+  s = String(s||'').replace(/[^\d.,]/g,'');
+  if(!s) return 0;
+  if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(s); return isNaN(n)?0:n;
+}
+function catPorPalavra(txt, padrao){
+  const t = String(txt||'').toLowerCase();
+  if(/cpfl|energia|el[eé]trica|\bluz\b|elektro|edp|energisa|equatorial|enel/i.test(txt)) return 'Energia';
+  if(/banco|santander|brasil|bradesco|ita[uú]|caixa|sicoob|sicredi|nubank|inter\b|fatura|cart[aã]o|empr[eé]stimo|financiamento/i.test(txt)) return 'Bancos';
+  if(/vivo|claro|tim\b|\boi\b|internet|fibra|telefone|net\b/i.test(txt)) return 'Internet';
+  if(/defensivo|agrot[oó]xico|syngenta|bayer|basf|adama|fmc|upl|corteva/i.test(txt)) return 'Defensivos';
+  if(/fertilizante|adubo|npk|ureia|calc[aá]rio|pot[aá]ssio|fosfato/i.test(txt)) return 'Fertilizantes';
+  if(/trator|colheitadeira|pe[cç]a|mec[aâ]nico|diesel|lubrificante|oficina|pneu/i.test(txt)) return 'Máquinas';
+  return padrao;
+}
+function parseEvento(ev, catPadrao){
+  const txt = (ev.titulo||'')+'\n'+(ev.descricao||'');
+  let valor = 0;
+  let m = txt.match(/R\$\s?([\d.,]+)/);
+  if(m) valor = parseNumBR(m[1]);
+  else{ const m2 = txt.match(/(\d+\.\d{3},\d{2}|\d+,\d{2})/); if(m2) valor = parseNumBR(m2[1]); }
+  let nome = String(ev.titulo||'').replace(/^boleto:?\s*/i,'').split(/[—–-]/)[0].trim().slice(0,60) || 'Boleto';
+  return {evId:ev.id, nome, valor:Math.round(valor*100)/100, venc:ev.data,
+    cat:catPorPalavra(txt, catPadrao)};
+}
+function chaveBol(nome, valor, venc){
+  return [String(nome||'').trim().toLowerCase(), Math.round(num(valor)*100), venc].join('|');
+}
+function openImpAgenda(){
+  const h = new Date();
+  const d0 = new Date(h); d0.setMonth(d0.getMonth()-3);
+  const d1 = new Date(h); d1.setMonth(d1.getMonth()+12);
+  const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('impDe').value = iso(d0);
+  document.getElementById('impAte').value = iso(d1);
+  document.getElementById('impCat').innerHTML = CATS.map(c=>'<option>'+c+'</option>').join('');
+  document.getElementById('impAgeStatus').textContent = '';
+  document.getElementById('impAgeList').innerHTML = '';
+  document.getElementById('impAgeBar').style.display = 'none';
+  impAgeEventos = [];
+  document.getElementById('dlgImpAge').showModal();
+}
+async function buscarAgenda(){
+  const st = document.getElementById('impAgeStatus');
+  st.textContent = 'Buscando na Agenda...';
+  try{
+    const r = await apiPost({action:'listarEventos',
+      inicio:document.getElementById('impDe').value, fim:document.getElementById('impAte').value});
+    if(!r.ok) throw new Error(r.error||'falha');
+    const catPadrao = document.getElementById('impCat').value;
+    const evIds = new Set(boletos.map(b=>b.eventId).filter(Boolean));
+    const chaves = new Set(boletos.map(b=>chaveBol(b.nome, b.valor, isoD(b.vencimento))));
+    impAgeEventos = (r.eventos||[]).map(ev=>{
+      const p = parseEvento(ev, catPadrao);
+      const dupe = evIds.has(ev.id) || chaves.has(chaveBol(p.nome, p.valor, p.venc));
+      if(!dupe) chaves.add(chaveBol(p.nome, p.valor, p.venc));
+      return Object.assign(p, {dupe});
+    });
+    const novos = impAgeEventos.filter(e=>!e.dupe && e.valor>0);
+    st.textContent = (r.eventos||[]).length+' eventos · '+novos.length+' novos para importar' +
+      (impAgeEventos.length-novos.length ? ' ('+(impAgeEventos.length-novos.length)+' já existem ou sem valor).' : '.');
+    document.getElementById('impAgeList').innerHTML = impAgeEventos.map((e,i)=>
+      '<label class="imp-li"><input type="checkbox" data-i="'+i+'"'+(e.dupe||!(e.valor>0)?' disabled':' checked')+'>' +
+      '<span><b>'+esc(e.nome)+'</b> — '+BRL(e.valor)+' · vence '+fmtData(e.venc)+' · '+esc(e.cat) +
+      (e.dupe ? ' <span class="dupe">já existe</span>' : (e.valor>0?'':' <span class="dupe">sem valor</span>')) +
+      '</span></label>').join('') ||
+      '<div class="empty">Nenhum evento no período.</div>';
+    document.getElementById('impAgeBar').style.display = novos.length ? 'flex' : 'none';
+  }catch(e){ st.textContent = 'Erro: '+e.message; }
+}
+async function importarAgenda(){
+  const boxes = [...document.querySelectorAll('#impAgeList input[type=checkbox]:checked:not(:disabled)')];
+  if(!boxes.length) return;
+  const btn = document.querySelector('#impAgeBar .btn-save');
+  btn.disabled = true;
+  let n = 0;
+  for(const bx of boxes){
+    const e = impAgeEventos[+bx.dataset.i];
+    try{
+      const r = await apiPost({action:'boletoSalvar', data:{nome:e.nome, categoria:e.cat, empresa:'',
+        valor:e.valor, vencimento:e.venc, status:'pendente', linhaDigitavel:'',
+        obs:'Importado do Google Agenda', anexoUrl:'', anexoNome:'', eventId:e.evId}});
+      if(r.ok){ n++; e.dupe = true; }
+      document.getElementById('impAgeStatus').textContent = 'Importando... '+n+' de '+boxes.length+'.';
+    }catch(err){}
+  }
+  btn.disabled = false;
+  document.getElementById('impAgeStatus').textContent = 'Pronto! '+n+' boletos importados.';
+  document.getElementById('dlgImpAge').close();
+  carregar();
 }
 
 fillCats();

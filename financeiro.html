@@ -673,10 +673,10 @@ function renderRel(){
   if(window.Chart){
     Chart.defaults.color = '#9DB8A4'; Chart.defaults.borderColor = '#24402F';
     Chart.defaults.font.family = 'Inter,sans-serif';
-    const d0 = new Date(); d0.setDate(1);
+    const dBase = new Date(); dBase.setDate(1);
     const proxM = [];
     for(let i=0;i<6;i++){
-      const m = new Date(d0); m.setMonth(d0.getMonth()+i);
+      const m = new Date(dBase); m.setMonth(dBase.getMonth()+i);
       const ym = m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
       const tot = pend.filter(b=>isoD(b.vencimento).slice(0,7)===ym).reduce((a,b)=>a+num(b.valor),0);
       proxM.push({ym, tot});

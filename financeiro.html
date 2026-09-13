@@ -210,6 +210,10 @@
     <h2>Ler boleto</h2>
     <p class="sub">Foto ou PDF: o sistema lê a linha digitável (valor + vencimento) e sugere a empresa. Confira antes de salvar.</p>
     <div class="field"><label>Arquivo</label><input id="ocrFile" type="file" accept="image/*,.pdf"></div>
+    <div class="field"><label>Ou digite a linha digitável (pula o OCR)</label><input id="oLinhaManual" type="text" inputmode="numeric" placeholder="só os números"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="decodificarLinha()">Decodificar linha</button>
+    </div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgOCR').close()">Fechar</button>
       <button class="btn-save" onclick="processarOCR()">Ler</button>
@@ -252,6 +256,7 @@
     </div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgImpAge').close()">Fechar</button>
+      <button class="btn-cancel" onclick="buscarTudo()">Tudo</button>
       <button class="btn-save" onclick="buscarAgenda()">Buscar</button>
     </div>
     <div class="imp-status" id="impAgeStatus" style="font-size:12.5px;color:var(--mut);white-space:pre-line;margin:8px 0"></div>
@@ -534,6 +539,19 @@ async function lerPDF(f, st){
   const r = await window.Tesseract.recognize(blob, 'por');
   return (r.data && r.data.text) || '';
 }
+function decodificarLinha(){
+  const p = parseBoletoTexto(document.getElementById('oLinhaManual').value);
+  if(!p.linha){ alert('Linha inválida (precisa de 44 a 48 dígitos).'); return; }
+  document.getElementById('oEmpresa').value = p.empresa;
+  document.getElementById('oValor').value = p.valor || '';
+  document.getElementById('oVenc').value = p.venc;
+  document.getElementById('oLinha').value = p.linha;
+  document.getElementById('ocrText').textContent = 'Decodificado da linha digitada.';
+  document.getElementById('ocrResult').style.display = '';
+  document.getElementById('ocrStatus').textContent = p.venc
+    ? 'Valor e vencimento calculados! Confira e use os dados.'
+    : 'Valor calculado (boleto sem data — complete o vencimento).';
+}
 function usarOCR(){
   openBol();
   document.getElementById('bEmpresa').value = document.getElementById('oEmpresa').value;
@@ -667,12 +685,21 @@ function openImpAgenda(){
   impAgeEventos = [];
   document.getElementById('dlgImpAge').showModal();
 }
-async function buscarAgenda(){
+async function buscarTudo(){
+  const h = new Date(), d2 = new Date(h);
+  d2.setFullYear(d2.getFullYear()+2);
+  const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('impDe').value = '2020-01-01';
+  document.getElementById('impAte').value = iso(d2);
+  await buscarAgenda(true);
+}
+async function buscarAgenda(tudo){
   const st = document.getElementById('impAgeStatus');
   st.textContent = 'Buscando na Agenda...';
   try{
     const r = await apiPost({action:'listarEventos',
-      inicio:document.getElementById('impDe').value, fim:document.getElementById('impAte').value});
+      inicio:document.getElementById('impDe').value, fim:document.getElementById('impAte').value,
+      limite: tudo ? 1000 : 500});
     if(!r.ok) throw new Error(r.error||'falha');
     const catPadrao = 'Outros';
     const evIds = new Set(boletos.map(b=>b.eventId).filter(Boolean));
@@ -683,11 +710,11 @@ async function buscarAgenda(){
       if(!dupe) chaves.add(chaveBol(p.nome, p.valor, p.venc));
       return Object.assign(p, {dupe});
     });
-    const novos = impAgeEventos.filter(e=>!e.dupe && e.valor>0);
-    st.textContent = (r.eventos||[]).length+' eventos · '+novos.length+' novos para importar' +
-      (impAgeEventos.length-novos.length ? ' ('+(impAgeEventos.length-novos.length)+' já existem ou sem valor).' : '.');
+    const novos = impAgeEventos.filter(e=>!e.dupe);
+    st.textContent = (r.total||r.eventos.length)+' eventos · '+novos.length+' novos para importar' +
+      (impAgeEventos.length-novos.length ? ' ('+(impAgeEventos.length-novos.length)+' já existem).' : '.');
     document.getElementById('impAgeList').innerHTML = impAgeEventos.map((e,i)=>
-      '<label class="imp-li"><input type="checkbox" data-i="'+i+'"'+(e.dupe||!(e.valor>0)?' disabled':' checked')+'>' +
+      '<label class="imp-li"><input type="checkbox" data-i="'+i+'"'+(e.dupe?' disabled':' checked')+'>' +
       '<span><b>'+esc(e.nome)+'</b> — '+BRL(e.valor)+' · vence '+fmtData(e.venc)+' · '+esc(e.cat) +
       (e.dupe ? ' <span class="dupe">já existe</span>' : (e.valor>0?'':' <span class="dupe">sem valor</span>')) +
       '</span></label>').join('') ||
@@ -706,7 +733,7 @@ async function importarAgenda(){
     try{
       const r = await apiPost({action:'boletoSalvar', data:{nome:e.nome, categoria:e.cat, empresa:'',
         valor:e.valor, vencimento:e.venc, status:'pendente', linhaDigitavel:'',
-        obs:'Importado do Google Agenda', anexoUrl:'', anexoNome:'', eventId:e.evId}});
+        obs:'Importado do Google Agenda', anexoUrl:'', anexoNome:'', eventId:e.evId, permitirZero:true}});
       if(r.ok){ n++; e.dupe = true; }
       document.getElementById('impAgeStatus').textContent = 'Importando... '+n+' de '+boxes.length+'.';
     }catch(err){}

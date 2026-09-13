@@ -250,7 +250,6 @@
       <div class="field"><label>De</label><input id="impDe" type="date"></div>
       <div class="field"><label>Até</label><input id="impAte" type="date"></div>
     </div>
-    <div class="field"><label>Categoria padrão</label><select id="impCat"></select></div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgImpAge').close()">Fechar</button>
       <button class="btn-save" onclick="buscarAgenda()">Buscar</button>
@@ -322,6 +321,9 @@ function filtrados(){
 }
 function cardBol(b){
   const st = stBoleto(b);
+  const mu = String(b.anexoUrl||'');
+  const mid = mu.match(/\/d\/([^/]+)/);
+  const href = mid ? API_URL+'?anexo='+mid[1] : mu;
   return '<div class="item'+(st==='pago'?' pago':'')+'">' +
     '<div class="item-top"><span class="cat">'+esc(b.categoria||'Outros')+'</span>' +
     '<span class="pill '+st+'">'+ST_LABEL[st]+'</span></div>' +
@@ -330,7 +332,7 @@ function cardBol(b){
     (b.empresa ? ' · '+esc(b.empresa) : '') +
     (st==='pago' && b.dataPagamento ? '<br>Pago em '+fmtData(b.dataPagamento) : '') +
     (b.linhaDigitavel ? '<br><small>'+esc(b.linhaDigitavel)+'</small>' : '') +
-    (b.anexoUrl ? '<br><a href="'+esc(b.anexoUrl)+'" target="_blank" rel="noopener">📎 Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a>' : '') +
+    (b.anexoUrl ? '<br><a href="'+esc(href)+'" target="_blank" rel="noopener">📎 Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a>' : '') +
     (b.obs ? '<br>'+esc(b.obs) : '') + '</div>' +
     '<div class="actions">' +
     (st==='pago'
@@ -659,7 +661,6 @@ function openImpAgenda(){
   const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   document.getElementById('impDe').value = iso(d0);
   document.getElementById('impAte').value = iso(d1);
-  document.getElementById('impCat').innerHTML = CATS.map(c=>'<option>'+c+'</option>').join('');
   document.getElementById('impAgeStatus').textContent = '';
   document.getElementById('impAgeList').innerHTML = '';
   document.getElementById('impAgeBar').style.display = 'none';
@@ -673,7 +674,7 @@ async function buscarAgenda(){
     const r = await apiPost({action:'listarEventos',
       inicio:document.getElementById('impDe').value, fim:document.getElementById('impAte').value});
     if(!r.ok) throw new Error(r.error||'falha');
-    const catPadrao = document.getElementById('impCat').value;
+    const catPadrao = 'Outros';
     const evIds = new Set(boletos.map(b=>b.eventId).filter(Boolean));
     const chaves = new Set(boletos.map(b=>chaveBol(b.nome, b.valor, isoD(b.vencimento))));
     impAgeEventos = (r.eventos||[]).map(ev=>{

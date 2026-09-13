@@ -148,7 +148,10 @@
 </header>
 <main>
   <section id="aba-boletos">
-    <button class="imp-btn" onclick="openImpAgenda()">📥 Importar boletos do Google Agenda</button>
+    <div style="display:flex; gap:8px">
+      <button class="imp-btn" style="flex:1" onclick="openImpAgenda()">📥 Importar boletos do Google Agenda</button>
+      <button class="imp-btn" style="flex:1" onclick="pagarAnteriores()">✓ Marcar anteriores como pagos</button>
+    </div>
     <div class="res">
       <div class="ritem"><span>Boletos no mês</span><b id="kMes">—</b></div>
       <div class="ritem"><span>A pagar</span><b id="kPagar">—</b></div>
@@ -685,8 +688,17 @@ function openImpAgenda(){
   impAgeEventos = [];
   document.getElementById('dlgImpAge').showModal();
 }
-async function buscarTudo(){
-  const h = new Date(), d2 = new Date(h);
+async function pagarAnteriores(){
+  const h = hojeISO();
+  const alvos = boletos.filter(b=>String(b.status)!=='pago' && isoD(b.vencimento) && isoD(b.vencimento) < h);
+  if(!alvos.length){ alert('Nada vencido em aberto.'); return; }
+  const tot = alvos.reduce((a,b)=>a+num(b.valor),0);
+  if(!confirm('Marcar '+alvos.length+' boletos vencidos como PAGOS ('+BRL(tot)+')?\nOs eventos ficam na Agenda.')) return;
+  const r = await apiPost({action:'pagarAnteriores'});
+  alert(r.ok ? 'Pronto! '+r.pagos+' boletos pagos ('+BRL(r.total)+').' : 'Erro: '+(r.error||'falha'));
+  carregar();
+}
+async function buscarTudo(){  const h = new Date(), d2 = new Date(h);
   d2.setFullYear(d2.getFullYear()+2);
   const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   document.getElementById('impDe').value = '2020-01-01';

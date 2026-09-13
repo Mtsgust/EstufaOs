@@ -15,6 +15,8 @@
       '<path d="M3 21h18"/><path d="M6 21v-9M12 21V5M18 21v-12"/>', 'producao'],
     ['vendas.html', 'Vendas', 'vendas',
       '<path d="M12 3v18M5 8l7-5 7 5M5 8c0 5 3 9 7 9s7-4 7-9"/>', 'producao'],
+    ['financeiro.html', 'Financeiro', 'financeiro',
+      '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>', 'producao'],
     ['bulario.html', 'Bulário', 'bulario',
       '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h13"/>', 'apoio'],
     ['relatorios.html', 'Relatórios', 'relatorios',
@@ -31,6 +33,7 @@
          : f.indexOf('esto') === 0 ? 'estoque'
          : f.indexOf('colh') === 0 ? 'colheita'
          : f.indexOf('vend') === 0 ? 'vendas'
+         : f.indexOf('fin') === 0 ? 'financeiro'
          : f.indexOf('bul') === 0 ? 'bulario'
          : f.indexOf('rel') === 0 ? 'relatorios'
          : f.indexOf('conf') === 0 ? 'configuracoes'

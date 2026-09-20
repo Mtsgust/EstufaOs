@@ -265,23 +265,44 @@ function isoData(v){
   return '';
 }
 async function apiGet(tipo){
-  const r = await fetch(`${API_URL}?tipo=${tipo}`);
+  if (typeof buscarTipo === 'function') {
+    try { return { ok: true, data: await buscarTipo(tipo) }; }
+    catch (e) { const c = cacheLerTipo(tipo); if (c) return { ok: true, data: c }; throw e; }
+  }
+  const r = (typeof fetchComTimeout === 'function')
+    ? await fetchComTimeout(`${API_URL}?tipo=${tipo}`) : await fetch(`${API_URL}?tipo=${tipo}`);
   return r.json();
 }
 async function apiPost(body){
-  const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
+  if (typeof postarSeguro === 'function') return postarSeguro(body);
+  const r = (typeof fetchComTimeout === 'function')
+    ? await fetchComTimeout(API_URL, {method:'POST', body: JSON.stringify(body)}) : await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
   return r.json();
 }
 
 async function carregar(){
-  document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const cc = cacheLerTipo('ciclos'), ch = cacheLerTipo('colheitas');
+      if ((cc && cc.length) || (ch && ch.length)) { ciclos = cc || []; colhs = ch || []; render(); }
+      else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
   try{
-    const [c, h] = await Promise.all([apiGet('ciclos'), apiGet('colheitas')]);
+    let c, h;
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(['ciclos', 'colheitas']);
+      c = { data: d.ciclos || [] }; h = { data: d.colheitas || [] };
+    } else {
+      const r = await Promise.all([apiGet('ciclos'), apiGet('colheitas')]);
+      c = r[0]; h = r[1];
+    }
     ciclos = c.data || [];
     colhs = h.data || [];
     render();
   }catch(e){
-    document.getElementById('list').innerHTML = '<div class="loading">Erro ao carregar. Confira config.js e se publicou o Code.gs novo.</div>';
+    if ((ciclos && ciclos.length) || (colhs && colhs.length)) { render(); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
 

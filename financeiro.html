@@ -287,8 +287,19 @@ function BRL(v){ return (Math.round(num(v)*100)/100).toLocaleString('pt-BR',{sty
 function isoD(v){ if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1]+'-'+m[2]+'-'+m[3] : ''; }
 function fmtData(v){ const s = isoD(v); return s ? s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4) : '—'; }
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-async function apiGet(t){ const r = await fetch(API_URL+'?tipo='+t); return r.json(); }
-async function apiPost(b){ const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(b)}); return r.json(); }
+async function apiGet(t){
+  if (typeof buscarTipo === 'function') {
+    try { return { ok: true, data: await buscarTipo(t) }; }
+    catch (e) { const c = cacheLerTipo(t); if (c) return { ok: true, data: c }; throw e; }
+  }
+  const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL+'?tipo='+t) : await fetch(API_URL+'?tipo='+t);
+  return r.json();
+}
+async function apiPost(b){
+  if (typeof postarSeguro === 'function') return postarSeguro(b);
+  const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL, {method:'POST', body: JSON.stringify(b)}) : await fetch(API_URL, {method:'POST', body: JSON.stringify(b)});
+  return r.json();
+}
 
 const ST_LABEL = {pago:'Pago', atrasado:'Atrasado', hoje:'Vence hoje', breve:'Vence em breve', emdia:'Em dia'};
 function stBoleto(b){
@@ -305,12 +316,7 @@ function fillCats(){
   document.getElementById('oCat').innerHTML = h;
   document.getElementById('fCatBol').innerHTML = '<option value="todas">Todas categ.</option>'+h;
 }
-async function carregar(){
-  document.getElementById('listBol').innerHTML = '<div class="loading">Carregando…</div>';
-  try{
-    const r = await apiGet('boletos');
-    boletos = r.data || [];
-    // A vencer primeiro; pagos por último (mais recentes antes).
+function ordenarBoletos(){
     boletos.sort((a,b)=>{
       const pa = String(a.status)==='pago'?1:0, pb = String(b.status)==='pago'?1:0;
       if(pa!==pb) return pa-pb;
@@ -318,9 +324,24 @@ async function carregar(){
       if(pa===1) return va<vb?1:-1;
       return va<vb?-1:1;
     });
+}
+async function carregar(){
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const c = cacheLerTipo('boletos');
+      if (c && c.length) { boletos = c; ordenarBoletos(); render(); }
+      else document.getElementById('listBol').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('listBol').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
+  try{
+    const r = await apiGet('boletos');
+    boletos = r.data || [];
+    // A vencer primeiro; pagos por último (mais recentes antes).
+    ordenarBoletos();
     render();
   }catch(e){
-    document.getElementById('listBol').innerHTML = '<div class="loading">Erro ao carregar. Confira config.js e publique o Code.gs novo.</div>';
+    if (boletos && boletos.length) { render(); return; }
+    document.getElementById('listBol').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false" style="color:var(--lime)">Tentar de novo</a></div>';
   }
 }
 function filtrados(){

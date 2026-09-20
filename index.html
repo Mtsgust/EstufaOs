@@ -284,15 +284,18 @@ const ehAtrasado = d => {
 };
 
 async function get(tipo){
+  try {
+    if (typeof buscarTipo === 'function') return await buscarTipo(tipo);
+  } catch (e) {
+    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo(tipo) : null;
+    if (c) return c;
+    throw e;
+  }
   const r = await fetch(`${API_URL}?tipo=${tipo}`);
   return (await r.json()).data || [];
 }
 
-async function carregarPainel(){
-  try{
-    const [pulv, nutr, est] = await Promise.all([get('pulverizacao'), get('nutricao'), get('estoque')]);
-    let ciclos = [], colhs = [];
-    try{ [ciclos, colhs] = await Promise.all([get('ciclos'), get('colheitas')]); }catch(e){}
+function pintarPainel(pulv, nutr, est, ciclos, colhs){
     const ativas = ciclos.filter(c=>c.status!=='encerrada');
     const cults = [...new Set(ativas.map(c=>c.cultura).filter(Boolean))];
     setStat('cAtivas', ativas.length, '/ 7', cults.length ? cults.slice(0,3).join(', ') : 'nenhuma cultura', '');
@@ -330,8 +333,38 @@ async function carregarPainel(){
     renderColheita(ciclos, colhs);
     initStack('stackA', 'dotsA', 'stkA', 9000);
     initStack('stackB', 'dotsB', 'stkB', 11000);
-  }catch(e){
-    document.getElementById('subtitulo').textContent = 'Erro ao carregar. Confira config.js.';
+}
+
+async function carregarPainel(){
+  // 1) Mostra cache na hora (não trava em "Carregando")
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const cp = cacheLerTipo('pulverizacao'), cn = cacheLerTipo('nutricao'),
+            ce = cacheLerTipo('estoque'), cc = cacheLerTipo('ciclos'), ch = cacheLerTipo('colheitas');
+      if (cp && cn && ce) {
+        try { pintarPainel(cp, cn, ce, cc || [], ch || []); } catch (e) {}
+        document.getElementById('subtitulo').textContent = 'Atualizando dados...';
+      }
+    }
+  } catch (e) {}
+  // 2) Busca tudo em 1 chamada (lote) com timeout + retry
+  try {
+    let pulv, nutr, est, ciclos = [], colhs = [];
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(['pulverizacao', 'nutricao', 'estoque', 'ciclos', 'colheitas']);
+      pulv = d.pulverizacao || []; nutr = d.nutricao || []; est = d.estoque || [];
+      ciclos = d.ciclos || []; colhs = d.colheitas || [];
+    } else {
+      const r = await Promise.all([get('pulverizacao'), get('nutricao'), get('estoque')]);
+      pulv = r[0]; nutr = r[1]; est = r[2];
+      try { const r2 = await Promise.all([get('ciclos'), get('colheitas')]); ciclos = r2[0]; colhs = r2[1]; } catch (e) {}
+    }
+    pintarPainel(pulv, nutr, est, ciclos, colhs);
+  } catch (e) {
+    const sub = document.getElementById('subtitulo');
+    sub.innerHTML = 'Demorou demais. <a href="#" onclick="carregarPainel();return false" style="color:var(--lime)">Tentar de novo</a>';
+    const up = document.getElementById('upcoming');
+    if (up && !up.innerHTML.trim()) up.innerHTML = '<div class="empty">Sem conexão. <a href="#" onclick="carregarPainel();return false">Tentar de novo</a></div>';
   }
 }
 function nomePulv(d){

@@ -107,6 +107,7 @@
   </div>
 </dialog>
 
+<script src="config.js"></script>
 <script src="bulario-config.js"></script>
 <script>
 const BULARIO_KEY = 'bularioProdutos_v1';
@@ -362,22 +363,30 @@ let lista = [];
 let filtroCat = 'todos';
 let busca = '';
 
+async function lerBulario(){
+  if (typeof buscarTipo === 'function') return buscarTipo('bulario');
+  const ft = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(`${API_URL}?tipo=bulario`) : await fetch(`${API_URL}?tipo=bulario`);
+  return ((await ft.json()).data) || [];
+}
 async function carregar(){
-  document.getElementById('bu-list').innerHTML = '<div class="empty">Carregando…</div>';
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const c = cacheLerTipo('bulario');
+      if (c && c.length) { lista = c; render(); }
+      else document.getElementById('bu-list').innerHTML = '<div class="empty">Carregando…</div>';
+    } else document.getElementById('bu-list').innerHTML = '<div class="empty">Carregando…</div>';
+  } catch (e) {}
   try{
-    const r = await fetch(`${API_URL}?tipo=bulario`);
-    const j = await r.json();
-    let dadosServidor = j.data || [];
+    let dadosServidor = await lerBulario();
     if(dadosServidor.length === 0){
       await semear();
-      const r2 = await fetch(`${API_URL}?tipo=bulario`);
-      const j2 = await r2.json();
-      dadosServidor = j2.data || [];
+      dadosServidor = await lerBulario();
     }
     lista = dadosServidor;
     render();
   }catch(e){
-    document.getElementById('bu-list').innerHTML = '<div class="empty">Erro ao carregar. Confira a URL em config.js.</div>';
+    if (lista && lista.length) { render(); return; }
+    document.getElementById('bu-list').innerHTML = '<div class="empty">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
 

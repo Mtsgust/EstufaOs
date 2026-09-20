@@ -107,6 +107,10 @@
   .cal-task button{flex:0 0 26px; height:26px; border-radius:8px; border:1px solid #3D7A5C;
     background:transparent; color:#8FD19A; font-weight:800; cursor:pointer;}
   .cal-empty{color:#4a5f50; text-align:center; font-size:12px; padding:10px 0;}
+  .nota{background:rgba(217,164,65,.14); border:1px solid #6b551f; border-radius:10px; padding:6px 8px;
+    font-size:11.5px; color:#E8C86A; margin-bottom:6px; cursor:pointer; line-height:1.45;}
+  .nota-add{font-size:11.5px; color:#6E8A75; text-align:center; padding:5px; cursor:pointer; border-radius:8px;}
+  .nota-add:hover{color:#8FD19A; background:rgba(143,209,154,.08);}
 </style>
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="theme.css">
@@ -138,6 +142,21 @@
 
 <button class="fab2" onclick="openImp()">📋 Importar plano semanal</button>
 <button class="fab" onclick="openForm()">+ Nova tarefa</button>
+
+<!-- Nota do dia -->
+<dialog id="dlgNota">
+  <div class="sheet">
+    <h2>Nota · <span id="notaDataTitulo"></span></h2>
+    <p class="hint">Ex: resto da semana sem nada por causa da chuva.</p>
+    <input type="hidden" id="notaId"><input type="hidden" id="notaDia">
+    <div class="field"><textarea id="notaTexto" rows="3" placeholder="Escreva a anotação do dia..."></textarea></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgNota').close()">Cancelar</button>
+      <button class="btn-save" onclick="salvarNota()">Salvar</button>
+    </div>
+    <button class="btn-del" id="btnExcluirNota" style="width:100%; margin-top:8px; display:none" onclick="excluirNota()">Excluir nota</button>
+  </div>
+</dialog>
 
 <dialog id="dlgImp">
   <div class="sheet">
@@ -254,25 +273,41 @@ async function baixarEstoque(produtoNome, quantidade, unidade, origem, origemId,
 // Autocompletar com os nomes cadastrados no estoque (evita duplicados por erro de digitação)
 async function carregarNomesEstoque(){
   try{
-    const r = await fetch(`${API_URL}?tipo=estoque`);
-    const j = await r.json();
+    const arr = (typeof buscarTipo === 'function') ? await buscarTipo('estoque') : ((await (await fetch(`${API_URL}?tipo=estoque`)).json()).data || []);
     const dl = document.getElementById('dlEstoque');
-    if(dl) dl.innerHTML = (j.data||[]).map(p => `<option value="${escapeHtml(p.nome)}">`).join('');
+    if(dl) dl.innerHTML = arr.map(p => `<option value="${escapeHtml(p.nome)}">`).join('');
   }catch(e){}
 }
 carregarNomesEstoque();
 
 async function carregar(){
-  document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const c = cacheLerTipo('nutricao');
+      if (c && c.length) { dados = c.sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao)); anotacoes = cacheLerTipo('anotacoes') || []; render(); }
+      else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
   try{
-    const r = await fetch(`${API_URL}?tipo=nutricao`);
-    const j = await r.json();
-    dados = (j.data || []).sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao));
+    let arr, ants = [];
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(['nutricao', 'anotacoes']);
+      arr = d.nutricao || []; ants = d.anotacoes || [];
+    } else {
+      const r = await fetch(`${API_URL}?tipo=nutricao`);
+      arr = ((await r.json()).data) || [];
+      try { ants = ((await (await fetch(`${API_URL}?tipo=anotacoes`)).json()).data) || []; } catch (e) {}
+    }
+    dados = (arr || []).sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao));
+    anotacoes = ants || [];
     render();
   }catch(e){
-    document.getElementById('list').innerHTML = '<div class="loading">Erro ao carregar. Confira a URL em config.js.</div>';
+    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo('nutricao') : null;
+    if (c && c.length) { dados = c; render(); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
+let anotacoes = [];
 
 function isAtrasado(d){
   if(d.status === 'feito' || !d.dataPrevista) return false;
@@ -374,6 +409,9 @@ function renderSemana(){
     doDia.forEach(d=>{ const e = String(d.estufa||'?'); (porE[e] = porE[e] || []).push(d); });
     const es = Object.keys(porE).sort();
     html += es.length ? es.map(e=>blocoEstufa(e, porE[e])).join('') : `<div class="cal-empty">—</div>`;
+    html += anotacoes.filter(n=>isoD(n.data)===dt)
+      .map(n=>`<div class="nota" onclick="openNota('${dt}','${n.id}')">📝 ${escapeHtml(n.texto)}</div>`).join('');
+    html += `<div class="nota-add" onclick="openNota('${dt}','')">+ nota</div>`;
     html += `</div>`;
   });
   if(semData.length){
@@ -384,6 +422,36 @@ function renderSemana(){
   }
   html += `</div>`;
   list.innerHTML = html;
+}
+
+// ---- Notas do dia (chuva, ocorrência, lembrete) ----
+function openNota(dia, id){
+  const n = id ? anotacoes.find(x=>String(x.id)===String(id)) : null;
+  document.getElementById('notaDia').value = dia;
+  document.getElementById('notaId').value = id || '';
+  document.getElementById('notaDataTitulo').textContent = dia.slice(8)+'/'+dia.slice(5,7);
+  document.getElementById('notaTexto').value = n ? (n.texto||'') : '';
+  document.getElementById('btnExcluirNota').style.display = n ? 'block' : 'none';
+  document.getElementById('dlgNota').showModal();
+}
+async function salvarNota(){
+  const texto = document.getElementById('notaTexto').value.trim();
+  if(!texto){ alert('Escreva a nota.'); return; }
+  const id = document.getElementById('notaId').value;
+  const dia = document.getElementById('notaDia').value;
+  const body = id
+    ? {tipo:'anotacoes', action:'update', id, data:{texto}}
+    : {tipo:'anotacoes', action:'add', data:{data:dia, texto}};
+  await fetch(API_URL, {method:'POST', body:JSON.stringify(body)});
+  document.getElementById('dlgNota').close();
+  carregar();
+}
+async function excluirNota(){
+  const id = document.getElementById('notaId').value;
+  if(!id || !confirm('Excluir esta nota?')) return;
+  await fetch(API_URL, {method:'POST', body:JSON.stringify({tipo:'anotacoes', action:'delete', id})});
+  document.getElementById('dlgNota').close();
+  carregar();
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

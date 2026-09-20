@@ -195,11 +195,28 @@ function fmtData(v){ if(!v) return '—'; const s = String(v).match(/^(\d{4})-(\
   const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR'); }
 function hojeISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
 function isoData(v){ if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1]+'-'+m[2]+'-'+m[3] : ''; }
-async function apiGet(tipo){ const r = await fetch(API_URL+'?tipo='+tipo); return r.json(); }
-async function apiPost(body){ const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(body)}); return r.json(); }
+async function apiGet(tipo){
+  if (typeof buscarTipo === 'function') {
+    try { return { ok: true, data: await buscarTipo(tipo) }; }
+    catch (e) { const c = cacheLerTipo(tipo); if (c) return { ok: true, data: c }; throw e; }
+  }
+  const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL+'?tipo='+tipo) : await fetch(API_URL+'?tipo='+tipo);
+  return r.json();
+}
+async function apiPost(body){
+  if (typeof postarSeguro === 'function') return postarSeguro(body);
+  const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL, {method:'POST', body: JSON.stringify(body)}) : await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
+  return r.json();
+}
 
 async function carregar(){
-  document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const c = cacheLerTipo('vendas');
+      if (c && c.length) { vendas = c; vendas.sort((a,b)=> String(b.data||'') < String(a.data||'') ? -1 : 1); render(); }
+      else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
   try{
     const r = await apiGet('vendas');
     vendas = r.data || [];
@@ -208,7 +225,8 @@ async function carregar(){
     document.getElementById('dlComp').innerHTML = comps.map(c=>'<option value="'+esc(c)+'">').join('');
     render();
   }catch(e){
-    document.getElementById('list').innerHTML = '<div class="loading">Erro ao carregar. Confira config.js e se publicou o Code.gs novo.</div>';
+    if (vendas && vendas.length) { render(); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
 function totais(){

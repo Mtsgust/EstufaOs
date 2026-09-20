@@ -70,14 +70,40 @@
 const num = v => { const n = parseFloat(String(v??'').replace(',','.')); return isNaN(n)?0:n; };
 const BRL = v => (Math.round(num(v)*100)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const isoD = v => { if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1]+'-'+m[2]+'-'+m[3] : ''; };
-async function get(t){ try{ return ((await (await fetch(API_URL+'?tipo='+t)).json()).data)||[]; }catch(e){ return []; } }
+async function get(t){
+  try {
+    if (typeof buscarTipo === 'function') return await buscarTipo(t);
+  } catch (e) {
+    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo(t) : null;
+    if (c) return c;
+    return [];
+  }
+  try {
+    const ft = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL+'?tipo='+t) : await fetch(API_URL+'?tipo='+t);
+    return ((await ft.json()).data)||[];
+  } catch(e){
+    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo(t) : null;
+    return c || [];
+  }
+}
 function mesesAtras(n){ const out=[]; const d=new Date(); d.setDate(1);
   for(let i=n-1;i>=0;i--){ const m=new Date(d); m.setMonth(d.getMonth()-i);
     out.push(m.toISOString().slice(0,7)); } return out; }
 function nomeMes(ym){ const [a,m]=ym.split('-'); return m+'/'+a.slice(2); }
 async function carregar(){
-  const [vendas, colhs, ciclos, pulv, nutr] = await Promise.all(
-    ['vendas','colheitas','ciclos','pulverizacao','nutricao'].map(get));
+  let vendas, colhs, ciclos, pulv, nutr;
+  if (typeof buscarLote === 'function') {
+    try {
+      const d = await buscarLote(['vendas','colheitas','ciclos','pulverizacao','nutricao']);
+      vendas = d.vendas || []; colhs = d.colheitas || []; ciclos = d.ciclos || []; pulv = d.pulverizacao || []; nutr = d.nutricao || [];
+    } catch (e) {
+      const r = await Promise.all(['vendas','colheitas','ciclos','pulverizacao','nutricao'].map(get));
+      vendas = r[0]; colhs = r[1]; ciclos = r[2]; pulv = r[3]; nutr = r[4];
+    }
+  } else {
+    const r = await Promise.all(['vendas','colheitas','ciclos','pulverizacao','nutricao'].map(get));
+    vendas = r[0]; colhs = r[1]; ciclos = r[2]; pulv = r[3]; nutr = r[4];
+  }
   const mes = new Date().toISOString().slice(0,7);
   const recMes = vendas.filter(v=>String(v.status)==='recebido' && isoD(v.data).slice(0,7)===mes)
     .reduce((a,v)=>a+num(v.total),0);

@@ -203,23 +203,30 @@ async function baixarEstoque(produtoNome, quantidade, unidade, origem, origemId,
 // Autocompletar com os nomes cadastrados no estoque (evita duplicados por erro de digitação)
 async function carregarNomesEstoque(){
   try{
-    const r = await fetch(`${API_URL}?tipo=estoque`);
-    const j = await r.json();
+    const arr = (typeof buscarTipo === 'function') ? await buscarTipo('estoque') : ((await (await fetch(`${API_URL}?tipo=estoque`)).json()).data || []);
     const dl = document.getElementById('dlEstoque');
-    if(dl) dl.innerHTML = (j.data||[]).map(p => `<option value="${escapeHtml(p.nome)}">`).join('');
+    if(dl) dl.innerHTML = arr.map(p => `<option value="${escapeHtml(p.nome)}">`).join('');
   }catch(e){}
 }
 carregarNomesEstoque();
 
 async function carregar(){
-  document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  // Mostra cache na hora p/ não travar em "Carregando"
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const c = cacheLerTipo('pulverizacao');
+      if (c && c.length) { dados = c.sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao)); render(); }
+      else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
   try{
-    const r = await fetch(`${API_URL}?tipo=pulverizacao`);
-    const j = await r.json();
-    dados = (j.data || []).sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao));
+    const arr = (typeof buscarTipo === 'function') ? await buscarTipo('pulverizacao') : ((await (await fetch(`${API_URL}?tipo=pulverizacao`)).json()).data || []);
+    dados = (arr || []).sort((a,b)=> new Date(b.dataCriacao) - new Date(a.dataCriacao));
     render();
   }catch(e){
-    document.getElementById('list').innerHTML = '<div class="loading">Erro ao carregar. Confira a URL em config.js.</div>';
+    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo('pulverizacao') : null;
+    if (c && c.length) { dados = c; render(); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
 

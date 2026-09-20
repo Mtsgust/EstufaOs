@@ -260,11 +260,18 @@ function mostraPrevFoto(url){
 }
 
 async function apiGet(tipo){
-  const r = await fetch(`${API_URL}?tipo=${tipo}`);
+  if (typeof buscarTipo === 'function') {
+    try { return { ok: true, data: await buscarTipo(tipo) }; }
+    catch (e) { const c = cacheLerTipo(tipo); if (c) return { ok: true, data: c }; throw e; }
+  }
+  const r = (typeof fetchComTimeout === 'function')
+    ? await fetchComTimeout(`${API_URL}?tipo=${tipo}`) : await fetch(`${API_URL}?tipo=${tipo}`);
   return r.json();
 }
 async function apiPost(body){
-  const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
+  if (typeof postarSeguro === 'function') return postarSeguro(body);
+  const r = (typeof fetchComTimeout === 'function')
+    ? await fetchComTimeout(API_URL, {method:'POST', body: JSON.stringify(body)}) : await fetch(API_URL, {method:'POST', body: JSON.stringify(body)});
   return r.json();
 }
 
@@ -290,14 +297,28 @@ async function auditar(){
 }
 
 async function carregar(){
-  document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  try {
+    if (typeof cacheLerTipo === 'function') {
+      const ce = cacheLerTipo('estoque'), cm = cacheLerTipo('movimentacoes');
+      if (ce && ce.length) { estoque = ce; movs = cm || []; render(); }
+      else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+    } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
+  } catch (e) {}
   try{
-    const [e, m] = await Promise.all([apiGet('estoque'), apiGet('movimentacoes')]);
+    let e, m;
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(['estoque', 'movimentacoes']);
+      e = { data: d.estoque || [] }; m = { data: d.movimentacoes || [] };
+    } else {
+      const r = await Promise.all([apiGet('estoque'), apiGet('movimentacoes')]);
+      e = r[0]; m = r[1];
+    }
     estoque = e.data || [];
     movs = m.data || [];
     render();
   }catch(err){
-    document.getElementById('list').innerHTML = '<div class="loading">Erro ao carregar. Confira config.js e se publicou o Code.gs novo.</div>';
+    if (estoque && estoque.length) { render(); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
 

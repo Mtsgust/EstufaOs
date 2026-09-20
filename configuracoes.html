@@ -85,23 +85,40 @@
 <script>
 async function testarApi(){
   const box = document.getElementById('apiStats');
-  box.innerHTML = '<div class="stat">Testando…</div>';
-  const tipos = ['pulverizacao','nutricao','estoque','movimentacoes','bulario','ciclos','colheitas','vendas'];
-  let html = '';
-  for(const t of tipos){
-    try{
-      const j = await (await fetch(API_URL+'?tipo='+t)).json();
-      html += '<div class="stat"><span>'+t+'</span><span class="'+(j.ok?'ok':'bad')+'">'+(j.ok?((j.data||[]).length+' registros'):'erro')+'</span></div>';
-    }catch(e){ html += '<div class="stat"><span>'+t+'</span><span class="bad">falha</span></div>'; }
-  }
-  box.innerHTML = html;
+  box.innerHTML = '<div class="stat">Testando… (1 chamada em lote)</div>';
+  const tipos = ['pulverizacao','nutricao','estoque','movimentacoes','bulario','ciclos','colheitas','vendas','boletos','anotacoes'];
+  try {
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(tipos);
+      box.innerHTML = tipos.map(t => '<div class="stat"><span>'+t+'</span><span class="ok">'+((d[t]||[]).length+' registros')+'</span></div>').join('');
+      return;
+    }
+  } catch (e) {}
+  const res = await Promise.all(tipos.map(async (t) => {
+    try {
+      const ft = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL+'?tipo='+t) : await fetch(API_URL+'?tipo='+t);
+      const j = await ft.json();
+      return '<div class="stat"><span>'+t+'</span><span class="'+(j.ok?'ok':'bad')+'">'+(j.ok?((j.data||[]).length+' registros'):'erro')+'</span></div>';
+    } catch (e) { return '<div class="stat"><span>'+t+'</span><span class="bad">falha</span></div>'; }
+  }));
+  box.innerHTML = res.join('');
 }
 async function backupJson(){
-  const tipos = ['pulverizacao','nutricao','estoque','movimentacoes','bulario','ciclos','colheitas','vendas'];
+  const tipos = ['pulverizacao','nutricao','estoque','movimentacoes','bulario','ciclos','colheitas','vendas','boletos','anotacoes'];
   const tudo = {exportadoEm:new Date().toISOString()};
-  for(const t of tipos){
-    try{ tudo[t] = ((await (await fetch(API_URL+'?tipo='+t)).json()).data)||[]; }
-    catch(e){ tudo[t] = []; }
+  try {
+    if (typeof buscarLote === 'function') {
+      const d = await buscarLote(tipos);
+      tipos.forEach(t => tudo[t] = d[t] || []);
+    } else throw 0;
+  } catch (e) {
+    const r = await Promise.all(tipos.map(async (t) => {
+      try {
+        const ft = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(API_URL+'?tipo='+t) : await fetch(API_URL+'?tipo='+t);
+        return ((await ft.json()).data)||[];
+      } catch (err) { return []; }
+    }));
+    tipos.forEach((t, i) => tudo[t] = r[i]);
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(tudo,null,1)],{type:'application/json'}));

@@ -591,11 +591,21 @@ async function lerFotoFile(f){
     st.textContent = 'Foto lida! Confira o texto e clique em "Ler texto".';
   }catch(err){ st.textContent = 'Não consegui ler a foto. Tente uma foto mais nítida ou cole o texto.'; }
 }
+function garantirPdfjs(){
+  return new Promise((res, rej)=>{
+    if(window.pdfjsLib) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = ()=>{ try{ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){} res(); };
+    s.onerror = ()=>rej(new Error('não baixou o leitor de PDF (sem internet?)'));
+    document.head.appendChild(s);
+  });
+}
 // PDF: lê o texto direto; se for escaneado (só imagem), faz OCR da primeira página.
 async function lerPdfFile(f){
   const st = document.getElementById('impStatus');
   try{
-    if(!window.pdfjsLib) throw new Error('leitor de PDF indisponível (sem internet?)');
+    await garantirPdfjs();
     st.textContent = 'Lendo PDF...';
     const buf = await f.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data:buf}).promise;
@@ -619,10 +629,10 @@ async function lerPdfFile(f){
       const r = await window.Tesseract.recognize(blob, 'por');
       texto = (r.data && r.data.text) || '';
     }
-    if(!texto.trim()) throw new Error('nada legível');
+    if(!texto.trim()) throw new Error('nada legível no arquivo');
     document.getElementById('impTexto').value = texto.slice(0,8000);
     st.textContent = 'PDF lido! Confira o texto e clique em "Ler texto".';
-  }catch(err){ st.textContent = 'Não consegui ler o PDF. Tente foto mais nítida ou cole o texto.'; }
+  }catch(err){ st.textContent = 'Não consegui ler o PDF (' + (err && err.message ? err.message : 'erro') + '). Tente foto ou cole o texto.'; }
 }
 document.getElementById('impArquivo').addEventListener('change', async (e)=>{
   const f = e.target.files[0]; if(!f) return;

@@ -698,8 +698,20 @@ function nomeOficial(nome){
 }
 function parsePlanoSemanal(texto){
   const raw = String(texto||'');
+  // O PDF quebra "Soil Mix Total – 5 L" em linhas separadas ("Produto -" / "5 L").
+  // Rejunta: linha terminada em traço gruda na próxima; linha só com dose gruda na anterior.
+  const rejuntado = raw.replace(/[ \t]*[-–—][ \t]*\r?\n[ \t]*/g, ' - ');
+  const brutas = rejuntado.split(/\r?\n/).map(l=>String(l).trim()).filter(Boolean);
+  const juntas = [];
+  for(const l of brutas){
+    if(/^(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|l\b|litros?|un\b)(\/\w+)?\.?$/i.test(l) && juntas.length){
+      juntas[juntas.length-1] += ' ' + l;
+      continue;
+    }
+    juntas.push(l);
+  }
   // Separa produtos divididos por " / " na mesma linha (tabela do técnico)
-  const linhas = raw.split(/\r?\n/).flatMap(l => String(l).split(/\s+\/\s+/)).map(l=>l.trim()).filter(Boolean);
+  const linhas = juntas.flatMap(l => String(l).split(/\s+\/\s+/)).map(l=>l.trim()).filter(Boolean);
   const itens = [];
   let estufaCtx = ['1'], dataCtx = hojeISO(), tipoCtx = 'Outro';
   // Semana "07/09 a 11/09/2026": usa a 1ª data como segunda-feira de referência

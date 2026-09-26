@@ -161,11 +161,11 @@
 <dialog id="dlgImp">
   <div class="sheet">
     <h2>Importar plano semanal</h2>
-    <p class="sub">Cole o texto do técnico, arraste o arquivo/foto pra dentro, anexe ou tire foto. Confira abaixo e salve tudo de uma vez como pendente.</p>
-    <div id="impDrop">📥 Arraste aqui o arquivo ou a foto<br><small>ou clique para escolher · ou cole com Ctrl+V</small></div>
+    <p class="sub">Cole o texto do técnico, arraste o PDF/arquivo/foto pra dentro, anexe ou tire foto. Confira abaixo e salve tudo de uma vez como pendente.</p>
+    <div id="impDrop">📥 Arraste aqui o PDF, o arquivo ou a foto<br><small>ou clique para escolher · ou cole com Ctrl+V</small></div>
     <div class="field"><label>Texto do plano</label><textarea id="impTexto" rows="6" placeholder="Cole aqui. Ex:&#10;FERTIRRIGAÇÃO – ESTUFA 7 – Semana 07/09 a 11/09/2026&#10;Segunda-feira: Nitrato de cálcio — 8 kg / Soil K — 3 L"></textarea></div>
     <div class="row2">
-      <div class="field"><label>Arquivo texto/CSV</label><input id="impArquivo" type="file" accept=".txt,.csv,.md"></div>
+      <div class="field"><label>Arquivo texto/CSV/PDF</label><input id="impArquivo" type="file" accept=".txt,.csv,.md,.pdf"></div>
       <div class="field"><label>Foto da folha</label><input id="impFoto" type="file" accept="image/*"></div>
     </div>
     <div class="imp-status" id="impStatus"></div>
@@ -248,6 +248,8 @@
   </div>
 </dialog>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>try{ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){}</script>
 <script src="config.js"></script>
 <datalist id="dlEstoque"></datalist>
 <script>
@@ -554,9 +556,13 @@ function openImp(){
   impItens=[];
   document.getElementById('dlgImp').showModal();
 }
+function ehPdf(f){
+  return f && (/pdf/i.test(f.type||'') || /\.pdf$/i.test(f.name||''));
+}
 function impReceberArquivo(f){
   if(!f) return;
   if(f.type.startsWith('image/')){ lerFotoFile(f); return; }
+  if(ehPdf(f)){ lerPdfFile(f); return; }
   carregarTextoFile(f);
 }
 async function carregarTextoFile(f){
@@ -566,26 +572,61 @@ async function carregarTextoFile(f){
     document.getElementById('impStatus').textContent = `Arquivo "${f.name}" carregado. Clique em "Ler texto".`;
   }catch(e){ document.getElementById('impStatus').textContent = 'Não consegui ler esse arquivo.'; }
 }
+function garantirTesseract(){
+  return new Promise((res, rej)=>{
+    if(window.Tesseract) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res; s.onerror = ()=>rej(new Error('sem internet p/ baixar o leitor'));
+    document.head.appendChild(s);
+  });
+}
 async function lerFotoFile(f){
   const st = document.getElementById('impStatus');
   try{
     st.textContent = 'Lendo foto... (pode levar ~20s na primeira vez)';
-    if(!window.Tesseract){
-      await new Promise((res, rej)=>{
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
+    await garantirTesseract();
     const { data } = await window.Tesseract.recognize(f, 'por');
     document.getElementById('impTexto').value = data.text || '';
     st.textContent = 'Foto lida! Confira o texto e clique em "Ler texto".';
   }catch(err){ st.textContent = 'Não consegui ler a foto. Tente uma foto mais nítida ou cole o texto.'; }
 }
+// PDF: lê o texto direto; se for escaneado (só imagem), faz OCR da primeira página.
+async function lerPdfFile(f){
+  const st = document.getElementById('impStatus');
+  try{
+    if(!window.pdfjsLib) throw new Error('leitor de PDF indisponível (sem internet?)');
+    st.textContent = 'Lendo PDF...';
+    const buf = await f.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let texto = '';
+    const n = Math.min(pdf.numPages, 3);
+    for(let i=1;i<=n;i++){
+      const pg = await pdf.getPage(i);
+      const tc = await pg.getTextContent();
+      texto += tc.items.map(it=>it.str).join('\n') + '\n';
+    }
+    if(texto.replace(/\s/g,'').length < 30){
+      // PDF escaneado: transforma a 1ª página em imagem e faz OCR
+      st.textContent = 'PDF escaneado, lendo como foto... (pode levar ~20s)';
+      await garantirTesseract();
+      const pg = await pdf.getPage(1);
+      const vp = pg.getViewport({scale:2.5});
+      const cv = document.createElement('canvas');
+      cv.width = vp.width; cv.height = vp.height;
+      await pg.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise;
+      const blob = await new Promise(r=>cv.toBlob(r,'image/png'));
+      const r = await window.Tesseract.recognize(blob, 'por');
+      texto = (r.data && r.data.text) || '';
+    }
+    if(!texto.trim()) throw new Error('nada legível');
+    document.getElementById('impTexto').value = texto.slice(0,8000);
+    st.textContent = 'PDF lido! Confira o texto e clique em "Ler texto".';
+  }catch(err){ st.textContent = 'Não consegui ler o PDF. Tente foto mais nítida ou cole o texto.'; }
+}
 document.getElementById('impArquivo').addEventListener('change', async (e)=>{
   const f = e.target.files[0]; if(!f) return;
-  await carregarTextoFile(f);
+  impReceberArquivo(f);
   e.target.value='';
 });
 document.getElementById('impFoto').addEventListener('change', async (e)=>{

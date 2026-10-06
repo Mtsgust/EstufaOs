@@ -502,12 +502,13 @@ function mod10Valido(num, dv){
   return String(r===0?0:10-r) === String(dv);
 }
 function candidatosBoleto(txt){
-  const t = String(txt||'');
+  // OCR e PDF quebram o código no meio da linha: rejunta dígito-quebra-dígito antes de procurar.
+  const t = String(txt||'').replace(/(\d)[ \t]*\r?\n[ \t]*(?=\d)/g, '$1');
   const re = /[0-9][0-9\s.\-]{42,62}[0-9]/g;
   const vistos = new Set(), out = [];
   let m;
   while((m = re.exec(t))){
-    const d = soDig(m[1]);
+    const d = soDig(m[0]);
     if(d.length<44 || d.length>48 || vistos.has(d)) continue;
     vistos.add(d);
     if(d.length===47){
@@ -515,28 +516,49 @@ function candidatosBoleto(txt){
       if(mod10Valido(d.slice(0,9), d[9])) score++;
       if(mod10Valido(d.slice(10,20), d[20])) score++;
       if(mod10Valido(d.slice(21,31), d[31])) score++;
-      if(score < 2) continue; // número solto, não é linha digitável
-      out.push({linha:m[1].trim().replace(/\s+/g,' '),
-        valor:Math.round(parseInt(d.slice(37),10))/100, venc:fatorVenc(d.slice(33,37)), score});
+      if(score < 1) continue; // número solto, não é linha digitável
+      out.push({linha:m[0].trim().replace(/\s+/g,' '),
+        valor:Math.round(parseInt(d.slice(37),10))/100, venc:fatorVenc(d.slice(33,37)), score, fraca:score<2});
     }else if(d.length===44){
       if(d.slice(20,22)==='55' || d.slice(20,22)==='65') continue; // chave de nota fiscal, não boleto
-      out.push({linha:m[1].trim().replace(/\s+/g,' '),
+      out.push({linha:m[0].trim().replace(/\s+/g,' '),
         valor:Math.round(parseInt(d.slice(9,19),10))/100, venc:fatorVenc(d.slice(5,9)), score:2});
     }
   }
   out.sort((a,b)=>b.score-a.score);
   return out.slice(0,6);
 }
+// Nota fiscal (DANFE/recibo): sem linha digitável — extrai valor, vencimento e emitente.
+function parseNotaTexto(txt){
+  const t = String(txt||'');
+  let valor = 0;
+  const mTot = t.match(/VALOR\s+TOTAL\s+DA\s+NOTA[\s\S]{0,60}?R?\$?\s*([\d.,]+)/i);
+  if(mTot) valor = parseNumBR(mTot[1]);
+  if(!(valor>0)){
+    let m; const reV = /R\$\s?([\d.,]+)/g; let best = 0;
+    while((m = reV.exec(t))){ const v = parseNumBR(m[1]); if(v>best) best = v; }
+    valor = best;
+  }
+  let venc = '';
+  const mV = t.match(/VENCIMENTO\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(mV) venc = `${mV[3]}-${mV[2]}-${mV[1]}`;
+  let empresa = '';
+  for(const lin of t.split('\n')){
+    const c = lin.trim();
+    if(/LTDA|S\.?\s?A\.?|EIRELI|\bMEI?\b|SS LTDA/i.test(c) && c.length<=80){ empresa = c.slice(0,60); break; }
+  }
+  return {valor:Math.round(valor*100)/100, venc, empresa};
+}
 function parseBoletoTexto(txt){
   const t = String(txt||'');
   const cands = candidatosBoleto(t);
-  const p = cands[0] || {linha:'', valor:0, venc:''};
+  const p = cands[0] || {linha:'', valor:0, venc:'', fraca:false};
   let empresa = '';
   for(const lin of t.split('\n')){
     const c = lin.trim();
     if(/[A-Za-z]{3,}/.test(c) && c.length>=4 && c.length<=60 && !/linha digit/i.test(c)){ empresa = c.slice(0,60); break; }
   }
-  return {linha:p.linha, valor:p.valor, venc:p.venc, empresa, texto:t.slice(0,2000), candidatos:cands};
+  return {linha:p.linha, valor:p.valor, venc:p.venc, fraca:!!p.fraca, empresa, texto:t.slice(0,2000), candidatos:cands};
 }
 let _cands = [];
 function usarCand(i){
@@ -579,19 +601,37 @@ async function processarOCR(){
     if(!texto.trim()) throw new Error('nada legível encontrado');
     const p = parseBoletoTexto(texto);
     _cands = p.candidatos || [];
-    document.getElementById('oEmpresa').value = p.empresa;
-    document.getElementById('oValor').value = p.valor || '';
-    document.getElementById('oVenc').value = p.venc;
-    document.getElementById('oLinha').value = p.linha;
     document.getElementById('ocrText').textContent = texto.slice(0,1200);
     document.getElementById('ocrCands').innerHTML = _cands.length > 1
       ? '<div style="font-size:12px;color:var(--mut);margin-top:8px">Achei '+_cands.length+' números — toque no boleto certo:</div>' +
         _cands.map((c,i)=>'<button class="cand" onclick="usarCand('+i+')">'+BRL(c.valor)+' · '+(c.venc?fmtData(c.venc):'sem data') +
-          (c.score>=3?' <span class="okv">✓ válida</span>':'')+'<small>'+esc(c.linha.slice(0,52))+'…</small></button>').join('')
+          (c.fraca?' <span class="dupe">⚠ confira os dígitos</span>':(c.score>=3?' <span class="okv">✓ válida</span>':''))+'<small>'+esc(c.linha.slice(0,52))+'…</small></button>').join('')
       : '';
     document.getElementById('ocrResult').style.display = '';
-    st.textContent = p.linha ? 'Linha digitável encontrada! Confira e use os dados.'
-      : 'Não achei linha digitável — complete à mão (texto abaixo ajuda).';
+    if(p.linha){
+      document.getElementById('oEmpresa').value = p.empresa;
+      document.getElementById('oValor').value = p.valor || '';
+      document.getElementById('oVenc').value = p.venc;
+      document.getElementById('oLinha').value = p.linha;
+      st.textContent = p.fraca ? 'Achei um código mas o dígito não confere (foto borrada?) — confira antes de salvar.'
+        : 'Linha digitável encontrada! Confira e use os dados.';
+    } else {
+      // Sem boleto: tenta ler como nota fiscal (valor + emitente + vencimento).
+      const n = parseNotaTexto(texto);
+      if(n.valor > 0){
+        document.getElementById('oEmpresa').value = n.empresa || p.empresa;
+        document.getElementById('oValor').value = n.valor;
+        document.getElementById('oVenc').value = n.venc;
+        document.getElementById('oLinha').value = '';
+        st.textContent = 'Parece nota fiscal (sem linha digitável) — preenchi valor e empresa, confira.';
+      } else {
+        document.getElementById('oEmpresa').value = p.empresa;
+        document.getElementById('oValor').value = '';
+        document.getElementById('oVenc').value = '';
+        document.getElementById('oLinha').value = '';
+        st.textContent = 'Não achei linha digitável nem valor de nota — complete à mão (texto abaixo ajuda).';
+      }
+    }
   }catch(e){ st.textContent = 'Erro: '+e.message; }
 }
 async function lerPDF(f, st){

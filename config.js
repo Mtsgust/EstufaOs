@@ -3,7 +3,7 @@
    2. Não apague os ajudantes: eles dão timeout, retry e cache (evitam travar em "Carregando").
    Mantém o mesmo padrão das páginas: todas usam API_URL + fetchComTimeout + cache local. */
 
-var API_URL = "https://script.google.com/macros/s/AKfycbyuCWTKj_datn4uplxF_pjTiFPN8PqySzi8Y3GLd-3qEzS9Rfg6Qoq68WAmcSbdov0t/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzp4jx7a0GWHpA8WHSCDrz0veY-_-XYmLtBrTpgkTuI85tsmiIaXlVIYFarcuWJtDFdWg/exec";
 var FETCH_TIMEOUT_MS = 20000;
 var CACHE_PREFIXO = "estufas_v1_";
 

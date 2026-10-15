@@ -93,6 +93,13 @@
     padding:.4rem .3rem;border-radius:8px;font-size:.74rem;cursor:pointer;font-family:'Inter', sans-serif;
   }
   .type-toggle button.active{background:rgba(74,222,128,.14);border-color:var(--green);color:var(--green);}
+  .aba-nav{display:flex;gap:.5rem;margin:0 0 1rem;}
+  .aba-nav button{
+    flex:1;background:var(--card);border:1px solid var(--border);color:var(--text-dim);
+    padding:.65rem .3rem;border-radius:10px;font-size:.8rem;font-weight:700;letter-spacing:.05em;
+    text-transform:uppercase;cursor:pointer;font-family:'Inter', sans-serif;
+  }
+  .aba-nav button.active{background:rgba(74,222,128,.14);border-color:var(--green);color:var(--green);}
   .extra-fields{display:flex;gap:.5rem;margin-bottom:.6rem;}
   .extra-fields input{
     background:var(--card-2);border:1px solid var(--border);color:var(--text);
@@ -177,6 +184,10 @@
   <div class="greeting-icon"><i>&#9679;</i></div>
   <h1 id="greeting">Bem-vindo_</h1>
   <p class="date-line" id="date-line"></p>
+  <div class="aba-nav">
+    <button type="button" data-aba="habitos" class="active">Hábitos</button>
+    <button type="button" data-aba="treino">Treino</button>
+  </div>
   <div id="root"><div class="loading">Carregando…</div></div>
 </div>
 
@@ -193,6 +204,8 @@ const CATS = [
 ];
 const CAT_HEX = {fisico:'#5FC77E',disciplina:'#D8D8D8',mental:'#B18CF5',intelecto:'#E8C34D',produtividade:'#6EC6E8',financeiro:'#E8963D'};
 let state = { habits: [], checkins: {} };
+let aba = 'habitos';
+try{ aba = localStorage.getItem('habitos-aba') || 'habitos'; }catch(e){}
 let periodDays = 7;
 let showAllTasks = false;
 let addType = 'check';
@@ -217,7 +230,18 @@ async function load(){
     }
   }catch(e){ state = { habits: [], checkins: {} }; }
   setHeader();
+  loadTreino();
+  bindAbaNav();
   render();
+}
+function bindAbaNav(){
+  document.querySelectorAll('.aba-nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      aba = btn.dataset.aba;
+      try{ localStorage.setItem('habitos-aba', aba); }catch(e){}
+      render();
+    });
+  });
 }
 async function persist(){
   if(saving) return; saving = true;
@@ -411,7 +435,200 @@ function sortedTodayList(){
   return list;
 }
 
+// ===== TREINO (exercícios com séries, repetições e carga) =====
+const TREINO_KEY = 'treino-v1';
+const GRUPOS = ['Peito','Costas','Pernas','Ombros','Braços','Core','Cardio','Outro'];
+let treino = { exercicios: [], sessoes: {} };
+let editExId = null;
+
+function loadTreino(){
+  try{
+    const raw = localStorage.getItem(TREINO_KEY);
+    if(raw){
+      treino = JSON.parse(raw);
+      if(!treino.exercicios) treino.exercicios = [];
+      if(!treino.sessoes) treino.sessoes = {};
+    }
+  }catch(e){ treino = { exercicios: [], sessoes: {} }; }
+}
+function saveTreino(){
+  try{ localStorage.setItem(TREINO_KEY, JSON.stringify(treino)); }
+  catch(e){ console.error('Falha ao salvar treino', e); }
+}
+function addExercicio(data){
+  const id = 'e'+Date.now()+Math.floor(Math.random()*1000);
+  treino.exercicios.push({
+    id, nome: data.nome.trim(), grupo: data.grupo,
+    series: data.series, reps: data.reps, carga: data.carga
+  });
+  saveTreino(); render();
+}
+function updateExercicio(id, data){
+  const ex = treino.exercicios.find(x=>x.id===id);
+  if(!ex) return;
+  ex.nome = data.nome.trim(); ex.grupo = data.grupo;
+  ex.series = data.series; ex.reps = data.reps; ex.carga = data.carga;
+  saveTreino(); render();
+}
+function startEditEx(id){
+  const ex = treino.exercicios.find(x=>x.id===id);
+  if(!ex) return;
+  editExId = id;
+  render();
+  const card = document.querySelector('.wrap .card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  const el = document.getElementById('new-ex-input');
+  if(el) el.focus();
+}
+function delExercicio(id){
+  treino.exercicios = treino.exercicios.filter(x=>x.id!==id);
+  for(const d in treino.sessoes){ delete treino.sessoes[d][id]; }
+  saveTreino(); render();
+}
+function feitasDe(exId, iso){
+  return (treino.sessoes[iso] && treino.sessoes[iso][exId] && treino.sessoes[iso][exId].feitas) || 0;
+}
+function marcarSerie(exId, iso){
+  if(iso > todayISO()) return;
+  const ex = treino.exercicios.find(x=>x.id===exId);
+  if(!ex) return;
+  if(!treino.sessoes[iso]) treino.sessoes[iso] = {};
+  const cur = feitasDe(exId, iso);
+  const next = cur >= ex.series ? 0 : cur + 1;
+  if(next===0) delete treino.sessoes[iso][exId];
+  else treino.sessoes[iso][exId] = { feitas: next };
+  saveTreino(); render();
+}
+function volumeDia(iso){
+  let v = 0;
+  const ses = treino.sessoes[iso] || {};
+  for(const exId in ses){
+    const ex = treino.exercicios.find(x=>x.id===exId);
+    if(ex) v += ses[exId].feitas * ex.reps * ex.carga;
+  }
+  return v;
+}
+function renderTreino(){
+  const root = document.getElementById('root');
+  const today = todayISO();
+  const ed = editExId ? treino.exercicios.find(x=>x.id===editExId) : null;
+
+  const formHtml = `
+    <div class="add-row">
+      <input type="text" id="new-ex-input" placeholder="Exercício (ex: Supino reto)" value="${ed ? esc(ed.nome) : ''}">
+      <select id="new-ex-grupo">${GRUPOS.map(g=>`<option ${ed && ed.grupo===g?'selected':''}>${g}</option>`).join('')}</select>
+    </div>
+    <div class="extra-fields">
+      <div class="qty-field"><span class="field-label">Séries</span><input type="text" id="new-ex-series" placeholder="4" inputmode="numeric" value="${ed ? ed.series : ''}"></div>
+      <div class="qty-field"><span class="field-label">Reps</span><input type="text" id="new-ex-reps" placeholder="12" inputmode="numeric" value="${ed ? ed.reps : ''}"></div>
+      <div class="qty-field"><span class="field-label">Carga (kg)</span><input type="text" id="new-ex-carga" placeholder="20" inputmode="decimal" value="${ed ? String(ed.carga).replace('.', ',') : ''}"></div>
+    </div>
+    <div class="add-row" style="margin-bottom:0;gap:.5rem;">
+      <button id="add-ex-btn" style="flex:1;">${ed ? 'Salvar alterações' : 'Adicionar exercício'}</button>
+      ${ed ? `<button id="cancel-ex-btn" type="button" style="flex:0 0 auto;background:var(--card-2);color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:0 .9rem;font-size:.85rem;cursor:pointer;">Cancelar</button>` : ''}
+    </div>`;
+
+  let html = `<div class="card">${formHtml}</div>`;
+
+  if(treino.exercicios.length===0){
+    html += `<div class="card"><div class="empty-state">Adicione seus exercícios para montar o treino de hoje.</div></div>`;
+  } else {
+    const totS = treino.exercicios.reduce((s,e)=>s+e.series,0);
+    const okS = treino.exercicios.reduce((s,e)=>s+Math.min(feitasDe(e.id, today), e.series),0);
+    html += `<div class="card">
+      <div class="card-head">
+        <div class="card-title"><i>&#9679;</i>TREINO DE HOJE</div>
+        <div class="card-count">${okS}/${totS} séries</div>
+      </div>`;
+    for(const ex of treino.exercicios){
+      const f = Math.min(feitasDe(ex.id, today), ex.series);
+      const done = f >= ex.series;
+      const pct = ex.series ? Math.round((f/ex.series)*100) : 0;
+      html += `<div class="task-row ${done?'done':''}" data-extoggle="${ex.id}">
+        <div class="checkbox ${done?'done':''}">${done?'<i>&#10003;</i>':''}</div>
+        <div class="task-main">
+          <span class="task-name">${esc(ex.nome)}</span>
+          <div class="task-qty-label">${ex.series}x${ex.reps} · ${formatNum(ex.carga)} kg · ${esc(ex.grupo)}${f>0 && !done ? ` · ${f}/${ex.series}` : ''}</div>
+          <div class="task-qty-bar"><div class="task-qty-fill" style="width:${pct}%;background:${done?'var(--green)':'var(--blue)'}"></div></div>
+        </div>
+        <button class="qty-plus" data-explus="${ex.id}">+</button>
+        <div class="row-actions">
+          <button class="edit-x" data-exedit="${ex.id}">&#9998;</button>
+          <button class="del-x" data-exdel="${ex.id}">&#10005;</button>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  const days = habitDays(7);
+  const volSem = days.reduce((s,iso)=>s+volumeDia(iso),0);
+  const diasOn = days.filter(iso=>volumeDia(iso)>0).length;
+  html += `<div class="card">
+    <div class="card-head">
+      <div class="card-title"><i>&#9670;</i>VOLUME — 7 DIAS</div>
+      <div class="card-count">${diasOn}/7 treinos</div>
+    </div>
+    <div class="insight-line"><span class="insight-dot" style="background:var(--green)"></span><span><b>${formatNum(Math.round(volSem))} kg</b> levantados na semana.</span></div>
+    ${days.map(iso=>{
+      const v = volumeDia(iso);
+      return `<div class="insight-line"><span class="insight-dot" style="background:${v>0?'var(--green)':'var(--border)'}"></span><span>${DOW[dowIndex(iso)]} ${dayNum(iso)} — <b>${v>0?formatNum(Math.round(v))+' kg':'descanso'}</b></span></div>`;
+    }).join('')}
+  </div>`;
+
+  root.innerHTML = html;
+  bindExAdd();
+  root.querySelectorAll('[data-explus]').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.stopPropagation(); marcarSerie(btn.dataset.explus, today); });
+  });
+  root.querySelectorAll('[data-extoggle]').forEach(el=>{
+    el.addEventListener('click', e=>{
+      if(e.target.closest('[data-explus]') || e.target.closest('[data-exdel]') || e.target.closest('[data-exedit]')) return;
+      const ex = treino.exercicios.find(x=>x.id===el.dataset.extoggle);
+      if(!ex) return;
+      if(!treino.sessoes[today]) treino.sessoes[today] = {};
+      if(feitasDe(ex.id, today) >= ex.series) delete treino.sessoes[today][ex.id];
+      else treino.sessoes[today][ex.id] = { feitas: ex.series };
+      saveTreino(); render();
+    });
+  });
+  root.querySelectorAll('[data-exdel]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(confirm('Remover este exercício e o histórico dele?')) delExercicio(btn.dataset.exdel);
+    });
+  });
+  root.querySelectorAll('[data-exedit]').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.stopPropagation(); startEditEx(btn.dataset.exedit); });
+  });
+  const cex = document.getElementById('cancel-ex-btn');
+  if(cex) cex.addEventListener('click', ()=>{ editExId = null; render(); });
+}
+function bindExAdd(){
+  const btn = document.getElementById('add-ex-btn');
+  const input = document.getElementById('new-ex-input');
+  if(!btn) return;
+  const submit = ()=>{
+    const nome = input.value.trim();
+    if(!nome) return;
+    const series = Math.max(1, parseInt(document.getElementById('new-ex-series').value, 10) || 1);
+    const reps = Math.max(1, parseInt(document.getElementById('new-ex-reps').value, 10) || 1);
+    const carga = Math.max(0, parseFloat((document.getElementById('new-ex-carga').value||'').replace(',','.')) || 0);
+    const data = { nome, grupo: document.getElementById('new-ex-grupo').value, series, reps, carga };
+    if(editExId){ updateExercicio(editExId, data); editExId = null; }
+    else addExercicio(data);
+  };
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+}
+
 function render(){
+  document.querySelectorAll('.aba-nav button').forEach(b=>b.classList.toggle('active', b.dataset.aba===aba));
+  if(aba==='treino'){ renderTreino(); return; }
+  renderHabitos();
+}
+
+function renderHabitos(){
   const root = document.getElementById('root');
   const days = habitDays(periodDays);
   const today = todayISO();

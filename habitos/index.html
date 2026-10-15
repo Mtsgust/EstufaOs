@@ -93,6 +93,11 @@
     padding:.4rem .3rem;border-radius:8px;font-size:.74rem;cursor:pointer;font-family:'Inter', sans-serif;
   }
   .type-toggle button.active{background:rgba(74,222,128,.14);border-color:var(--green);color:var(--green);}
+  #day-pick button{padding:.4rem 0;font-size:.72rem;}
+  .modo-tip{font-size:.78rem;color:var(--text-dim);margin-top:.6rem;line-height:1.5;}
+  .hist-cell.reduz{background:var(--blue);border-color:var(--blue);}
+  .hist-cell.rec{background:rgba(232,150,61,.28);border-color:#E8963D;}
+  .hist-cell.off{background:transparent;border-style:dashed;opacity:.4;cursor:default;}
   .aba-nav{display:flex;gap:.5rem;margin:0 0 1rem;}
   .aba-nav button{
     flex:1;background:var(--card);border:1px solid var(--border);color:var(--text-dim);
@@ -196,19 +201,17 @@ const STORAGE_KEY = 'habits-v3';
 const DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
 const CATS = [
   {key:'fisico', label:'Físico', color:'var(--fisico)', angle:-90},
-  {key:'disciplina', label:'Disciplina', color:'var(--disciplina)', angle:-30},
-  {key:'mental', label:'Mental', color:'var(--mental)', angle:30},
-  {key:'intelecto', label:'Intelecto', color:'var(--intelecto)', angle:90},
-  {key:'produtividade', label:'Produtividade', color:'var(--produtividade)', angle:150},
-  {key:'financeiro', label:'Financeiro', color:'var(--financeiro)', angle:210},
+  {key:'disciplina', label:'Disciplina', color:'var(--disciplina)', angle:30},
+  {key:'mental', label:'Mental', color:'var(--mental)', angle:150},
 ];
-const CAT_HEX = {fisico:'#5FC77E',disciplina:'#D8D8D8',mental:'#B18CF5',intelecto:'#E8C34D',produtividade:'#6EC6E8',financeiro:'#E8963D'};
+const CAT_HEX = {fisico:'#5FC77E',disciplina:'#D8D8D8',mental:'#B18CF5'};
 let state = { habits: [], checkins: {} };
 let aba = 'habitos';
 try{ aba = localStorage.getItem('habitos-aba') || 'habitos'; }catch(e){}
 let periodDays = 7;
 let showAllTasks = false;
 let addType = 'check';
+let selDays = [0,1,2,3,4,5,6];
 let editingId = null;
 let saving = false;
 
@@ -227,8 +230,11 @@ async function load(){
       state = JSON.parse(raw);
       if(!state.habits) state.habits = [];
       if(!state.checkins) state.checkins = {};
+      if(!state.modos) state.modos = {};
+      const CAT_MAP = {intelecto:'mental', produtividade:'disciplina', financeiro:'disciplina'};
+      state.habits.forEach(h=>{ if(CAT_MAP[h.category]) h.category = CAT_MAP[h.category]; });
     }
-  }catch(e){ state = { habits: [], checkins: {} }; }
+  }catch(e){ state = { habits: [], checkins: {}, modos: {} }; }
   setHeader();
   loadTreino();
   bindAbaNav();
@@ -266,6 +272,7 @@ function addHabit(data){
     h.unit = (data.unit || '').trim() || 'un';
     h.step = data.step || Math.max(1, Math.round(h.target/10));
   }
+  if(data.days && data.days.length && data.days.length<7) h.days = [...data.days].sort((a,b)=>a-b);
   state.habits.push(h);
   persist(); render();
 }
@@ -275,13 +282,51 @@ function updateHabit(id, data){
   h.name = data.name.trim();
   h.category = data.category;
   h.type = data.type;
-  delete h.time; delete h.target; delete h.unit; delete h.step;
+  delete h.time; delete h.target; delete h.unit; delete h.step; delete h.days;
   if(data.type==='time') h.time = data.time || '08:00';
   if(data.type==='quantity'){
     h.target = data.target || 1;
     h.unit = (data.unit || '').trim() || 'un';
     h.step = data.step || Math.max(1, Math.round(h.target/10));
   }
+  if(data.days && data.days.length && data.days.length<7) h.days = [...data.days].sort((a,b)=>a-b);
+  persist(); render();
+}
+function isScheduled(h, iso){
+  if(!h.days || h.days.length>=7) return true;
+  return h.days.includes(dowIndex(iso));
+}
+// ===== MODO DO DIA: normal | corrido (versões reduzidas valem) | recuperacao (dia neutro) =====
+function modoDe(iso){
+  return (state.modos && state.modos[iso] && state.modos[iso].modo) || 'normal';
+}
+function motivoDe(iso){
+  return (state.modos && state.modos[iso] && state.modos[iso].motivo) || '';
+}
+function setModo(iso, modo){
+  if(!state.modos) state.modos = {};
+  state.modos[iso] = { modo, motivo: motivoDe(iso) };
+  persist(); render();
+}
+function setMotivo(iso, motivo){
+  if(!state.modos) state.modos = {};
+  state.modos[iso] = { modo: modoDe(iso), motivo };
+  persist();
+}
+function diaNeutro(iso){
+  return modoDe(iso)==='recuperacao';
+}
+function estadoDe(h, iso){
+  if(h.type==='quantity') return isDoneOn(h, iso) ? 'done' : '';
+  const v = state.checkins[iso] && state.checkins[iso][h.id];
+  if(v==='R') return 'reduz';
+  return v ? 'done' : '';
+}
+function toggleReduzida(habitId, iso){
+  if(iso > todayISO()) return;
+  if(!state.checkins[iso]) state.checkins[iso] = {};
+  if(state.checkins[iso][habitId]==='R') delete state.checkins[iso][habitId];
+  else state.checkins[iso][habitId] = 'R';
   persist(); render();
 }
 function startEdit(id){
@@ -289,6 +334,7 @@ function startEdit(id){
   if(!h) return;
   editingId = id;
   addType = h.type;
+  selDays = (h.days && h.days.length) ? [...h.days] : [0,1,2,3,4,5,6];
   render();
   const card = document.querySelector('.wrap .card');
   if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
@@ -301,6 +347,8 @@ function deleteHabit(id){
 }
 function toggleCheckin(habitId, iso){
   if(iso > todayISO()) return;
+  const hh = state.habits.find(x=>x.id===habitId);
+  if(hh && !isScheduled(hh, iso)) return;
   if(!state.checkins[iso]) state.checkins[iso] = {};
   if(state.checkins[iso][habitId]) delete state.checkins[iso][habitId];
   else state.checkins[iso][habitId] = true;
@@ -308,6 +356,8 @@ function toggleCheckin(habitId, iso){
 }
 function addQty(habitId, iso, delta){
   if(iso > todayISO()) return;
+  const hh = state.habits.find(x=>x.id===habitId);
+  if(hh && !isScheduled(hh, iso)) return;
   if(!state.checkins[iso]) state.checkins[iso] = {};
   const cur = state.checkins[iso][habitId] || 0;
   const next = Math.max(0, cur + delta);
@@ -316,6 +366,7 @@ function addQty(habitId, iso, delta){
   persist(); render();
 }
 function setQty(h, iso){
+  if(!isScheduled(h, iso)) return;
   const cur = (state.checkins[iso] && state.checkins[iso][h.id]) || 0;
   const val = prompt(`Quanto de ${h.unit} você já fez hoje (${h.name})?`, cur);
   if(val===null) return;
@@ -343,20 +394,25 @@ function catCompletion(catKey, days){
   if(habits.length===0) return 0;
   let done=0, total=0;
   for(const h of habits){
-    for(const iso of days){ total++; if(isDoneOn(h, iso)) done++; }
+    for(const iso of days){
+      if(!isScheduled(h, iso) || diaNeutro(iso)) continue;
+      total++; if(isDoneOn(h, iso)) done++;
+    }
   }
   return total ? Math.round((done/total)*100) : 0;
 }
 function habitStats(h, days){
+  const base = days.filter(iso=>isScheduled(h,iso) && !diaNeutro(iso));
+  const dd = base.length ? base : days.filter(iso=>isScheduled(h,iso));
   let done=0, running=0, currentStreak=0, bestStreak=0;
-  for(const iso of days){
+  for(const iso of dd){
     const ok = isDoneOn(h, iso);
     if(ok){ done++; running++; bestStreak=Math.max(bestStreak,running); } else running=0;
   }
-  for(let i=days.length-1;i>=0;i--){
-    if(isDoneOn(h, days[i])) currentStreak++; else break;
+  for(let i=dd.length-1;i>=0;i--){
+    if(isDoneOn(h, dd[i])) currentStreak++; else break;
   }
-  return { done, pct: days.length?Math.round((done/days.length)*100):0, currentStreak, bestStreak };
+  return { done, pct: dd.length?Math.round((done/dd.length)*100):0, currentStreak, bestStreak };
 }
 
 function radarSVG(scores){
@@ -413,6 +469,7 @@ function buildInsights(days){
   const miss=[0,0,0,0,0,0,0], tot=[0,0,0,0,0,0,0];
   for(const {h} of stats){
     for(const iso of days){
+      if(!isScheduled(h, iso) || diaNeutro(iso)) continue;
       const d = dowIndex(iso); tot[d]++;
       if(!isDoneOn(h, iso)) miss[d]++;
     }
@@ -633,6 +690,7 @@ function renderHabitos(){
   const days = habitDays(periodDays);
   const today = todayISO();
   const nowStr = nowHM();
+  const modoHoje = modoDe(today);
 
   const editingHabit = editingId ? state.habits.find(h=>h.id===editingId) : null;
   const efName = editingHabit ? esc(editingHabit.name) : '';
@@ -650,6 +708,10 @@ function renderHabitos(){
       <button type="button" data-type="check" class="${addType==='check'?'active':''}">Tarefa</button>
       <button type="button" data-type="time" class="${addType==='time'?'active':''}">Horário</button>
       <button type="button" data-type="quantity" class="${addType==='quantity'?'active':''}">Meta</button>
+    </div>
+    <span class="field-label">Dias da semana</span>
+    <div class="type-toggle" id="day-pick">
+      ${['D','S','T','Q','Q','S','S'].map((l,i)=>`<button type="button" data-day="${i}" title="${['domingo','segunda','terça','quarta','quinta','sexta','sábado'][i]}" class="${selDays.includes(i)?'active':''}">${l}</button>`).join('')}
     </div>
     <div class="extra-fields ${addType==='time'?'':'hidden'}" id="time-fields">
       <div class="qty-field"><span class="field-label">Horário</span><input type="time" id="new-habit-time" value="${efTime}"></div>
@@ -669,20 +731,40 @@ function renderHabitos(){
     bindAdd(); return;
   }
 
-  const list = sortedTodayList();
+  const todosHoje = sortedTodayList();
+  const descansoHoje = todosHoje.filter(h=>!isScheduled(h, today));
+  const list = todosHoje.filter(h=>isScheduled(h, today));
   const shownTasks = showAllTasks ? list : list.slice(0,4);
   const doneToday = list.filter(h=>isDoneOn(h, today)).length;
 
   const scores = {};
   for(const c of CATS) scores[c.key] = catCompletion(c.key, days);
 
-  let html = `<div class="card">${addFormHtml}</div>`;
+  const DICAS_MODO = {
+    normal: 'Tente cumprir o plano. Treino quando abrir uma janela.',
+    corrido: 'Versões reduzidas valem — use o ½ nos hábitos e um treino curto se der.',
+    recuperacao: 'Sem cobrança hoje. Registre o motivo e adie o que der.'
+  };
+  let html = `<div class="card">
+    <div class="card-head"><div class="card-title"><i>&#9679;</i>MODO DE HOJE</div></div>
+    <div class="type-toggle" id="modo-pick">
+      <button type="button" data-modo="normal" class="${modoHoje==='normal'?'active':''}">Normal</button>
+      <button type="button" data-modo="corrido" class="${modoHoje==='corrido'?'active':''}">Corrido</button>
+      <button type="button" data-modo="recuperacao" class="${modoHoje==='recuperacao'?'active':''}">Recuperação</button>
+    </div>
+    <div class="add-row" style="margin-bottom:0;">
+      <input type="text" id="modo-motivo" placeholder="Motivo (ex: plantio o dia todo, doente...)" value="${esc(motivoDe(today))}">
+    </div>
+    <div class="modo-tip">${DICAS_MODO[modoHoje]}</div>
+  </div>`;
+  html += `<div class="card">${addFormHtml}</div>`;
 
   html += `<div class="card">
     <div class="card-head">
       <div class="card-title"><i>&#9679;</i>RESUMO DO DIA</div>
       <div class="card-count">${doneToday}/${list.length}</div>
-    </div>`;
+    </div>
+    ${descansoHoje.length?`<div style="font-size:.72rem;color:var(--text-faint);margin:-.4rem 0 .8rem;">Folga hoje: ${descansoHoje.map(h=>esc(h.name)).join(', ')}</div>`:''}`;
 
   for(const h of shownTasks){
     const colorHex = CAT_HEX[h.category] || CAT_HEX.disciplina;
@@ -706,13 +788,16 @@ function renderHabitos(){
       </div>`;
     } else {
       const isTime = h.type==='time';
+      const red = estadoDe(h, today)==='reduz';
       const late = isTime && !done && h.time < nowStr;
       html += `<div class="task-row ${done?'done':''}" data-toggle="${h.id}">
         <div class="checkbox ${done?'done':''}">${done?'<i>&#10003;</i>':''}</div>
         <div class="task-main">
           <span class="task-name">${esc(h.name)}</span>
-          ${isTime?`<div class="task-time ${late?'late':''}">${h.time}${late?' · atrasado':''}</div>`:''}
+          ${red?`<div class="task-time">versão reduzida</div>`:''}
+          ${(!red&&isTime)?`<div class="task-time ${late?'late':''}">${h.time}${late?' · atrasado':''}</div>`:''}
         </div>
+        ${modoHoje==='corrido'?`<button class="qty-plus" data-reduz="${h.id}" title="Versão reduzida" style="font-size:.7rem;">½</button>`:''}
         <span class="task-dot" style="background:${colorHex}"></span>
         <div class="row-actions">
           <button class="edit-x" data-edit="${h.id}">&#9998;</button>
@@ -756,9 +841,12 @@ function renderHabitos(){
     ${state.habits.map(h=>`<tr>
       <td class="hist-name">${esc(h.name)}</td>
       ${days.map(iso=>{
-        const done = isDoneOn(h, iso);
+        const est = estadoDe(h, iso);
         const future = iso>today;
-        return `<td class="hist-cell-wrap"><div class="hist-cell ${done?'done':''} ${future?'future':''}" data-habit="${h.id}" data-date="${iso}"></div></td>`;
+        const folga = !isScheduled(h, iso);
+        const rec = !future && modoDe(iso)==='recuperacao';
+        const cls = est==='done' ? 'done' : (est==='reduz' ? 'reduz' : (rec ? 'rec' : ((!est&&!future&&folga) ? 'off' : '')));
+        return `<td class="hist-cell-wrap"><div class="hist-cell ${cls}" data-habit="${h.id}" data-date="${iso}"></div></td>`;
       }).join('')}
     </tr>`).join('')}
     </tbody></table></div>
@@ -799,13 +887,13 @@ function renderHabitos(){
     });
   });
   const cancelEditBtn = document.getElementById('cancel-edit-btn');
-  if(cancelEditBtn) cancelEditBtn.addEventListener('click', ()=>{ editingId = null; render(); });
+  if(cancelEditBtn) cancelEditBtn.addEventListener('click', ()=>{ editingId = null; selDays = [0,1,2,3,4,5,6]; render(); });
   const moreToggle = document.getElementById('more-toggle');
   if(moreToggle) moreToggle.addEventListener('click', ()=>{ showAllTasks = !showAllTasks; render(); });
   root.querySelectorAll('.period-toggle button').forEach(btn=>{
     btn.addEventListener('click', ()=>{ periodDays = parseInt(btn.dataset.days,10); render(); });
   });
-  root.querySelectorAll('.hist-cell:not(.future)').forEach(cell=>{
+  root.querySelectorAll('.hist-cell:not(.future):not(.off)').forEach(cell=>{
     cell.addEventListener('click', ()=>{
       const h = state.habits.find(x=>x.id===cell.dataset.habit);
       if(h && h.type==='quantity') setQty(h, cell.dataset.date);
@@ -813,7 +901,24 @@ function renderHabitos(){
     });
   });
   root.querySelectorAll('.type-toggle button').forEach(btn=>{
+    if(btn.dataset.day!==undefined || btn.dataset.modo!==undefined) return;
     btn.addEventListener('click', ()=>{ addType = btn.dataset.type; render(); focusNameInput(); });
+  });
+  root.querySelectorAll('#modo-pick button').forEach(btn=>{
+    btn.addEventListener('click', ()=>setModo(today, btn.dataset.modo));
+  });
+  const motivoEl = document.getElementById('modo-motivo');
+  if(motivoEl) motivoEl.addEventListener('change', ()=>setMotivo(today, motivoEl.value.trim()));
+  root.querySelectorAll('[data-reduz]').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.stopPropagation(); toggleReduzida(btn.dataset.reduz, today); });
+  });
+  root.querySelectorAll('#day-pick button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const d = parseInt(btn.dataset.day, 10);
+      if(selDays.includes(d)){ if(selDays.length>1) selDays = selDays.filter(x=>x!==d); }
+      else selDays.push(d);
+      render();
+    });
   });
 }
 
@@ -833,7 +938,9 @@ function bindAdd(){
   const submit = ()=>{
     const name = input.value.trim();
     if(!name) return;
-    const data = { name, category: sel.value, type: addType };
+    if(!selDays.length) selDays = [0,1,2,3,4,5,6];
+    const data = { name, category: sel.value, type: addType, days: [...selDays] };
+    selDays = [0,1,2,3,4,5,6];
     if(addType==='time'){
       const t = document.getElementById('new-habit-time');
       data.time = t ? t.value : '08:00';

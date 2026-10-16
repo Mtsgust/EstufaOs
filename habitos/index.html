@@ -811,10 +811,23 @@ function iniciarSessao(fid){
       meta: { series: e.series, reps: e.reps||0, tempoSeg: e.tempoSeg||0, distanciaM: e.distanciaM||0, carga: e.carga||0, descansoSeg: e.descansoSeg||0 },
       series: [] }))
   };
-  treino2.sessoes.push(s);
-  treino2.ativaId = s.id;
-  saveTreino2();
-  irTreino('exec');
+    treino2.sessoes.push(s);
+    treino2.ativaId = s.id;
+    saveTreino2();
+    marcarTreinoFeito();
+    irTreino('exec');
+}
+// Começou a treinar = hábito "treinar" feito no dia (cria se não existir).
+function marcarTreinoFeito(){
+  const hoje = todayISO();
+  let h = state.habits.find(x=>/trein/i.test(x.name||''));
+  if(!h){
+    h = { id: 'h'+Date.now()+Math.floor(Math.random()*1000), name: 'Treinar', category: 'fisico', type: 'check', createdAt: hoje };
+    state.habits.push(h);
+  }
+  if(!state.checkins[hoje]) state.checkins[hoje] = {};
+  state.checkins[hoje][h.id] = true;
+  persist();
 }
 function cancelarSessao(s, silencioso){
   pararAtivo(s);

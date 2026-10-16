@@ -266,6 +266,7 @@ async function load(){
   loadTreino2();
   bindAbaNav();
   render();
+  baixarSeNovo();
 }
 function bindAbaNav(){
   document.querySelectorAll('.aba-nav button').forEach(btn=>{
@@ -278,7 +279,7 @@ function bindAbaNav(){
 }
 async function persist(){
   if(saving) return; saving = true;
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); tocarLocal(); }
   catch(e){ console.error('Falha ao salvar', e); }
   saving = false;
 }
@@ -617,7 +618,7 @@ function migrarTreinoV1(){
   }catch(e){}
 }
 function saveTreino2(){
-  try{ localStorage.setItem(TREINO2_KEY, JSON.stringify(treino2)); }
+  try{ localStorage.setItem(TREINO2_KEY, JSON.stringify(treino2)); tocarLocal(); }
   catch(e){ console.error('Falha ao salvar treino', e); }
 }
 function fichaDe(id){ return treino2.fichas.find(f=>f.id===id); }
@@ -1632,8 +1633,28 @@ function renderHabitos(){
     </tbody></table></div>
   </div>`;
 
+  html += `<div class="card"><div class="card-head">
+      <div class="card-title"><i>&#9679;</i>BACKUP</div></div>
+    <div class="task-qty-label">Leve os dados entre celular e PC: exporte de um e importe no outro.</div>
+    <div class="add-row" style="margin-top:.6rem;">
+      <button id="bk-exp" type="button" style="flex:1;">Exportar</button>
+      <button id="bk-imp" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">Importar</button>
+    </div>
+    <input type="file" id="bk-file" accept="application/json,.json" style="display:none;">
+    <div class="task-qty-label" id="bk-msg"></div>
+    <span class="field-label" style="margin-top:.8rem;">Sincronização automática (opcional)</span>
+    <div class="add-row"><input type="text" id="sync-url" placeholder="URL do Apps Script (/exec)" value=""></div>
+    <div class="add-row"><input type="text" id="sync-chave" placeholder="Chave (igual a do script)" value=""></div>
+    <div class="task-qty-label" id="sync-msg"></div>
+    <div class="add-row" style="margin-top:.4rem;">
+      <button id="sync-salvar" type="button" style="flex:1;">Salvar</button>
+      <button id="sync-env" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">Enviar agora</button>
+      <button id="sync-get" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">Baixar agora</button>
+    </div></div>`;
+
   root.innerHTML = html;
   bindAdd();
+  bindBackup();
   root.querySelectorAll('[data-toggle]').forEach(el=>{
     el.addEventListener('click', e=>{
       if(e.target.closest('[data-del]')) return;
@@ -1710,6 +1731,162 @@ function focusNameInput(){
   if(el) el.focus();
 }
 
+function bkMsg(t){ const el = document.getElementById('bk-msg'); if(el) el.textContent = t; }
+function bindBackup(){
+  const ex = document.getElementById('bk-exp');
+  if(!ex) return;
+  ex.addEventListener('click', ()=>{
+    try{
+      const dados = {};
+      ['habits-v3','habitos-aba','treino-v1','treino-v2'].forEach(k=>{
+        const v = localStorage.getItem(k);
+        if(v!=null) dados[k] = v;
+      });
+      if(!Object.keys(dados).length){ bkMsg('Nada para exportar.'); return; }
+      const blob = new Blob([JSON.stringify({ app:'habitos', v:1, quando:new Date().toISOString(), dados })], { type:'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'habitos-backup-'+todayISO()+'.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+      bkMsg('Backup baixado. Guarde o arquivo.');
+    }catch(e){ bkMsg('Falha ao exportar.'); }
+  });
+  const im = document.getElementById('bk-imp');
+  const fi = document.getElementById('bk-file');
+  if(im && fi){
+    im.addEventListener('click', ()=>fi.click());
+    fi.addEventListener('change', ()=>{
+      const f = fi.files[0];
+      if(!f) return;
+      const r = new FileReader();
+      r.onload = ()=>{
+        try{
+          const o = JSON.parse(r.result);
+          if(!o || !o.dados || typeof o.dados!=='object') throw 0;
+          const chaves = Object.keys(o.dados).filter(k=>['habits-v3','habitos-aba','treino-v1','treino-v2'].includes(k));
+          if(!chaves.length) throw 0;
+          if(!confirm('Substituir os dados deste aparelho pelos do backup?')){ fi.value=''; return; }
+          chaves.forEach(k=>{ try{ localStorage.setItem(k, o.dados[k]); }catch(e){} });
+          location.reload();
+        }catch(e){ bkMsg('Arquivo inválido.'); fi.value=''; }
+      };
+      r.readAsText(f);
+    });
+  }
+  const su = document.getElementById('sync-url');
+  const sk = document.getElementById('sync-chave');
+  if(su && sk){
+    try{
+      su.value = localStorage.getItem('habitos-sync-url')||'';
+      sk.value = localStorage.getItem('habitos-sync-chave')||'';
+      const sem = localStorage.getItem('habitos-sync-em');
+      if(sem) syncMsg('Última sync: ' + fmtHoraCurta(sem) + '.');
+    }catch(e){}
+    document.getElementById('sync-salvar').addEventListener('click', ()=>{
+      try{
+        localStorage.setItem('habitos-sync-url', su.value.trim());
+        localStorage.setItem('habitos-sync-chave', sk.value.trim());
+      }catch(e){}
+      syncMsg('Configuração salva.');
+      baixarSeNovo();
+    });
+    document.getElementById('sync-env').addEventListener('click', ()=>enviarAgora(false));
+    document.getElementById('sync-get').addEventListener('click', baixarAgora);
+  }
+}
+function syncCfg(){
+  try{
+    const url = (localStorage.getItem('habitos-sync-url')||'').trim().replace(/\/+$/,'');
+    const chave = (localStorage.getItem('habitos-sync-chave')||'').trim();
+    if(!url || !chave) return null;
+    return { url, chave };
+  }catch(e){ return null; }
+}
+function syncMsg(t){ const el = document.getElementById('sync-msg'); if(el) el.textContent = t; }
+function fmtHoraCurta(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function tocarLocal(){
+  try{ localStorage.setItem('habitos-local-em', new Date().toISOString()); }catch(e){}
+  agendaEnvio();
+}
+let tSyncT = null;
+function agendaEnvio(){
+  if(!syncCfg()) return;
+  if(tSyncT) clearTimeout(tSyncT);
+  tSyncT = setTimeout(()=>enviarAgora(true), 3000);
+}
+async function fetchTimeout(url, opts, ms){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>{ try{ ctrl.abort(); }catch(e){} }, ms||20000);
+  try{ return await fetch(url, Object.assign({}, opts||{}, { signal: ctrl.signal })); }
+  finally{ clearTimeout(id); }
+}
+async function enviarAgora(sil){
+  const c = syncCfg();
+  if(!c){ if(!sil) syncMsg('Configure URL e chave.'); return; }
+  try{
+    if(!sil) syncMsg('Enviando...');
+    const dados = {};
+    ['habits-v3','habitos-aba','treino-v1','treino-v2'].forEach(k=>{
+      const v = localStorage.getItem(k);
+      if(v!=null) dados[k] = v;
+    });
+    const r = await fetchTimeout(c.url, { method:'POST', body: JSON.stringify({ chave: c.chave, dados: JSON.stringify(dados) }) });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'falha');
+    const em = String(j.atualizadoEm || new Date().toISOString());
+    try{
+      localStorage.setItem('habitos-sync-em', em);
+      localStorage.setItem('habitos-local-em', em);
+    }catch(e){}
+    syncMsg('Sincronizado ' + fmtHoraCurta(em) + '.');
+  }catch(e){ if(!sil) syncMsg('Falha no envio. Confira internet, URL e chave.'); }
+}
+function aplicarRemoto(j){
+  const o = JSON.parse(j.dados);
+  Object.keys(o).filter(k=>['habits-v3','habitos-aba','treino-v1','treino-v2'].includes(k)).forEach(k=>{
+    try{ localStorage.setItem(k, o[k]); }catch(e){}
+  });
+  const em = String(j.atualizadoEm||'');
+  try{ localStorage.setItem('habitos-sync-em', em); localStorage.setItem('habitos-local-em', em); }catch(e){}
+  location.reload();
+}
+async function baixarSeNovo(){
+  const c = syncCfg();
+  if(!c) return;
+  try{
+    const r = await fetchTimeout(c.url + '?chave=' + encodeURIComponent(c.chave));
+    const j = await r.json();
+    if(!j.ok || !j.dados) return;
+    const rem = String(j.atualizadoEm||'');
+    const sem = localStorage.getItem('habitos-sync-em')||'';
+    const lem = localStorage.getItem('habitos-local-em')||'';
+    if(rem && rem > sem){
+      if(lem && lem > sem){
+        if(confirm('O outro aparelho tem dados mais novos, mas aqui também tem alterações. Baixar do outro aparelho (o daqui será substituído)?')) aplicarRemoto(j);
+      } else aplicarRemoto(j);
+    }
+  }catch(e){}
+}
+async function baixarAgora(){
+  const c = syncCfg();
+  if(!c){ syncMsg('Configure URL e chave.'); return; }
+  syncMsg('Baixando...');
+  try{
+    const r = await fetchTimeout(c.url + '?chave=' + encodeURIComponent(c.chave));
+    const j = await r.json();
+    if(!j.ok || !j.dados) throw new Error('vazio');
+    const sem = localStorage.getItem('habitos-sync-em')||'';
+    const lem = localStorage.getItem('habitos-local-em')||'';
+    if(lem && sem && lem > sem && !confirm('Há alterações neste aparelho. Baixar do outro aparelho e substituir?')){ syncMsg('Cancelado.'); return; }
+    aplicarRemoto(j);
+  }catch(e){ syncMsg('Falha ao baixar. Confira internet, URL e chave.'); }
+}
 function bindAdd(){
   const btn = document.getElementById('add-habit-btn');
   const input = document.getElementById('new-habit-input');

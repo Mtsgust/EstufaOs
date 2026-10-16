@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habitos-v8';
+const CACHE_NAME = 'habitos-v10';
 const ASSETS = ['./index.html', './manifesto.json', './ícone-192.png', './ícone-512.png'];
 
 self.addEventListener('install', event => {

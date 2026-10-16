@@ -215,6 +215,7 @@
   <div class="greeting-icon"><i>&#9679;</i></div>
   <h1 id="greeting">Bem-vindo_</h1>
   <p class="date-line" id="date-line"></p>
+  <audio id="t-silence" loop preload="auto" style="display:none;"></audio>
   <div class="aba-nav">
     <button type="button" data-aba="habitos" class="active">Hábitos</button>
     <button type="button" data-aba="treino">Treino</button>
@@ -668,6 +669,7 @@ function bip(dur){
 function irTreino(tela){
   tTela = tela;
   if(tTick){ clearInterval(tTick); tTick = null; }
+  try{ msStop(); }catch(e){}
   render();
   const w = document.querySelector('.wrap');
   if(w) w.scrollTo ? w.scrollTo(0,0) : window.scrollTo(0,0);
@@ -748,7 +750,7 @@ function renderTreinoHome(){
     iniciarSessao(fid);
   };
   document.getElementById('t-nova').addEventListener('click', ()=>{
-    tRascunho = { id:null, nome:'', categoria:'Força', descricao:'', exercicios: [] };
+      tRascunho = { id:null, nome:'', categoria:'Força', descricao:'', descansoTroca: 90, exercicios: [] };
     tExp = -1; tBiblio = false; irTreino('editar');
   });
   document.getElementById('t-hist').addEventListener('click', ()=>irTreino('historico'));
@@ -801,6 +803,7 @@ function iniciarSessao(fid){
     id: 's'+Date.now(), fichaId: f.id, fichaNome: f.nome,
     inicio: new Date().toISOString(), fim: '', status: 'ativa',
     esforco: 0, energia: 0, obs: '', ativoMs: 0, segIni: Date.now(),
+    descansoTroca: (f.descansoTroca!=null ? f.descansoTroca : 90),
     descanso: null, exIdx: 0, serieIdx: 0,
     itens: f.exercicios.map(e=>({ nome: e.nome, grupo: e.grupo, tipo: e.tipo||'reps',
       demo: e.demo||'🏋️', inst: e.inst||'',
@@ -840,6 +843,7 @@ function renderFichaEdit(){
       <select id="f-cat">${CATEGORIAS_TREINO.map(c=>`<option ${r.categoria===c?'selected':''}>${c}</option>`).join('')}</select>
     </div>
     <div class="add-row"><input type="text" id="f-desc" placeholder="Descrição (opcional)" value="${esc(r.descricao||'')}"></div>
+    <div class="extra-fields"><div class="qty-field"><span class="field-label">Descanso entre exercícios (s, 0 = sem)</span><input type="text" id="f-troca" inputmode="numeric" value="${r.descansoTroca!=null?r.descansoTroca:90}"></div></div>
   </div>`;
   html += `<div class="card"><div class="card-head">
       <div class="card-title"><i>&#9679;</i>EXERCÍCIOS</div>
@@ -943,6 +947,7 @@ function renderFichaEdit(){
     r.nome = document.getElementById('f-nome').value.trim();
     r.categoria = document.getElementById('f-cat').value;
     r.descricao = document.getElementById('f-desc').value.trim();
+    r.descansoTroca = Math.max(0, parseInt(document.getElementById('f-troca').value, 10)||0);
     if(!r.nome){ alert('Dê um nome para a ficha.'); return; }
     if(!r.exercicios.length){ alert('Adicione ao menos 1 exercício.'); return; }
     for(const e of r.exercicios){
@@ -1064,15 +1069,19 @@ function renderExec(){
     const d = s.descanso;
     const rest = d.pausado ? d.restanteMs : Math.max(0, d.fimTs - Date.now());
     root.innerHTML = `<div class="card" id="rest-card"><div class="card-head">
-        <div class="card-title"><i>&#9679;</i>DESCANSO</div>
-        <div class="card-count">${esc(it.nome)}</div></div>
+        <div class="card-title"><i>&#9679;</i>${d.troca?'TROCA DE EXERCÍCIO':'DESCANSO'}</div>
+        <div class="card-count">${d.troca?('próximo: '+esc(d.prox||'')):esc(it.nome)}</div></div>
       <div class="rest-num" id="t-rest-num">${Math.ceil(rest/1000)}s</div>
       <div class="task-qty-bar"><div class="task-qty-fill" id="t-rest-fill" style="width:100%;background:var(--green)"></div></div>
-      <div class="task-qty-label" id="t-dur">Tempo ativo ${fmtDur(durAtiva(s))}</div>
+      <div class="task-qty-label" id="t-dur">Tempo ativo ${fmtDur(durAtiva(s))} · tela bloqueada também mostra</div>
       <div class="add-row" style="margin-top:.8rem;">
         <button id="t-rpause" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">${d.pausado?'Continuar':'Pausar'}</button>
         <button id="t-r15" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">+15s</button>
         <button id="t-r30" type="button" style="flex:1;background:var(--card-2);color:var(--text);border:1px solid var(--border);">+30s</button>
+      </div>
+      <div class="add-row" style="margin-top:.4rem;">
+        <input type="text" id="t-rcustom" inputmode="numeric" placeholder="Segundos (ex: 120)">
+        <button id="t-rset" type="button" style="flex:0 0 auto;">Definir</button>
       </div>
       <button class="big-btn" id="t-rskip" style="margin-top:.6rem;">Pular descanso</button></div>`;
     document.getElementById('t-rpause').addEventListener('click', ()=>{
@@ -1082,7 +1091,16 @@ function renderExec(){
     });
     document.getElementById('t-r15').addEventListener('click', ()=>{ addDescanso(s, 15000); });
     document.getElementById('t-r30').addEventListener('click', ()=>{ addDescanso(s, 30000); });
+    document.getElementById('t-rset').addEventListener('click', ()=>{
+      const v = Math.max(5, parseInt(document.getElementById('t-rcustom').value, 10)||0);
+      if(!v) return;
+      if(d.pausado) d.restanteMs = v*1000;
+      else d.fimTs = Date.now()+v*1000;
+      d.durSeg = v;
+      saveTreino2(); render();
+    });
     document.getElementById('t-rskip').addEventListener('click', ()=>fimDescanso(s, true));
+    msStart(s, d);
     ligarTick(s);
     return;
   }
@@ -1115,9 +1133,11 @@ function renderExec(){
     const carga = Math.max(0, parseFloat(String(document.getElementById('ex-carga').value).replace(',','.'))||0);
     concluirSerie(s, pos, feito, carga);
   });
-  document.getElementById('ex-pause').addEventListener('click', ()=>{
-    pararAtivo(s); s.status = 'pausada'; saveTreino2(); render();
-  });
+    document.getElementById('ex-pause').addEventListener('click', ()=>{
+      pararAtivo(s);
+      if(s.descanso && !s.descanso.pausado){ s.descanso.restanteMs = Math.max(0, s.descanso.fimTs-Date.now()); s.descanso.pausado = true; }
+      s.status = 'pausada'; saveTreino2(); render();
+    });
   document.getElementById('ex-skip').addEventListener('click', ()=>{
     if(!confirm(`Pular "${it.nome}"? (séries restantes marcadas como puladas)`)) return;
     for(let k=pos.sr;k<it.meta.series;k++) it.series.push({ n:k+1, feita:false, pulada:true, repsFeitas:0, tempoFeitoSeg:0, distFeitaM:0, carga:0, ts:new Date().toISOString() });
@@ -1140,7 +1160,14 @@ function concluirSerie(s, pos, feito, carga){
   const faltam = it.meta.series - it.series.filter(x=>x.feita||x.pulada).length;
   if(faltam > 0 && (it.meta.descansoSeg||0) > 0){
     s.serieIdx = pos.sr+1;
-    s.descanso = { fimTs: Date.now()+(it.meta.descansoSeg*1000), durSeg: it.meta.descansoSeg, pausado: false, restanteMs: 0 };
+    s.descanso = { fimTs: Date.now()+(it.meta.descansoSeg*1000), durSeg: it.meta.descansoSeg, pausado: false, restanteMs: 0, troca: false, prox: '' };
+  } else if(faltam <= 0 && pos.ex+1 < s.itens.length){
+    // Troca de exercício: descanso configurável na ficha
+    const troca = Math.max(0, s.descansoTroca!=null ? s.descansoTroca : 90);
+    s.exIdx = pos.ex+1; s.serieIdx = 0;
+    s.descanso = troca > 0
+      ? { fimTs: Date.now()+(troca*1000), durSeg: troca, pausado: false, restanteMs: 0, troca: true, prox: s.itens[pos.ex+1].nome }
+      : null;
   } else if(faltam <= 0){
     s.exIdx = pos.ex+1; s.serieIdx = 0;
   } else {
@@ -1158,6 +1185,7 @@ function addDescanso(s, ms){
 }
 function fimDescanso(s, pulado){
   s.descanso = null;
+  try{ msStop(); }catch(e){}
   saveTreino2();
   if(!pulado){
     bip(0.7);
@@ -1165,6 +1193,65 @@ function fimDescanso(s, pulado){
     if(card){ card.classList.add('rest-flash'); }
   }
   render();
+}
+// Timer na tela bloqueada (Media Session): mostra o descanso no Android/iOS
+// sem precisar desbloquear. Requer o áudio silencioso tocando (loop).
+let tSilURL = '', tMSOk = false, tMSec = -1;
+function msSilence(){
+  if(tSilURL) return tSilURL;
+  const n = 4000, buf = new ArrayBuffer(44+n), v = new DataView(buf);
+  const ws = (o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); v.setUint32(4,36+n,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true);
+  ws(36,'data'); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,128);
+  tSilURL = URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+  return tSilURL;
+}
+function msStart(s, d){
+  try{
+    if(!('mediaSession' in navigator)) return;
+    const a = document.getElementById('t-silence');
+    if(a){ if(!a.src) a.src = msSilence(); a.play().catch(()=>{}); }
+    if(!tMSOk){
+      tMSOk = true;
+      try{ navigator.mediaSession.setActionHandler('play', ()=>{ const x=document.getElementById('t-rpause'); if(x) x.click(); }); }catch(e){}
+      try{ navigator.mediaSession.setActionHandler('pause', ()=>{ const x=document.getElementById('t-rpause'); if(x) x.click(); }); }catch(e){}
+      try{ navigator.mediaSession.setActionHandler('previoustrack', ()=>{ const x=document.getElementById('t-rskip'); if(x) x.click(); }); }catch(e){}
+    }
+    tMSec = -1;
+    navigator.mediaSession.playbackState = 'playing';
+    msTickSessao(s, d);
+  }catch(e){}
+}
+function msTickSessao(s, d){
+  try{
+    if(!('mediaSession' in navigator) || !d) return;
+    const total = Math.max(1, d.durSeg||0);
+    const rest = d.pausado ? d.restanteMs : Math.max(0, d.fimTs-Date.now());
+    const sec = Math.ceil(rest/1000);
+    if(sec===tMSec) return;
+    tMSec = sec;
+    const el = Math.min(total, Math.max(0, total-Math.round(rest/1000)));
+    try{ navigator.mediaSession.setPositionState({ duration: total, playbackRate: d.pausado?0:1, position: el }); }catch(e){}
+    try{
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Descanso ' + fmtDur(rest),
+        artist: (d.troca ? 'Próximo: ' + (d.prox||'') : 'Treino') + ' · ' + (s.fichaNome||''),
+        album: 'Treino'
+      });
+    }catch(e){}
+    navigator.mediaSession.playbackState = d.pausado ? 'paused' : 'playing';
+  }catch(e){}
+}
+function msStop(){
+  try{
+    const a = document.getElementById('t-silence');
+    if(a) a.pause();
+    if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    tMSec = -1;
+  }catch(e){}
 }
 function ligarTick(s){
   if(tTick) clearInterval(tTick);
@@ -1178,10 +1265,12 @@ function ligarTick(s){
       const fill = document.getElementById('t-rest-fill');
       if(num) num.textContent = Math.max(0, Math.ceil(rest/1000)) + 's';
       if(fill) fill.style.width = Math.max(0, Math.min(100, rest/(d.durSeg*1000)*100)) + '%';
+      msTickSessao(s, d);
       if(rest <= 0) fimDescanso(s, false);
     } else if(d && d.pausado){
       const num = document.getElementById('t-rest-num');
       if(num) num.textContent = Math.ceil(d.restanteMs/1000) + 's ⏸';
+      msTickSessao(s, d);
     }
   }, 250);
 }

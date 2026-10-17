@@ -546,10 +546,12 @@ function editarItem(id){
   setEstufasSelecionadas(estufasArray(d));
   document.getElementById('fStatus').value = d.status || 'pendente';
   document.getElementById('fAlvo').value = d.alvo || '';
-  const dataStatus = d.status === 'feito' ? (d.dataExecucao || '') : (d.dataPrevista || '');
+  const status = d.status || 'pendente';
+  const dataStatus = status === 'feito' ? (d.dataExecucao || '') : (d.dataPrevista || '');
   document.getElementById('fData').value = dataStatus || hojeISO();
   document.getElementById('fObs').value = d.obs || '';
-  document.getElementById('fLitros').value = Number(d.litrosAgua) || '';
+  const lit = d.litrosAgua;
+  document.getElementById('fLitros').value = (lit !== undefined && lit !== '' && !isNaN(lit)) ? String(lit) : '';
 
   document.getElementById('produtosList').innerHTML = '';
   prodRowCount = 0;

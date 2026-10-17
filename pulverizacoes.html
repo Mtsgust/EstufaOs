@@ -304,13 +304,13 @@ function itemCard(d){
   return `
     <div class="item">
       <div class="item-top">
-        <div><span class="badge">${badgeTxt}</span>${d.litrosAgua ? `<span class="badge water">💧 ${escapeHtml(d.litrosAgua)} L</span>` : ''}</div>
+        <div><span class="badge">${badgeTxt}</span>${d.litrosAgua !== undefined && d.litrosAgua !== null ? `<span class="badge water">💧 ${escapeHtml(String(d.litrosAgua).replace('.',','))} L</span>` : ''}</div>
         <span class="status ${statusClass}">${statusLabel}</span>
       </div>
       <h3>${tituloProdutos}</h3>
       ${listaProdutos}
       ${d.alvo ? `<p>Alvo: ${escapeHtml(d.alvo)}</p>` : ''}
-      ${d.litrosAgua ? `<p>Água usada: ${escapeHtml(d.litrosAgua)} L</p>` : ''}
+      ${d.litrosAgua !== undefined && d.litrosAgua !== null ? `<p>Água usada: ${escapeHtml(String(d.litrosAgua).replace('.',','))} L</p>` : ''}
       ${d.obs ? `<p>${escapeHtml(d.obs)}</p>` : ''}
       <div class="meta">${d.status === 'feito' ? (d.dataExecucao ? 'Feito em ' + fmtData(d.dataExecucao) : '') : (d.dataPrevista ? 'Previsto para ' + fmtData(d.dataPrevista) : 'Sem data definida')}</div>
       <div class="actions">
@@ -407,10 +407,23 @@ function render(){
   list.innerHTML = html;
 }
 
-function fmtData(v){
-  const dt = new Date(v.length === 10 ? v + 'T00:00:00' : v);
-  if(isNaN(dt)) return v;
-  return dt.toLocaleDateString('pt-BR');
+function dataParaISO(v){
+  if(!v) return '';
+  // Se já estiver em formato ISO (yyyy-mm-dd), retorna assim
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // Tenta converter dd/mm/yyyy para yyyy-mm-dd
+  const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  // Tenta new Date()
+  const d = new Date(v);
+  if(!isNaN(d)) return d.toISOString().slice(0,10);
+  return String(v);
+}
+function isoParaBr(v){
+  if(!v) return '';
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  return d.toLocaleDateString('pt-BR');
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -546,12 +559,38 @@ function editarItem(id){
   setEstufasSelecionadas(estufasArray(d));
   document.getElementById('fStatus').value = d.status || 'pendente';
   document.getElementById('fAlvo').value = d.alvo || '';
+  // Converte data original para formato ISO (yyyy-mm-dd) que o input type=date espera
   const status = d.status || 'pendente';
-  const dataStatus = status === 'feito' ? (d.dataExecucao || '') : (d.dataPrevista || '');
-  document.getElementById('fData').value = dataStatus || hojeISO();
-  document.getElementById('fObs').value = d.obs || '';
-  const lit = d.litrosAgua;
-  document.getElementById('fLitros').value = (lit !== undefined && lit !== '' && !isNaN(lit)) ? String(lit) : '';
+  let dataOriginal = '';
+  if(status === 'feito' && d.dataExecucao) dataOriginal = dataParaISO(d.dataExecucao);
+  if(status !== 'feito' && d.dataPrevista) dataOriginal = dataParaISO(d.dataPrevista);
+  document.getElementById('fData').value = dataOriginal || hojeISO();
+  const obs = d.obs || '';
+  document.getElementById('fObs').value = obs;
+  // Litros: preservar valor numérico original, evitar que undefined/vazio limpe o campo
+  let litOriginal = '';
+  if(d.litrosAgua !== undefined && d.litrosAgua !== null && !isNaN(d.litrosAgua)) litOriginal = String(d.litrosAgua);
+  document.getElementById('fLitros').value = litOriginal;
+
+  document.getElementById('produtosList').innerHTML = '';
+  prodRowCount = 0;
+  const produtos = parseProdutos(d);
+  if(produtos.length){
+    produtos.forEach(p => {
+      if(p.dose100 !== undefined){
+        addProdutoRow(p.nome, p.dose100, p.unidade);
+      } else {
+        const legado = parseDoseLegado(String(p.dose || ''));
+        addProdutoRow(p.nome, legado.valor, legado.unidade);
+      }
+    });
+  } else {
+    addProdutoRow();
+  }
+  addProdutoRow();
+
+  document.getElementById('dialog').showModal();
+}
 
   document.getElementById('produtosList').innerHTML = '';
   prodRowCount = 0;
@@ -577,9 +616,16 @@ function closeForm(){ document.getElementById('dialog').close(); }
 
 async function salvar(){
   if(estufasSelecionadas.size === 0){ alert('Selecione ao menos uma estufa.'); return; }
-  const status = document.getElementById('fStatus').value;
-  const data = document.getElementById('fData').value;
+  let rawData = document.getElementById('fData').value;
+  // Normaliza data: se vier em formato dd/mm/yyyy, converte para yyyy-mm-dd
+  if(rawData && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawData)){
+    const m = rawData.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    rawData = `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  const data = rawData || '';
   const litrosAgua = document.getElementById('fLitros').value;
+  // Normaliza litros: substitui vírgula por ponto para número padrão
+  const litrosNorm = litrosAgua ? String(litrosAgua).replace(',', '.') : '';
   const estufasOrdenadas = Array.from(estufasSelecionadas).sort((a,b) => a - b);
   const produtos = Array.from(document.querySelectorAll('#produtosList .prod-row')).map(row => ({
     nome: row.querySelector('.nome-input').value.trim(),
@@ -592,9 +638,9 @@ async function salvar(){
     produto: JSON.stringify(produtos),
     alvo: document.getElementById('fAlvo').value,
     dose: '',
-    litrosAgua: litrosAgua,
+    litrosAgua: litrosNorm,
     obs: document.getElementById('fObs').value,
-    status: status,
+    status: document.getElementById('fStatus').value,
     dataPrevista: status === 'pendente' ? data : '',
     dataExecucao: status === 'feito' ? data : ''
   };

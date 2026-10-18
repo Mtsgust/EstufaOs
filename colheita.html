@@ -225,6 +225,26 @@
   </div>
 </dialog>
 
+<!-- Editar lançamento de colheita -->
+<dialog id="dlgEditCol">
+  <div class="sheet">
+    <h2>Editar lançamento</h2>
+    <p class="sub" id="editColSub"></p>
+    <div class="field"><label>Data</label><input id="ecData" type="date"></div>
+    <div class="row2">
+      <div class="field"><label>Quantidade</label><input id="ecQtd" type="number" step="any" inputmode="decimal"></div>
+      <div class="field"><label>Unidade</label>
+        <select id="ecUn"><option value="KG">KG</option><option value="CX">CX</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Observação</label><input id="ecObs" type="text"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgEditCol').close()">Cancelar</button>
+      <button class="btn-save" onclick="salvarEditColheita()">Salvar</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="config.js"></script>
 <script>
 let ciclos = [];
@@ -578,7 +598,10 @@ function openHist(id){
     <div class="mov">
       <div><b>${fmt(num(h.quantidade))} ${escapeHtml(h.unidade||'KG')}</b>
       <small>${fmtData(h.data||h.dataCriacao)}${h.obs?' · '+escapeHtml(h.obs):''}</small></div>
-      <button class="rm" onclick="excluirColheita('${h.id}','${id}')">Excluir</button>
+      <span style="display:flex; gap:6px; flex:0 0 auto;">
+        <button class="rm" style="border-color:var(--leaf); color:var(--leaf)" onclick="editarColheita('${h.id}')">✎</button>
+        <button class="rm" onclick="excluirColheita('${h.id}','${id}')">Excluir</button>
+      </span>
     </div>`).join('') : '<div class="empty">Nenhum lançamento.</div>';
   document.getElementById('dlgHist').showModal();
 }
@@ -587,6 +610,34 @@ async function excluirColheita(hid, cicloId){
   await apiPost({tipo:'colheitas', action:'delete', id:hid});
   carregar();
   document.getElementById('dlgHist').close();
+}
+
+// ---- Editar lançamento de colheita ----
+let editColId = null;
+function editarColheita(id){
+  const h = colhs.find(x=>x.id===id); if(!h) return;
+  editColId = id;
+  document.getElementById('editColSub').textContent = `Estufa ${h.estufa}${h.obs?' · '+h.obs:''}`;
+  document.getElementById('ecData').value = isoData(h.data||h.dataCriacao) || hojeISO();
+  document.getElementById('ecQtd').value = num(h.quantidade) || '';
+  document.getElementById('ecUn').value = String(h.unidade||'KG').toUpperCase()==='CX' ? 'CX' : 'KG';
+  document.getElementById('ecObs').value = h.obs || '';
+  document.getElementById('dlgEditCol').showModal();
+}
+async function salvarEditColheita(){
+  const qtd = num(document.getElementById('ecQtd').value);
+  if(!qtd || qtd <= 0){ alert('Digite a quantidade.'); return; }
+  document.getElementById('dlgEditCol').close();
+  await apiPost({tipo:'colheitas', action:'update', id:editColId, data:{
+    data: document.getElementById('ecData').value,
+    quantidade: qtd,
+    unidade: document.getElementById('ecUn').value,
+    obs: document.getElementById('ecObs').value
+  }});
+  editColId = null;
+  carregar();
+  // Reabre o histórico pra ver a mudança
+  if(histCicloId) setTimeout(()=>openHist(histCicloId), 400);
 }
 // Desloca todas as datas do ciclo (série com início errado, ex: 400 KG era 28/08).
 async function deslocarDatas(){

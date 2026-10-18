@@ -304,7 +304,7 @@ function itemCard(d){
   return `
     <div class="item">
       <div class="item-top">
-        <div><span class="badge">${badgeTxt}</span>${d.litrosAgua !== undefined && d.litrosAgua !== null ? `<span class="badge water">💧 ${escapeHtml(String(d.litrosAgua).replace('.',','))} L</span>` : ''}</div>
+        <div><span class="badge">${badgeTxt}</span></div>
         <span class="status ${statusClass}">${statusLabel}</span>
       </div>
       <h3>${tituloProdutos}</h3>

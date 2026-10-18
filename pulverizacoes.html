@@ -409,21 +409,18 @@ function render(){
 
 function dataParaISO(v){
   if(!v) return '';
-  // Se já estiver em formato ISO (yyyy-mm-dd), retorna assim
   if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  // Tenta converter dd/mm/yyyy para yyyy-mm-dd
   const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m) return `${m[3]}-${m[2]}-${m[1]}`;
-  // Tenta new Date()
   const d = new Date(v);
   if(!isNaN(d)) return d.toISOString().slice(0,10);
   return String(v);
 }
-function isoParaBr(v){
-  if(!v) return '';
-  const d = new Date(v);
-  if(isNaN(d)) return v;
-  return d.toLocaleDateString('pt-BR');
+function fmtData(v){
+  if(!v) return '—';
+  const s = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(s) return s[3]+'/'+s[2]+'/'+s[1];
+  return String(v);
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

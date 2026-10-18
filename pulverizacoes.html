@@ -601,8 +601,8 @@ async function salvar(){
   }
   const data = rawData || '';
   const litrosAgua = document.getElementById('fLitros').value;
-  // Normaliza litros: substitui vírgula por ponto para número padrão
   const litrosNorm = litrosAgua ? String(litrosAgua).replace(',', '.') : '';
+  const statusVal = document.getElementById('fStatus').value;
   const estufasOrdenadas = Array.from(estufasSelecionadas).sort((a,b) => a - b);
   const produtos = Array.from(document.querySelectorAll('#produtosList .prod-row')).map(row => ({
     nome: row.querySelector('.nome-input').value.trim(),
@@ -617,9 +617,9 @@ async function salvar(){
     dose: '',
     litrosAgua: litrosNorm,
     obs: document.getElementById('fObs').value,
-    status: document.getElementById('fStatus').value,
-    dataPrevista: status === 'pendente' ? data : '',
-    dataExecucao: status === 'feito' ? data : ''
+    status: statusVal,
+    dataPrevista: statusVal === 'pendente' ? data : '',
+    dataExecucao: statusVal === 'feito' ? data : ''
   };
   closeForm();
   let origemId = editandoId;

@@ -592,26 +592,6 @@ function editarItem(id){
   document.getElementById('dialog').showModal();
 }
 
-  document.getElementById('produtosList').innerHTML = '';
-  prodRowCount = 0;
-  const produtos = parseProdutos(d);
-  if(produtos.length){
-    produtos.forEach(p => {
-      if(p.dose100 !== undefined){
-        addProdutoRow(p.nome, p.dose100, p.unidade);
-      } else {
-        const legado = parseDoseLegado(p.dose);
-        addProdutoRow(p.nome, legado.valor, legado.unidade);
-      }
-    });
-  } else {
-    addProdutoRow();
-  }
-  addProdutoRow();
-
-  document.getElementById('dialog').showModal();
-}
-
 function closeForm(){ document.getElementById('dialog').close(); }
 
 async function salvar(){

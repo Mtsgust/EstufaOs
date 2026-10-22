@@ -1,9 +1,9 @@
-const CACHE_NAME = 'habitos-v11';
+const CACHE_NAME = 'habitos-v12';
 const ASSETS = ['./index.html', './manifesto.json', './ícone-192.png', './ícone-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS).catch(()=>{}))
   );
   self.skipWaiting();
 });
@@ -17,8 +17,19 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Cache-first com atualização em background (stale-while-revalidate)
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.match(event.request).then(cached => {
+      const fetchPromise = fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => cached);
+      return cached || fetchPromise;
+    })
   );
 });

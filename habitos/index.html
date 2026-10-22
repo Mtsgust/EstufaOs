@@ -223,6 +223,24 @@
   <div id="root"><div class="loading">Carregando…</div></div>
 </div>
 
+<!-- Setup inicial (iPhone PWA / aparelho novo) -->
+<div id="setup-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:100; align-items:center; justify-content:center; padding:1rem;">
+  <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; max-width:380px; width:100%;">
+    <h2 style="margin:0 0 .4rem; font-size:1rem; text-align:center;">Bem-vindo!</h2>
+    <p style="color:var(--text-dim); font-size:.8rem; text-align:center; margin:0 0 1.1rem;">Este aparelho ainda não tem dados. Escolha como começar:</p>
+    <button id="setup-sync-btn" style="display:block; width:100%; padding:.75rem; margin-bottom:.6rem; background:var(--green); color:#0B0C0B; border:none; border-radius:10px; font-size:.9rem; font-weight:600; cursor:pointer;">Sincronizar com planilha</button>
+    <button id="setup-import-btn" style="display:block; width:100%; padding:.75rem; margin-bottom:.6rem; background:var(--card-2); color:var(--text); border:1px solid var(--border); border-radius:10px; font-size:.9rem; font-weight:600; cursor:pointer;">Importar backup</button>
+    <button id="setup-fresh-btn" style="display:block; width:100%; padding:.75rem; background:transparent; color:var(--text-faint); border:none; font-size:.8rem; cursor:pointer;">Começar do zero</button>
+    <div id="setup-sync-form" style="display:none; margin-top:.8rem;">
+      <input type="text" id="setup-sync-chave" placeholder="Digite a chave da sincronização" style="width:100%; padding:.6rem .8rem; background:var(--card-2); border:1px solid var(--border); color:var(--text); border-radius:8px; font-size:.85rem; margin-bottom:.5rem;">
+      <button id="setup-sync-go" style="width:100%; padding:.65rem; background:var(--green); color:#0B0C0B; border:none; border-radius:8px; font-size:.85rem; font-weight:600; cursor:pointer;">Conectar</button>
+      <p id="setup-sync-msg" style="color:var(--text-faint); font-size:.75rem; text-align:center; margin:.4rem 0 0;"></p>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="setup-file" accept="application/json,.json" style="display:none;">
+
 <script>
 const STORAGE_KEY = 'habits-v3';
 const DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
@@ -250,6 +268,52 @@ function dayNum(iso){ return parseInt(iso.split('-')[2],10); }
 function esc(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 
+const SYNC_URL_PADRAO = 'https://script.google.com/macros/s/AKfycbygeKO4VLvP2QxyiQpICsZx43DhyvSlG6DkPBW5P7sQtMyRFiF8PDhqs65ec3bxi_ME/exec';
+function mostrarSetupInicial(){
+  const ov = document.getElementById('setup-overlay');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  document.getElementById('setup-sync-btn').addEventListener('click', ()=>{
+    document.getElementById('setup-sync-form').style.display = 'block';
+    document.getElementById('setup-sync-chave').focus();
+  });
+  document.getElementById('setup-sync-go').addEventListener('click', ()=>{
+    const chave = document.getElementById('setup-sync-chave').value.trim();
+    if(!chave){ document.getElementById('setup-sync-msg').textContent = 'Digite a chave.'; return; }
+    try{
+      localStorage.setItem('habitos-sync-url', SYNC_URL_PADRAO);
+      localStorage.setItem('habitos-sync-chave', chave);
+    }catch(e){}
+    document.getElementById('setup-sync-msg').textContent = 'Conectado! Baixando dados...';
+    baixarAgora().then(()=>{ ov.style.display = 'none'; }).catch(()=>{
+      document.getElementById('setup-sync-msg').textContent = 'Falha. Confira a chave e internet.';
+    });
+  });
+  document.getElementById('setup-import-btn').addEventListener('click', ()=>{
+    document.getElementById('setup-file').click();
+  });
+  document.getElementById('setup-file').addEventListener('change', ()=>{
+    const f = document.getElementById('setup-file').files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const o = JSON.parse(r.result);
+        if(!o || !o.dados) throw 0;
+        Object.keys(o.dados).filter(k=>['habits-v3','habitos-aba','treino-v1','treino-v2'].includes(k)).forEach(k=>{
+          try{ localStorage.setItem(k, o.dados[k]); }catch(e){}
+        });
+        ov.style.display = 'none';
+        location.reload();
+      }catch(e){ document.getElementById('setup-sync-msg').textContent = 'Arquivo inválido.'; }
+    };
+    r.readAsText(f);
+  });
+  document.getElementById('setup-fresh-btn').addEventListener('click', ()=>{
+    ov.style.display = 'none';
+    try{ localStorage.setItem('habitos-setup-ok', '1'); }catch(e){}
+  });
+}
 async function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -267,6 +331,12 @@ async function load(){
   bindAbaNav();
   render();
   baixarSeNovo();
+  // iPhone PWA: aparelho sem dados e sem sync configurado → mostra setup
+  const temDados = !!(state.habits && state.habits.length) || !!(localStorage.getItem('treino-v2'));
+  const temSync = !!syncCfg();
+  if(!temDados && !temSync && !localStorage.getItem('habitos-setup-ok')){
+    mostrarSetupInicial();
+  }
 }
 function bindAbaNav(){
   document.querySelectorAll('.aba-nav button').forEach(btn=>{
@@ -1473,10 +1543,16 @@ function calMes(){
   return html + `</div>`;
 }
 
+let _renderPending = false;
 function render(){
-  document.querySelectorAll('.aba-nav button').forEach(b=>b.classList.toggle('active', b.dataset.aba===aba));
-  if(aba==='treino'){ renderTreino(); return; }
-  renderHabitos();
+  if(_renderPending) return;
+  _renderPending = true;
+  requestAnimationFrame(()=>{
+    _renderPending = false;
+    document.querySelectorAll('.aba-nav button').forEach(b=>b.classList.toggle('active', b.dataset.aba===aba));
+    if(aba==='treino'){ renderTreino(); return; }
+    renderHabitos();
+  });
 }
 
 function renderHabitos(){

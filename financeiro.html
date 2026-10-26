@@ -128,6 +128,10 @@
   .imp-li small{display:block; color:var(--mut); font-size:11.5px;}
   .imp-li .dupe{color:var(--gold); font-size:11px; font-weight:700;}
   @media (max-width:860px){ .cal-day{min-height:46px;} }
+  .dcq{padding:7px 14px; border-radius:8px; border:1px solid #24402F; background:#152A1F; color:#9DB8A4; font-size:13px; font-weight:600; cursor:pointer;}
+  .dcq.ativo{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
+  .dc-resultado{background:#0F1D14; border:1px solid #24402F; border-radius:10px; padding:16px; text-align:center; font-size:20px; font-weight:700; color:#4ADE80; min-height:56px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px;}
+  .dc-resultado small{font-size:13px; font-weight:500; color:#9DB8A4;}
 </style>
 <link rel="stylesheet" href="sidebar.css">
 </head>
@@ -140,6 +144,7 @@
     <div class="tab active" data-t="relatorios">Relatórios</div>
     <div class="tab" data-t="calendario">Calendário</div>
     <div class="tab" data-t="boletos">Boletos</div>
+    <div class="tab" data-t="dias">Dias</div>
   </div>
   <div class="filters" id="filtrosBol" style="display:none">
     <input id="buscaBol" type="text" placeholder="Buscar conta ou empresa...">
@@ -177,6 +182,35 @@
     <div class="card"><h2>A pagar — próximos meses</h2><div id="rkMeses"></div></div>
     <div class="card"><h2>Pago por mês (6 meses)</h2><canvas id="chMes"></canvas></div>
     <div class="card"><h2>Próximos vencimentos (30 dias)</h2><div id="rkProx"></div></div>
+  </section>
+  <section id="aba-dias" style="display:none">
+    <div class="card">
+      <h2>Calcular data futura</h2>
+      <p style="font-size:13px; color:#9DB8A4; margin:0 0 12px;">De uma data, quanto tempo até X dias?</p>
+      <div class="row2">
+        <div class="field"><label>Data inicial</label><input id="dcData" type="date"></div>
+        <div class="field"><label>Quantos dias</label><input id="dcDias" type="number" min="1" placeholder="ex: 120" value="120"></div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="dcQuick">
+        <button type="button" data-d="7" class="dcq">7d</button>
+        <button type="button" data-d="15" class="dcq">15d</button>
+        <button type="button" data-d="30" class="dcq">30d</button>
+        <button type="button" data-d="60" class="dcq">60d</button>
+        <button type="button" data-d="90" class="dcq">90d</button>
+        <button type="button" data-d="120" class="dcq ativo">120d</button>
+        <button type="button" data-d="180" class="dcq">180d</button>
+        <button type="button" data-d="365" class="dcq">365d</button>
+      </div>
+      <div class="dc-resultado" id="dcResultado">—</div>
+    </div>
+    <div class="card">
+      <h2>Dias entre duas datas</h2>
+      <div class="row2">
+        <div class="field"><label>Data inicial</label><input id="diDe" type="date"></div>
+        <div class="field"><label>Data final</label><input id="diAte" type="date"></div>
+      </div>
+      <div class="dc-resultado" id="diResultado">—</div>
+    </div>
   </section>
 </main>
 <button class="fab2" onclick="openOCR()">📷 Ler boleto (foto/PDF)</button>
@@ -401,8 +435,58 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.getElementById('filtrosBol').style.display = aba==='boletos'?'':'none';
   document.getElementById('aba-calendario').style.display = aba==='calendario'?'':'none';
   document.getElementById('aba-relatorios').style.display = aba==='relatorios'?'':'none';
+  document.getElementById('aba-dias').style.display = aba==='dias'?'':'none';
   render();
 });
+
+// ---- Calculadora de dias ----
+function dcInit(){
+  const hoje = new Date();
+  document.getElementById('dcData').value = hoje.toISOString().slice(0,10);
+  document.getElementById('diDe').value = hoje.toISOString().slice(0,10);
+  dcCalc();
+  diCalc();
+}
+function dcCalc(){
+  const d = document.getElementById('dcData').value;
+  const n = parseInt(document.getElementById('dcDias').value,10);
+  const out = document.getElementById('dcResultado');
+  if(!d || !n || n<=0){ out.innerHTML = '—'; return; }
+  const dt = new Date(d+'T00:00:00');
+  if(isNaN(dt)){ out.innerHTML = 'Data inválida'; return; }
+  dt.setDate(dt.getDate()+n);
+  const opt = {weekday:'long', day:'2-digit', month:'long', year:'numeric'};
+  const ext = dt.toLocaleDateString('pt-BR', opt);
+  const curta = dt.toLocaleDateString('pt-BR');
+  const semana = dt.toLocaleDateString('pt-BR',{weekday:'long'});
+  out.innerHTML = `${esc(curta)}<small>${semana} · ${n} dias depois de ${new Date(d+'T00:00:00').toLocaleDateString('pt-BR')}</small>`;
+}
+function diCalc(){
+  const de = document.getElementById('diDe').value;
+  const ate = document.getElementById('diAte').value;
+  const out = document.getElementById('diResultado');
+  if(!de || !ate){ out.innerHTML = '—'; return; }
+  const t1 = new Date(de+'T00:00:00').getTime();
+  const t2 = new Date(ate+'T00:00:00').getTime();
+  if(isNaN(t1)||isNaN(t2)){ out.innerHTML = 'Data inválida'; return; }
+  const dias = Math.round(Math.abs(t2-t1)/86400000);
+  const meses = Math.floor(dias/30);
+  const sobra = dias%30;
+  out.innerHTML = `${dias} dias<small>${meses>0?meses+' meses'+(sobra>0?' e '+sobra+' dias':''):dias+(dias===1?' dia':' dias')}</small>`;
+}
+document.getElementById('dcData').addEventListener('input', dcCalc);
+document.getElementById('dcDias').addEventListener('input', dcCalc);
+document.getElementById('diDe').addEventListener('input', diCalc);
+document.getElementById('diAte').addEventListener('input', diCalc);
+document.getElementById('dcQuick').addEventListener('click', e=>{
+  const b = e.target.closest('[data-d]');
+  if(!b) return;
+  document.querySelectorAll('.dcq').forEach(x=>x.classList.remove('ativo'));
+  b.classList.add('ativo');
+  document.getElementById('dcDias').value = b.dataset.d;
+  dcCalc();
+});
+dcInit();
 ['buscaBol','fCatBol','fStBol'].forEach(id=>document.getElementById(id).addEventListener('input', render));
 
 // ---- Form ----

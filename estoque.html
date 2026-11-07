@@ -329,6 +329,20 @@ function statusOf(p){
   return {k:'ok', label:'OK'};
 }
 
+// Ponto de referência pra barra: mínimo (ou 3x mínimo) faz mais sentido que "total comprado".
+function refBarra(p){
+  const min = num(p.estoqueMinimo);
+  if(min > 0) return min * 3;          // zona segura ≈ até 3x o mínimo
+  const comprado = totalComprado(p);
+  if(comprado > 0) return comprado;     // sem mínimo definido, usa o comprado
+  return num(p.estoqueAtual) || 1;
+}
+function pctBarra(p){
+  const ref = refBarra(p);
+  if(ref <= 0) return 100;
+  return Math.max(0, Math.min(100, num(p.estoqueAtual)/ref*100));
+}
+
 function render(){
   const list = document.getElementById('list');
   let itens = estoque.slice().sort((a,b)=> String(a.nome).localeCompare(String(b.nome)));
@@ -347,11 +361,26 @@ function render(){
       ? `${fmt(num(p.estoqueAtual))} <small>/ ${fmt(comprado)} ${escapeHtml(p.unidade||'')}</small>`
       : `${fmt(num(p.estoqueAtual))} <small>${escapeHtml(p.unidade||'')}</small>`;
     const dispTxt = comprado > 0 ? `Disponível ${fmt(num(p.estoqueAtual))} de ${fmt(comprado)} ${escapeHtml(p.unidade||'')} · ` : '';
-    // Barra de quantidade: % do comprado (ou do mínimo x2); cor por status
-    const ref = comprado > 0 ? comprado : (num(p.estoqueMinimo) > 0 ? num(p.estoqueMinimo)*2 : 0);
-    const pct = ref > 0 ? Math.max(0, Math.min(100, num(p.estoqueAtual)/ref*100)) : (st.k==='ok'?100:0);
+    const pct = pctBarra(p);
     const barCls = st.k==='zero' ? 'danger' : (st.k==='low' ? 'warn' : 'ok');
     const qtyCls = st.k==='ok' ? '' : (st.k==='low' ? 'warn' : 'danger');
+    const min = num(p.estoqueMinimo);
+    const sobra = num(p.estoqueAtual) - min;
+    let lbl;
+    if(st.k==='zero'){
+      lbl = 'Zerado — precisa comprar';
+    } else if(st.k==='low'){
+      lbl = min > 0 ? `Abaixo do mínimo (${fmt(min)} ${escapeHtml(p.unidade||'')})` : 'Acabando';
+    } else {
+      if(min > 0){
+        // OK acima do mínimo: mostra quanto sobra até/b depois do mínimo
+        lbl = pct < 15 ? `Pouco — só ${fmt(sobra)} ${escapeHtml(p.unidade||'')} acima do mínimo`
+            : pct < 50 ? 'Atenção — começando a baixar'
+            : 'Saudável — acima do mínimo';
+      } else {
+        lbl = comprado > 0 ? `${Math.round(pct)}% restante` : 'OK';
+      }
+    }
     return `
     <div class="item ${cls}">
       <div class="item-top">
@@ -360,8 +389,8 @@ function render(){
       </div>
       <div class="estock-top"><b>${escapeHtml(p.nome)}</b><span class="estock-qty ${qtyCls}">${fmt(num(p.estoqueAtual))} ${escapeHtml(p.unidade||'')}</span></div>
       <div class="qbar big ${barCls}"><i style="width:${pct}%"></i></div>
-      <span class="qbar-lbl">${st.k==='ok' ? Math.round(pct)+'% do total comprado' : (st.k==='low' ? 'Acabando — abaixo do mínimo' : 'Zerado — precisa comprar')}</span>
-      <div class="meta">${dispTxt}Mínimo: ${fmt(num(p.estoqueMinimo))} ${escapeHtml(p.unidade||'')} ${p.fornecedor?' · '+escapeHtml(p.fornecedor):''}</div>
+      <span class="qbar-lbl">${lbl}</span>
+      <div class="meta">${dispTxt}Mínimo: ${fmt(min)} ${escapeHtml(p.unidade||'')} ${p.fornecedor?' · '+escapeHtml(p.fornecedor):''}</div>
       <div class="actions">
         <button class="btn-in" onclick="openMov('${p.id}','entrada')">+ Entrada</button>
         <button class="btn-out" onclick="openMov('${p.id}','saida')">− Saída</button>

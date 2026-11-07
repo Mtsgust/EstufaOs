@@ -229,8 +229,27 @@ function nomeOficial(nome){
 function movsDoProduto(p){
   return movs.filter(m=>m.produtoId===p.id || chave(m.produtoNome)===chave(p.nome));
 }
+// Converte mL<->L, g<->kg (apenas dentro da mesma família).
+function converterQtd(qtd, de, para){
+  const n = q => String(q??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+  const a = n(de), b = n(para);
+  if(!a || !b || a===b) return qtd;
+  const mapa = { ml:'l', l:'ml', g:'kg', kg:'g', mg:'g', g2:'kg' };
+  if(a==='ml' && b==='l') return qtd/1000;
+  if(a==='l' && b==='ml') return qtd*1000;
+  if(a==='g' && b==='kg') return qtd/1000;
+  if(a==='kg' && b==='g') return qtd*1000;
+  if(a==='mg' && b==='g') return qtd/1000;
+  if(a==='g' && b==='mg') return qtd*1000;
+  return qtd; // famílias diferentes: soma sem converter
+}
 function totalComprado(p){
-  return movsDoProduto(p).reduce((s,m)=> s + (m.tipo==='entrada'?num(m.quantidade):0), 0);
+  const unProd = p.unidade || '';
+  return movsDoProduto(p).reduce((s,m)=>{
+    if(m.tipo!=='entrada') return s;
+    const qtd = converterQtd(num(m.quantidade), m.unidade||'', unProd);
+    return s + qtd;
+  }, 0);
 }
 
 // Foto por arquivo: comprime para miniatura (96px) e salva junto (sem link).

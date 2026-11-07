@@ -63,6 +63,11 @@
   }
   .row2{display:flex; gap:10px;}
   .row2 .field{flex:1;}
+  .item-row{display:flex; gap:6px; margin-bottom:6px; align-items:center;}
+  .item-row .f-produto{flex:3; padding:8px; border:1px solid var(--line); border-radius:8px; font-size:13.5px; background:#fff; min-width:0;}
+  .item-row .f-qtd{flex:1; padding:8px; border:1px solid var(--line); border-radius:8px; font-size:13.5px; background:#fff; min-width:0; width:70px;}
+  .item-row .f-un{flex:0 0 64px; padding:8px 4px; border:1px solid var(--line); border-radius:8px; font-size:13px; background:#fff;}
+  .btn-rm-item{flex:0 0 32px; height:32px; border:none; background:#F7DAD2; color:#C0392B; border-radius:8px; font-size:14px; cursor:pointer; font-weight:700;}
   .sheet-actions{display:flex; gap:10px; margin-top:14px;}
   .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600;}
   .btn-cancel{background:#EDEFEA; color:var(--ink);}
@@ -213,25 +218,23 @@
       </select>
     </div>
     <div class="field">
-      <label>Produto / insumo</label>
-      <input id="fProduto" type="text" list="dlEstoque" autocomplete="off" placeholder="ex: Trichoderma, gesso agrícola...">
+      <label>Produtos / insumos <small style="color:#8A968A">(pode adicionar vários)</small></label>
+      <div id="fItens">
+        <div class="item-row">
+          <input type="text" class="f-produto" list="dlEstoque" autocomplete="off" placeholder="ex: Trichoderma, gesso agrícola...">
+          <input type="number" class="f-qtd" step="any" inputmode="decimal" placeholder="Qtd">
+          <select class="f-un">
+            <option value="kg">kg</option><option value="g">g</option>
+            <option value="L">L</option><option value="mL">mL</option><option value="un">un</option>
+          </select>
+          <button type="button" class="btn-rm-item" onclick="rmItem(this)" title="Remover">✕</button>
+        </div>
+      </div>
+      <button type="button" onclick="addItem()" style="margin-top:6px; padding:6px 12px; border:1px dashed #54614F; border-radius:8px; background:transparent; color:#54614F; font-size:13px; cursor:pointer;">+ Adicionar produto</button>
     </div>
     <div class="field">
       <label>Dose (texto livre)</label>
       <input id="fDose" type="text" placeholder="ex: 2kg/estufa">
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Qtd usada (baixa no estoque)</label>
-        <input id="fQtd" type="number" step="any" inputmode="decimal" placeholder="ex: 2">
-      </div>
-      <div class="field">
-        <label>Un.</label>
-        <select id="fUnidade">
-          <option value="kg">kg</option><option value="g">g</option>
-          <option value="L">L</option><option value="mL">mL</option><option value="un">un</option>
-        </select>
-      </div>
     </div>
     <div class="field">
       <label>Data (prevista ou feita)</label>
@@ -480,25 +483,55 @@ function openForm(){
   document.getElementById('fEstufa').value='1';
   document.getElementById('fStatus').value='pendente';
   document.getElementById('fTipoTarefa').value='Tratamento de solo';
-  document.getElementById('fProduto').value='';
   document.getElementById('fDose').value='';
-  document.getElementById('fQtd').value='';
-  document.getElementById('fUnidade').value='kg';
   document.getElementById('fData').value=hojeISO();
   document.getElementById('fObs').value='';
+  // Reset itens: uma linha vazia
+  document.getElementById('fItens').innerHTML = itemRowHtml();
   document.getElementById('dialog').showModal();
+}
+function itemRowHtml(produto, qtd, un){
+  return `<div class="item-row">
+    <input type="text" class="f-produto" list="dlEstoque" autocomplete="off" placeholder="ex: Trichoderma, gesso agrícola..." value="${escapeHtml(produto||'')}">
+    <input type="number" class="f-qtd" step="any" inputmode="decimal" placeholder="Qtd" value="${qtd!=null?qtd:''}">
+    <select class="f-un">
+      <option value="kg" ${un==='kg'?'selected':''}>kg</option><option value="g" ${un==='g'?'selected':''}>g</option>
+      <option value="L" ${un==='L'?'selected':''}>L</option><option value="mL" ${un==='mL'?'selected':''}>mL</option><option value="un" ${un==='un'?'selected':''}>un</option>
+    </select>
+    <button type="button" class="btn-rm-item" onclick="rmItem(this)" title="Remover">✕</button>
+  </div>`;
+}
+function addItem(){
+  document.getElementById('fItens').insertAdjacentHTML('beforeend', itemRowHtml());
+}
+function rmItem(btn){
+  const rows = document.querySelectorAll('#fItens .item-row');
+  if(rows.length <= 1){ btn.closest('.item-row').querySelector('.f-produto').value=''; return; }
+  btn.closest('.item-row').remove();
+}
+function pegarItens(){
+  const itens = [];
+  document.querySelectorAll('#fItens .item-row').forEach(r=>{
+    const nome = r.querySelector('.f-produto').value.trim();
+    const qtd = r.querySelector('.f-qtd').value;
+    const un = r.querySelector('.f-un').value;
+    if(nome) itens.push({produto: nome, qtd: qtd ? parseFloat(qtd.replace(',','.')) : 0, unidade: un});
+  });
+  return itens;
 }
 function closeForm(){ document.getElementById('dialog').close(); }
 
 async function salvar(){
   const status = document.getElementById('fStatus').value;
   const data = document.getElementById('fData').value;
-  const qtdUsada = document.getElementById('fQtd').value;
-  const unUsada = document.getElementById('fUnidade').value;
+  const itens = pegarItens();
+  if(!itens.length){ alert('Adicione pelo menos um produto.'); return; }
+  const nomes = itens.map(i=>i.produto).join(', ');
   const payloadData = {
     estufa: document.getElementById('fEstufa').value,
     tipoTarefa: document.getElementById('fTipoTarefa').value,
-    produto: document.getElementById('fProduto').value,
+    produto: nomes,
+    itens: JSON.stringify(itens),
     dose: document.getElementById('fDose').value,
     obs: document.getElementById('fObs').value,
     status: status,
@@ -514,8 +547,12 @@ async function salvar(){
     await fetch(API_URL, {method:'POST', body: JSON.stringify({tipo:'nutricao', action:'add', data: payloadData})});
   }
   if(status === 'feito'){
-    await baixarEstoque(payloadData.produto, qtdUsada, unUsada, 'nutricao', nid,
-      `Nutricao estufa ${payloadData.estufa} (${payloadData.tipoTarefa})`);
+    for(const item of itens){
+      if(item.qtd > 0){
+        await baixarEstoque(item.produto, item.qtd, item.unidade, 'nutricao', nid,
+          `Nutricao estufa ${payloadData.estufa} (${payloadData.tipoTarefa})`);
+      }
+    }
   }
   carregar();
 }
@@ -526,15 +563,26 @@ async function marcarFeito(id){
     tipo:'nutricao', action:'update', id,
     data:{ status:'feito', dataExecucao: hojeISO() }
   })});
-  if(d && d.produto){
+  // Baixa no estoque: usa itens (novo formato) ou produto+dose (antigo)
+  let itens = [];
+  try { if(d && d.itens) itens = JSON.parse(d.itens); } catch(e){}
+  if(!itens.length && d && d.produto){
+    // Formato antigo: tenta extrair da dose
     const m = String(d.dose||'').match(/([\d.,]+)/);
-    const qtd = m ? m[1] : '';
+    const qtd = m ? parseFloat(m[1].replace(',','.')) : 0;
     const dl = String(d.dose||'').toLowerCase();
     const u = dl.includes('kg') ? 'kg'
             : dl.includes('ml') ? 'mL'
             : /\bg\b/.test(dl) ? 'g'
             : dl.includes('un') ? 'un' : 'L';
-    if(qtd) await baixarEstoque(d.produto, qtd, u, 'nutricao', id, `Nutricao estufa ${d.estufa}`);
+    if(qtd > 0) itens = [{produto: d.produto, qtd, unidade: u}];
+    else itens = [{produto: d.produto, qtd: 0, unidade: ''}];
+  }
+  for(const item of itens){
+    if(item.qtd > 0){
+      await baixarEstoque(item.produto, item.qtd, item.unidade, 'nutricao', id,
+        `Nutricao estufa ${d ? d.estufa : ''}`);
+    }
   }
   carregar();
 }

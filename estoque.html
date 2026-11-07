@@ -244,12 +244,12 @@ function converterQtd(qtd, de, para){
   return qtd; // famílias diferentes: soma sem converter
 }
 function totalComprado(p){
-  const unProd = p.unidade || '';
-  return movsDoProduto(p).reduce((s,m)=>{
-    if(m.tipo!=='entrada') return s;
-    const qtd = converterQtd(num(m.quantidade), m.unidade||'', unProd);
-    return s + qtd;
-  }, 0);
+  // Sempre a ÚLTIMA compra (entrada mais recente), não a soma de todas.
+  const entradas = movsDoProduto(p).filter(m=>m.tipo==='entrada');
+  if(!entradas.length) return 0;
+  entradas.sort((a,b)=> new Date(b.dataCriacao||0) - new Date(a.dataCriacao||0));
+  const ultima = entradas[0];
+  return converterQtd(num(ultima.quantidade), ultima.unidade||'', p.unidade||'');
 }
 
 // Foto por arquivo: comprime para miniatura (96px) e salva junto (sem link).

@@ -14,7 +14,7 @@ var SHEETS = {
   },
   nutricao: {
     name: 'Nutricao',
-    headers: ['id', 'dataCriacao', 'estufa', 'tipoTarefa', 'produto', 'dose', 'dataPrevista', 'status', 'dataExecucao', 'obs']
+    headers: ['id', 'dataCriacao', 'estufa', 'tipoTarefa', 'produto', 'dose', 'dataPrevista', 'status', 'dataExecucao', 'obs', 'itens', 'dataOriginal', 'baixadoItens']
   },
   bulario: {
     name: 'Bulario',

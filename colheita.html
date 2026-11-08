@@ -212,31 +212,6 @@
     <p>Produção acumulada por estufa, com data de referência</p>
   </div>
 
-  <div class="kpi-row">
-    <div class="kpi"><div class="kpi-val" id="kpiTom">—</div><div class="kpi-lab">Tomate grape (kg)</div></div>
-    <div class="kpi"><div class="kpi-val" id="kpiPep">—</div><div class="kpi-lab">Pepino japonês (cx)</div></div>
-    <div class="kpi"><div class="kpi-val" id="kpiEstufas">—</div><div class="kpi-lab">Estufas c/ registros</div></div>
-    <div class="kpi"><div class="kpi-val small" id="kpiUltimo">—</div><div class="kpi-lab">Último fechamento</div></div>
-  </div>
-
-  <div class="filters">
-    <div class="f-group">
-      <select id="filtroEstufaSel">
-        <option value="todas">Todas as estufas</option>
-        <option value="1">Estufa 1</option><option value="2">Estufa 2</option>
-        <option value="3">Estufa 3</option><option value="4">Estufa 4</option>
-        <option value="5">Estufa 5</option><option value="6">Estufa 6</option>
-        <option value="7">Estufa 7</option>
-      </select>
-    </div>
-    <div class="f-group">
-      <label>De</label>
-      <input type="date" id="filtroDe">
-      <label>Até</label>
-      <input type="date" id="filtroAte">
-    </div>
-  </div>
-
   <div class="tabs">
     <div class="tab active" data-f="fechamento">Fechamento</div>
     <div class="tab" data-f="geral">Geral</div>
@@ -502,8 +477,10 @@ function colunasCultura(){ return [{unidade:'KG', nome:nomeCultura('KG')}, {unid
 
 // ===== RENDER PRINCIPAL =====
 function render(){
-  renderKPIs();
   const list = document.getElementById('list');
+  // FABs apenas na aba Geral
+  const mostrarFabs = aba === 'geral';
+  document.querySelectorAll('.fab, .fab2').forEach(b => b.style.display = mostrarFabs ? '' : 'none');
   if(aba === 'fechamento'){ renderFechamento(list); return; }
   destroyFchCharts();
   if(aba === 'geral'){ renderGeral(list); return; }
@@ -545,20 +522,7 @@ function renderFechamento(list){
       </table>
     </div>
     <button class="fch-save" onclick="salvarFechamento()">Salvar fechamento</button>
-    <div class="chart-row">
-      <div class="chart-card">
-        <h3>🍅 ${escapeHtml(cols[0].nome)} — evolução (kg)</h3>
-        <canvas id="chFchTom"></canvas>
-        <div class="chart-empty" id="fchTomEmpty">Sem registros de tomate no período.</div>
-        <div class="chart-stats" id="fchTomStats"></div>
-      </div>
-      <div class="chart-card">
-        <h3>🥒 ${escapeHtml(cols[1].nome)} — evolução (cx)</h3>
-        <canvas id="chFchPep"></canvas>
-        <div class="chart-empty" id="fchPepEmpty">Sem registros de pepino no período.</div>
-        <div class="chart-stats" id="fchPepStats"></div>
-      </div>
-    </div>
+    <!-- Gráficos guardados para uso futuro (ver funções renderChartFechamento/renderOneChart) -->
   `;
   list.innerHTML = html;
   document.getElementById('fchData').addEventListener('change', e=>{
@@ -566,7 +530,6 @@ function renderFechamento(list){
     renderFechamento(list);
   });
   atualizarTotaisFch();
-  renderChartFechamento();
 }
 
 function atualizarTotaisFch(){
@@ -772,9 +735,6 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active'); aba=t.dataset.f; render();
 }));
-document.getElementById('filtroEstufaSel').addEventListener('change',e=>{filtroEstufa=e.target.value;render();});
-document.getElementById('filtroDe').addEventListener('change',e=>{filtroDe=e.target.value;render();});
-document.getElementById('filtroAte').addEventListener('change',e=>{filtroAte=e.target.value;render();});
 
 // ===== CICLO =====
 function openCiclo(estufa){

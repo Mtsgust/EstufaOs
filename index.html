@@ -139,9 +139,9 @@
       <div class="kpi-sub" id="kEstufasSub">—</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Ciclos de cultivo ativos</div>
-      <div class="kpi-val" id="kCiclos">—</div>
-      <div class="kpi-sub" id="kCiclosSub">—</div>
+      <div class="kpi-label">Colheita do mês</div>
+      <div class="kpi-val" id="kColheita">—</div>
+      <div class="kpi-sub" id="kColheitaSub">—</div>
     </div>
   </section>
 
@@ -191,7 +191,7 @@ document.getElementById('hoje').textContent =
   new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
 // ===== Indicadores =====
-function renderIndicadores(ciclos){
+function renderIndicadores(ciclos, colhs){
   const ativos = ciclos.filter(c=>c.status!=='encerrada');
   const estufas = [...new Set(ativos.map(c=>String(c.estufa)).filter(Boolean))];
   const culturas = [...new Set(ativos.map(c=>c.cultura).filter(Boolean))];
@@ -201,10 +201,17 @@ function renderIndicadores(ciclos){
     ? culturas.slice(0,3).join(', ') + (culturas.length>3 ? ` +${culturas.length-3}` : '')
     : 'nenhuma cultura ativa';
 
-  document.getElementById('kCiclos').textContent = ativos.length;
-  document.getElementById('kCiclosSub').textContent = ativos.length
-    ? `em ${estufas.length} estufa(s)`
-    : 'nenhum ciclo ativo';
+  // Colheita do mês (só KG)
+  const mes = hojeISO().slice(0,7);
+  let kgMes = 0, cxMes = 0;
+  colhs.forEach(h=>{
+    const dt = String(h.data||'').slice(0,10);
+    if(!dt || dt.slice(0,7)!==mes) return;
+    if(String(h.unidade).toUpperCase()==='CX') cxMes += num(h.quantidade);
+    else kgMes += num(h.quantidade);
+  });
+  document.getElementById('kColheita').innerHTML = `${fmtN(kgMes)}<span> KG</span>`;
+  document.getElementById('kColheitaSub').textContent = cxMes>0 ? `${fmtN(cxMes)} CX também` : 'lançamentos deste mês';
 
   document.getElementById('subtitulo').textContent = ativos.length
     ? `${estufas.length} estufas em operação · ${ativos.length} ciclo(s) ativo(s)`
@@ -298,28 +305,42 @@ function addDias(iso, n){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function filtrarPorCultura(colhs, ciclos, termos){
+function filtrarPorCultura(colhs, ciclos, termos, vendas){
   const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const ids = new Set();
+  const estufasCult = new Set();
+
+  // 1) Ciclos com a cultura
   ciclos.forEach(c=>{
     const texto = norm(`${c.cultura||''} ${c.variedade||''}`);
-    if(termos.some(t=>texto.includes(norm(t)))) ids.add(String(c.id));
+    if(termos.some(t=>texto.includes(norm(t)))){
+      ids.add(String(c.id));
+      if(c.estufa) estufasCult.add(String(c.estufa));
+    }
   });
+
+  // 2) Vendas com a cultura → identifica estufas
+  (vendas||[]).forEach(v=>{
+    const texto = norm(v.cultura);
+    if(termos.some(t=>texto.includes(norm(t))) && v.estufa) estufasCult.add(String(v.estufa));
+  });
+
   return colhs.filter(h=>{
     if(String(h.unidade).toUpperCase()==='CX') return false;
     const byCiclo = ids.has(String(h.cicloId));
+    const byEstufa = estufasCult.has(String(h.estufa));
     const texto = norm(`${h.cultura||''} ${h.produto||''} ${h.obs||''}`);
     const byNome = termos.some(t=>texto.includes(norm(t)));
-    return byCiclo || byNome;
+    return byCiclo || byEstufa || byNome;
   });
 }
 
-function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor){
+function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor, vendas){
   const canvas = document.getElementById(canvasId);
   const stats = document.getElementById(statsId);
   const empty = document.getElementById(emptyId);
 
-  const filtrados = filtrarPorCultura(colhs, ciclos, termos);
+  const filtrados = filtrarPorCultura(colhs, ciclos, termos, vendas);
 
   // Últimas 4 semanas (segunda a domingo)
   const segAtual = semanaISO(new Date());
@@ -412,30 +433,32 @@ function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor){
 async function carregarPainel(){
   try{
     // Cache primeiro
-    let ciclos = [], colhs = [];
+    let ciclos = [], colhs = [], vendas = [];
     if(typeof cacheLerTipo === 'function'){
       ciclos = cacheLerTipo('ciclos') || [];
       colhs = cacheLerTipo('colheitas') || [];
+      vendas = cacheLerTipo('vendas') || [];
       if(ciclos.length || colhs.length){
-        renderIndicadores(ciclos);
-        renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C');
-        renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441');
+        renderIndicadores(ciclos, colhs);
+        renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas);
+        renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas);
         document.getElementById('subtitulo').textContent = 'Atualizando…';
       }
     }
     // Busca fresca
     let d;
     if(typeof buscarLote === 'function'){
-      d = await buscarLote(['ciclos','colheitas']);
+      d = await buscarLote(['ciclos','colheitas','vendas']);
     } else {
-      const r = await Promise.all([get('ciclos'), get('colheitas')]);
-      d = {ciclos:r[0], colheitas:r[1]};
+      const r = await Promise.all([get('ciclos'), get('colheitas'), get('vendas')]);
+      d = {ciclos:r[0], colheitas:r[1], vendas:r[2]};
     }
     ciclos = d.ciclos || [];
     colhs = d.colheitas || [];
-    renderIndicadores(ciclos);
-    renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C');
-    renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441');
+    vendas = d.vendas || [];
+    renderIndicadores(ciclos, colhs);
+    renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas);
+    renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas);
   }catch(e){
     document.getElementById('subtitulo').innerHTML =
       'Erro ao carregar dados. <a href="#" onclick="carregarPainel();return false">Tentar de novo</a>';

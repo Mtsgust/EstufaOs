@@ -473,6 +473,11 @@ function nomeCultura(un){
   return un === 'CX' ? 'Pepino japonês' : 'Tomate grape';
 }
 function colunasCultura(){ return [{unidade:'KG', nome:nomeCultura('KG')}, {unidade:'CX', nome:nomeCultura('CX')}]; }
+function datasCicloHead(c){
+  const p = isoData(c.dataPlantio), i = isoData(c.dataInicio);
+  if(!p && !i) return '';
+  return `<small>${p?'Plantio '+fmtCurta(p):''}${p&&i?' · ':''}${i?'Início '+fmtCurta(i):''}</small>`;
+}
 
 // ===== RENDER PRINCIPAL =====
 function render(){
@@ -658,7 +663,7 @@ function renderGeral(list){
   };
   let html = '<div class="mx-wrap"><div class="mx">';
   html += '<div class="mx-row"><div class="mx-lab"></div>' + cols.map(k=>
-    k.c ? `<div class="mx-cell head">Estufa ${k.e}<small>${k.tot.kg>0?fmt(k.tot.kg)+' KG':''}${k.tot.kg>0&&k.tot.cx>0?' · ':''}${k.tot.cx>0?fmt(k.tot.cx)+' CX':''}${k.c.variedade?'<br>'+escapeHtml(k.c.variedade):''}</small></div>`
+    k.c ? `<div class="mx-cell head">Estufa ${k.e}<small>${k.tot.kg>0?fmt(k.tot.kg)+' KG':''}${k.tot.kg>0&&k.tot.cx>0?' · ':''}${k.tot.cx>0?fmt(k.tot.cx)+' CX':''}${k.c.variedade?'<br>'+escapeHtml(k.c.variedade):''}</small>${datasCicloHead(k.c)}</div>`
         : `<div class="mx-cell head">Estufa ${k.e}</div>`
   ).join('') + '</div>';
   for(const seg of segs){

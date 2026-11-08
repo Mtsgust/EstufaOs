@@ -58,6 +58,20 @@
   .empty{text-align:center; color:var(--dim); font-size:14px; padding:60px 0;}
   .loading{text-align:center; color:var(--dim); font-size:13px; padding:40px 0;}
 
+  /* Blocos por cultura */
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  .block{background:linear-gradient(180deg,#0F1512,#0A0E0C); border:1px solid var(--line);
+    border-radius:16px; padding:12px;}
+  .block-hd{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:2px 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--line);}
+  .block-name{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--ink);}
+  .block-stats{display:flex; gap:6px;}
+  .bs{font-size:12px; font-weight:700; background:var(--card2); border:1px solid var(--line);
+    border-radius:10px; padding:4px 10px; color:var(--ink); white-space:nowrap;}
+  .bs.money{color:var(--lime);}
+  .block-empty{font-size:13px; color:var(--dim); text-align:center; padding:24px 0;}
+  .block .item:last-child{margin-bottom:0;}
+
   /* Cartão de venda */
   .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px 18px 18px 22px; margin-bottom:12px;
     transition:border-color .18s; position:relative; overflow:hidden;}
@@ -137,6 +151,9 @@
   .prod-del{width:100%; padding:10px; border:1px solid var(--red); border-radius:9px; background:transparent;
     color:var(--red); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer; font-family:inherit;}
 
+  @media (max-width:860px){
+    .cols{grid-template-columns:1fr;}
+  }
   @media (max-width:600px){
     .page{padding:24px 14px 80px;}
     .hdr h1{font-size:22px;}
@@ -147,7 +164,6 @@
     .filters .f-group select{flex:1;}
     .filters select,.filters input{width:100%;}
     .filters .f-busca{min-width:0;}
-    .v-money{grid-template-columns:1fr;}
     .v-det-grid{grid-template-columns:1fr;}
     .actions button{min-width:calc(50% - 4px);}
   }
@@ -336,7 +352,29 @@ function render(){
     return true;
   });
   if(!list.length){ document.getElementById('list').innerHTML = '<div class="empty">Nenhuma venda.</div>'; return; }
-  document.getElementById('list').innerHTML = list.map(cardV).join('');
+  const pep = list.filter(v=>String(v.cultura||'').toLowerCase().includes('pepino'));
+  const tom = list.filter(v=>!String(v.cultura||'').toLowerCase().includes('pepino'));
+  document.getElementById('list').innerHTML = '<div class="cols">' +
+    blocoV('Tomate grape', tom, 'KG') +
+    blocoV('Pepino japonês', pep, 'CX') +
+    '</div>';
+}
+function blocoV(nome, arr, un){
+  let qtd = 0, valor = 0;
+  arr.forEach(v=>{
+    valor += num(v.total);
+    const isCX = String(v.unidade||'').toUpperCase()==='CX';
+    if(un==='CX' ? isCX : !isCX){
+      qtd += num(v.qtdPaga) > 0 ? num(v.qtdPaga) : num(v.quantidade);
+    }
+  });
+  const fq = n => (Math.round(n*100)/100).toString().replace('.',',');
+  const corpo = arr.length ? arr.map(cardV).join('') : '<div class="block-empty">Nenhuma venda aqui.</div>';
+  return '<section class="block">' +
+    '<div class="block-hd"><span class="block-name">'+nome+'</span>' +
+    '<span class="block-stats"><span class="bs">'+fq(qtd)+' '+un+'</span>' +
+    '<span class="bs money">'+BRL(valor)+'</span></span></div>' +
+    corpo + '</section>';
 }
 function cardV(v){
   const rec = String(v.status)==='recebido';

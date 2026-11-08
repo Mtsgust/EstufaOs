@@ -156,6 +156,13 @@
   .ocr-text{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:10px; font-size:11.5px;
     color:var(--mut); max-height:130px; overflow-y:auto; white-space:pre-wrap; margin-top:8px;}
 
+  /* Visualizador de anexo (blob) */
+  .anexo-box{background:var(--bg2); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    min-height:200px; max-height:64vh; display:flex; align-items:center; justify-content:center;}
+  .anexo-box iframe{width:100%; height:64vh; min-height:200px; border:none;}
+  .anexo-box img{max-width:100%; max-height:64vh; display:block;}
+  .anexo-box .anexo-msg{font-size:13px; color:var(--mut); padding:36px 18px; text-align:center; line-height:1.5;}
+
   /* Calendário mensal */
   .cal-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
   .cal-head b{flex:1; text-align:center; font-size:15px; text-transform:capitalize;}
@@ -361,6 +368,17 @@
     </div>
   </div>
 </dialog>
+<dialog id="dlgAnexo">
+  <div class="sheet">
+    <h2 id="anexoTitle">Anexo</h2>
+    <p class="sub" id="anexoSub">Carregando…</p>
+    <div class="anexo-box" id="anexoBox"><div class="anexo-msg">Carregando…</div></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgAnexo').close()">Fechar</button>
+      <button class="btn-save" id="anexoAbrir" style="display:none" onclick="abrirAnexo()">Abrir em nova aba</button>
+    </div>
+  </div>
+</dialog>
 <dialog id="dlgImpAge">
   <div class="sheet">
     <h2>Importar da Agenda</h2>
@@ -470,13 +488,13 @@ function filtrados(){
 }
 function cardBol(b){
   const st = stBoleto(b);
-  const mu = String(b.anexoUrl||'');
-  const mid = mu.match(/\/d\/([^/]+)/);
-  const href = mid ? API_URL+'?anexo='+mid[1] : mu;
   let det = '';
   if(st==='pago' && b.dataPagamento) det += '<div>Pago em <b>'+fmtData(b.dataPagamento)+'</b></div>';
   if(b.linhaDigitavel) det += '<div>Linha <b>'+esc(b.linhaDigitavel)+'</b></div>';
-  if(b.anexoUrl) det += '<div><a href="'+esc(href)+'" target="_blank" rel="noopener">Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a></div>';
+  const fid = anexoIdDe(b.anexoUrl);
+  if(b.anexoUrl) det += fid
+    ? '<div><a href="#" onclick="verAnexo(\''+fid+'\');return false">Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a></div>'
+    : '<div><a href="'+esc(b.anexoUrl)+'" target="_blank" rel="noopener">Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a></div>';
   if(b.obs) det += '<div>Obs <b>'+esc(b.obs)+'</b></div>';
   const cls = String(b.status)==='pago' ? 'pago' : (st==='atrasado' ? 'atrasado' : '');
   return '<div class="item '+cls+'"><div class="v-bar"></div>' +
@@ -643,6 +661,44 @@ async function excluirBol(id){
   const r = await apiPost({action:'boletoExcluir', id});
   if(r.ok){ if(inDlg) document.getElementById('dlgBol').close(); carregar(); }
   else alert('Erro: '+(r.error||'falha'));
+}
+
+// ---- Anexo: baixa em base64, vira blob e mostra na página (PDF nao abre em data-URI) ----
+let anexoBlobUrl = '';
+function anexoIdDe(u){
+  const m = String(u||'').match(/\/d\/([^/]+)/);
+  return m ? m[1] : '';
+}
+async function verAnexo(id){
+  if(!id){ alert('Anexo sem identificador.'); return; }
+  const box = document.getElementById('anexoBox');
+  document.getElementById('anexoTitle').textContent = 'Anexo';
+  document.getElementById('anexoSub').textContent = 'Carregando…';
+  document.getElementById('anexoAbrir').style.display = 'none';
+  box.innerHTML = '<div class="anexo-msg">Carregando o arquivo…</div>';
+  const dlgA = document.getElementById('dlgAnexo');
+  if(!dlgA.open) dlgA.showModal();
+  try{
+    const r = await fetch(API_URL+'?anexoB64='+encodeURIComponent(id));
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || 'falha ao carregar');
+    if(anexoBlobUrl){ try{ URL.revokeObjectURL(anexoBlobUrl); }catch(e){} anexoBlobUrl = ''; }
+    anexoBlobUrl = URL.createObjectURL(new Blob([Uint8Array.from(atob(j.b64), c=>c.charCodeAt(0))],
+      {type: j.mime || 'application/octet-stream'}));
+    const pdf = /pdf/i.test(j.mime||'') || /\.pdf$/i.test(j.nome||'');
+    box.innerHTML = pdf
+      ? '<iframe src="'+anexoBlobUrl+'" title="'+esc(j.nome||'anexo')+'"></iframe>'
+      : '<img src="'+anexoBlobUrl+'" alt="'+esc(j.nome||'anexo')+'">';
+    document.getElementById('anexoTitle').textContent = j.nome || 'Anexo';
+    document.getElementById('anexoSub').textContent = pdf ? 'PDF — use "Abrir em nova aba" para tela cheia.' : 'Imagem do anexo.';
+    document.getElementById('anexoAbrir').style.display = '';
+  }catch(e){
+    box.innerHTML = '<div class="anexo-msg">Não consegui carregar o anexo.<br><small>'+esc(e.message)+'</small></div>';
+    document.getElementById('anexoSub').textContent = 'Tente novamente em instantes.';
+  }
+}
+function abrirAnexo(){
+  if(anexoBlobUrl) window.open(anexoBlobUrl, '_blank');
 }
 
 // ---- OCR: foto/PDF -> linha digitável -> valor + vencimento ----

@@ -207,6 +207,9 @@ function dadosTipo_(tipo) {
 
 function doGet(e) {
   try {
+    // Anexo (foto/PDF) em base64: o front monta um blob e mostra aqui.
+    // (o ?anexo= antigo usa HtmlService e o PDF não renderiza no iframe sandbox.)
+    if (e.parameter.anexoB64) return jsonOut_(anexoB64_(e.parameter.anexoB64));
     // Abre anexo (foto/PDF) pela URL do próprio sistema: ?anexo=ID_DO_ARQUIVO
     if (e.parameter.anexo) return anexoHtml_(e.parameter.anexo);
     // Lote: ?tipos=pulverizacao,nutricao,estoque -> 1 chamada só (mais rápido)
@@ -221,6 +224,18 @@ function doGet(e) {
     return jsonOut_({ ok: true, data: dadosTipo_(tipo) });
   } catch (err) {
     return jsonOut_({ ok: false, error: err.message });
+  }
+}
+
+// Devolve o anexo em base64 (o front vira blob e exibe — PDF não renderiza em data-URI no HtmlService).
+function anexoB64_(id) {
+  try {
+    var f = DriveApp.getFileById(id);
+    var blob = f.getBlob();
+    return { ok: true, mime: blob.getContentType() || 'application/octet-stream',
+      nome: f.getName(), b64: Utilities.base64Encode(blob.getBytes()) };
+  } catch (err) {
+    return { ok: false, error: 'Arquivo não encontrado ou sem acesso.' };
   }
 }
 

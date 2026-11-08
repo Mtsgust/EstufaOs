@@ -319,11 +319,13 @@ function filtrarPorCultura(colhs, ciclos, termos, vendas){
     }
   });
 
-  // 2) Vendas com a cultura → identifica estufas
+  // 2) Vendas com a cultura (se tiver estufa)
   (vendas||[]).forEach(v=>{
     const texto = norm(v.cultura);
     if(termos.some(t=>texto.includes(norm(t))) && v.estufa) estufasCult.add(String(v.estufa));
   });
+
+  const ehTomate = termos.some(t=>norm(t)==='tomate');
 
   return colhs.filter(h=>{
     if(String(h.unidade).toUpperCase()==='CX') return false;
@@ -331,7 +333,14 @@ function filtrarPorCultura(colhs, ciclos, termos, vendas){
     const byEstufa = estufasCult.has(String(h.estufa));
     const texto = norm(`${h.cultura||''} ${h.produto||''} ${h.obs||''}`);
     const byNome = termos.some(t=>texto.includes(norm(t)));
-    return byCiclo || byEstufa || byNome;
+
+    // Se é tomate: pega os que batem
+    if(ehTomate) return byCiclo || byEstufa || byNome;
+
+    // Se NÃO é tomate (pepino): pega tudo que NÃO é tomate
+    // (só tem tomate e pepino na propriedade)
+    const ehTomateColh = byCiclo || byNome || norm(h.cultura||'').includes('tomate');
+    return !ehTomateColh;
   });
 }
 

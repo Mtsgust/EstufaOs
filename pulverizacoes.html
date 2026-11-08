@@ -786,7 +786,31 @@ async function marcarFeito(id){
 }
 
 async function excluir(id){
+  const d = dados.find(x => x.id === id);
+  if(!d) return;
   if(!confirm('Excluir este registro?')) return;
+
+  // Se era feito, devolve o produto ao estoque
+  if(d.status === 'feito'){
+    const produtos = parseProdutos(d);
+    const litrosMap = parseLitrosPorEstufa(d);
+    const totalAgua = Object.values(litrosMap).reduce((s,v) => s + num(v), 0);
+    for(const p of produtos){
+      const dose100 = num(p.dose100);
+      if(dose100 > 0 && totalAgua > 0){
+        const gasto = (dose100/100)*totalAgua;
+        try{
+          await fetch(API_URL, { method:'POST', body: JSON.stringify({
+            action:'movimentar',
+            data:{ produtoNome: p.nome, tipo:'entrada', quantidade: gasto,
+                   unidade: p.unidade || 'mL', origem:'pulverizacao', origemId: id,
+                   obs:'Devolução - exclusão de pulverização' }
+          })});
+        }catch(e){}
+      }
+    }
+  }
+
   await fetch(API_URL, {method:'POST', body: JSON.stringify({tipo:'pulverizacao', action:'delete', id})});
   carregar();
 }

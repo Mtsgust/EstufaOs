@@ -1,4 +1,4 @@
-const CACHE_NAME = 'estufas-v1';
+const CACHE_NAME = 'estufas-v2';
 const STATIC_ASSETS = [
   './config.js',
   './sidebar.css',
@@ -28,7 +28,7 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // API do Google Apps Script: network-first (sempre tenta fresco, cache como fallback)
+  // API do Google Apps Script: network-first
   if (url.hostname === 'script.google.com' || url.hostname === 'script.googleusercontent.com') {
     event.respondWith(
       fetch(event.request).then(response => {
@@ -40,7 +40,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Assets estáticos: cache-first com atualização em background
+  // HTML: SEMPRE network-first (nunca servir página velha do cache)
+  if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // CSS/JS/imagens: cache-first com atualização em background
   event.respondWith(
     caches.match(event.request).then(cached => {
       const fetchPromise = fetch(event.request).then(response => {

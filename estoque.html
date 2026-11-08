@@ -243,13 +243,26 @@ function converterQtd(qtd, de, para){
   if(a==='g' && b==='mg') return qtd*1000;
   return qtd; // famílias diferentes: soma sem converter
 }
+function parseData(v){
+  if(!v) return 0;
+  let s = String(v).trim();
+  // formato brasileiro dd/mm/aaaa
+  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(br) return new Date(+br[3], +br[2]-1, +br[1]).getTime();
+  const t = new Date(s).getTime();
+  return isNaN(t) ? 0 : t;
+}
 function totalComprado(p){
   // Sempre a ÚLTIMA compra (entrada mais recente), não a soma de todas.
   const entradas = movsDoProduto(p).filter(m=>m.tipo==='entrada');
   if(!entradas.length) return 0;
-  entradas.sort((a,b)=> new Date(b.dataCriacao||0) - new Date(a.dataCriacao||0));
+  entradas.sort((a,b)=> parseData(b.dataCriacao) - parseData(a.dataCriacao) || 0);
   const ultima = entradas[0];
-  return converterQtd(num(ultima.quantidade), ultima.unidade||'', p.unidade||'');
+  const qtd = converterQtd(num(ultima.quantidade), ultima.unidade||'', p.unidade||'');
+  // Se a última entrada parece absurda (>100x o estoque atual), mostra o estoque como referência
+  const atual = num(p.estoqueAtual);
+  if(qtd > 0 && atual > 0 && qtd > atual * 100) return atual;
+  return qtd;
 }
 
 // Foto por arquivo: comprime para miniatura (96px) e salva junto (sem link).
@@ -375,11 +388,8 @@ function render(){
   list.innerHTML = itens.map(p=>{
     const st = statusOf(p);
     const cls = st.k==='low'?'low':(st.k==='zero'?'zero':'');
-    const comprado = totalComprado(p);
-    const saldoTxt = comprado > 0
-      ? `${fmt(num(p.estoqueAtual))} <small>/ ${fmt(comprado)} ${escapeHtml(p.unidade||'')}</small>`
-      : `${fmt(num(p.estoqueAtual))} <small>${escapeHtml(p.unidade||'')}</small>`;
-    const dispTxt = comprado > 0 ? `Disponível ${fmt(num(p.estoqueAtual))} de ${fmt(comprado)} ${escapeHtml(p.unidade||'')} · ` : '';
+    const atual = num(p.estoqueAtual);
+    const dispTxt = `Disponível ${fmt(atual)} ${escapeHtml(p.unidade||'')} · `;
     const pct = pctBarra(p);
     const barCls = st.k==='zero' ? 'danger' : (st.k==='low' ? 'warn' : 'ok');
     const qtyCls = st.k==='ok' ? '' : (st.k==='low' ? 'warn' : 'danger');
@@ -397,7 +407,7 @@ function render(){
             : pct < 50 ? 'Atenção — começando a baixar'
             : 'Saudável — acima do mínimo';
       } else {
-        lbl = comprado > 0 ? `${Math.round(pct)}% restante` : 'OK';
+        lbl = 'OK';
       }
     }
     return `

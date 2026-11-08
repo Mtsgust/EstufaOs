@@ -12,111 +12,165 @@
 <meta name="apple-mobile-web-app-title" content="Estufas">
 <meta name="theme-color" content="#0D1B13">
 <title>Pulverizações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F2F5EF; --ink:#1D2B22; --leaf:#234D35; --leaf-dark:#173425;
-    --paper:#FFFFFF; --line:#DCE3D8; --pend:#C68A2E; --feito:#3D7A5C; --danger:#B5432F;
+    --bg:#0A0E0C; --bg2:#0F1512; --card:#131A16; --card2:#18221C;
+    --line:#1E2E25; --ink:#E8F0EA; --mut:#7A9184; --dim:#4A5E52;
+    --leaf:#3D7A5C; --lime:#8FD19A; --gold:#D9A441; --red:#E0785F;
+    --r:16px;
   }
-  *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:100px;}
-  header{background:var(--leaf-dark); color:#fff; padding:16px 20px 20px; position:sticky; top:0; z-index:5;}
-  header a{color:#CFE0D3; text-decoration:none; font-size:13px;}
-  header h1{margin:6px 0 0; font-size:20px;}
-  .tabs{display:flex; gap:8px; margin:14px 20px 0;}
-  .tab{flex:1; text-align:center; padding:9px 0; border-radius:9px; font-size:13px; background:var(--paper); border:1px solid var(--line); cursor:pointer; color:var(--ink);}
-  .tab.active{background:var(--leaf); color:#fff; border-color:var(--leaf);}
-  .estufa-filter{display:flex; align-items:center; gap:8px; margin:10px 20px 0;}
-  .estufa-filter label{font-size:12px; color:#CFE0D3;}
-  .estufa-filter select{flex:1; padding:8px 10px; border-radius:8px; border:none; font-size:13px; background:rgba(255,255,255,.12); color:#fff;}
-  .estufa-filter select option{color:#000;}
-  main{padding:16px 20px;}
-  .empty{text-align:center; color:#6C7A67; font-size:14px; margin-top:40px;}
-  .item{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px;}
-  .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
-  .badge{
-    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; font-weight:600;
-    background:var(--leaf); color:#fff; padding:3px 9px; border-radius:6px; white-space:nowrap;
-  }
-  .badge.water{background:#1E3A5C; margin-left:6px;}
-  .status{font-size:11px; padding:3px 8px; border-radius:20px; font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
-  .status.pendente{background:#FBEBD3; color:var(--pend);}
-  .status.feito{background:#DCEFE3; color:var(--feito);}
-  .status.atrasado{background:#F7DAD2; color:var(--danger);}
-  .group-header{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#6C7A67; margin:22px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line);}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; padding-bottom:100px; -webkit-font-smoothing:antialiased;}
+  a{color:var(--lime); text-decoration:none;}
+
+  .page{max-width:860px; margin:0 auto; padding:32px 20px 80px;}
+  .hdr{margin-bottom:24px;}
+  .hdr h1{font-size:26px; font-weight:800; letter-spacing:-.03em;}
+  .hdr p{color:var(--mut); font-size:13px; margin-top:4px;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:20px;}
+  .tab{flex:1; text-align:center; padding:11px 0; border-radius:12px; font-size:13px; font-weight:600;
+    background:var(--card); border:1px solid var(--line); cursor:pointer; color:var(--mut); transition:.18s;}
+  .tab:hover{background:var(--card2); color:var(--ink);}
+  .tab.active{background:linear-gradient(135deg,#1A2E22,#131A16); color:#fff; border-color:#2A4A35;
+    box-shadow:inset 0 1px 0 rgba(143,209,154,.15), 0 4px 12px rgba(0,0,0,.3);}
+
+  .estufa-filter{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  .estufa-filter label{font-size:12px; color:var(--mut); font-weight:600;}
+  .estufa-filter select{flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line);
+    font-size:13px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .estufa-filter select option{background:var(--card); color:var(--ink);}
+
+  .empty{text-align:center; color:var(--dim); font-size:14px; padding:60px 0;}
+  .loading{text-align:center; color:var(--dim); font-size:13px; padding:40px 0;}
+
+  .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; margin-bottom:12px;
+    transition:border-color .18s;}
+  .item:hover{border-color:#2A4A35;}
+  .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px;}
+  .badge{font-size:12px; font-weight:600; background:var(--card2); color:var(--lime); padding:4px 10px;
+    border-radius:8px; white-space:nowrap; border:1px solid var(--line);}
+  .status{font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .status.pendente{background:rgba(217,164,65,.15); color:var(--gold);}
+  .status.feito{background:rgba(61,122,92,.2); color:var(--lime);}
+  .status.atrasado{background:rgba(224,120,95,.15); color:var(--red);}
+  .group-header{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--dim); margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line);}
   .group-header:first-child{margin-top:0;}
-  .item h3{margin:8px 0 2px; font-size:16px;}
-  .item p{margin:0; font-size:13px; color:#54614F;}
-  .item .meta{font-size:12px; color:#8A968A; margin-top:6px;}
-  .item .actions{display:flex; gap:8px; margin-top:10px;}
-  .item button{flex:1; border:none; border-radius:8px; padding:9px 0; font-size:13px; font-weight:600;}
-  .btn-done{background:var(--feito); color:#fff;}
-  .btn-edit{background:transparent; color:var(--leaf); border:1px solid var(--leaf) !important;}
-  .btn-del{background:transparent; color:var(--danger); border:1px solid var(--danger) !important;}
-  .fab{
-    position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto;
-    background:var(--leaf); color:#fff; border:none; border-radius:14px; padding:16px;
-    font-size:16px; font-weight:600; box-shadow:0 4px 14px rgba(23,52,37,.35);
-  }
-  dialog{border:none; border-radius:16px; width:min(92vw,420px); padding:0;}
-  dialog::backdrop{background:rgba(23,52,37,.45);}
-  .sheet{padding:20px;}
-  .sheet h2{margin:0 0 16px; font-size:18px;}
-  .field{margin-bottom:12px;}
-  .field label{display:block; font-size:12px; color:#54614F; margin-bottom:5px;}
-  .field select, .field input, .field textarea{
-    width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:15px; background:#fff;
-  }
+  .item h3{margin:0 0 6px; font-size:16px; font-weight:600;}
+  .item p{margin:0; font-size:13px; color:var(--mut); line-height:1.5;}
+  .item .meta{font-size:12px; color:var(--dim); margin-top:8px;}
+  .item .actions{display:flex; gap:8px; margin-top:14px;}
+  .item .actions button{flex:1; border:none; border-radius:10px; padding:10px 0; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:.15s;}
+  .btn-done{background:var(--leaf); color:#fff;}
+  .btn-done:hover{background:#4A8F6A;}
+  .btn-edit{background:transparent; color:var(--lime); border:1px solid var(--line) !important;}
+  .btn-edit:hover{border-color:var(--leaf) !important; background:rgba(61,122,92,.1);}
+  .btn-del{background:transparent; color:var(--red); border:1px solid var(--line) !important;}
+  .btn-del:hover{border-color:var(--red) !important; background:rgba(224,120,95,.1);}
+
+  .prod-list{margin:8px 0 0; padding:0; list-style:none;}
+  .prod-list li{display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:6px 0;
+    border-bottom:1px dashed var(--line);}
+  .prod-list li:last-child{border-bottom:none;}
+  .prod-list .p-nome{color:var(--ink); font-weight:500;}
+  .prod-list .p-dose{color:var(--mut); font-size:12px; white-space:nowrap; text-align:right;}
+  .prod-list .p-total{color:var(--lime); font-size:11px; display:block; font-weight:600; margin-top:2px;}
+
+  .fab{position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto;
+    background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border:none; border-radius:14px;
+    padding:16px; font-size:16px; font-weight:600; cursor:pointer; font-family:inherit;
+    box-shadow:0 8px 24px rgba(61,122,92,.4); transition:.2s; z-index:50;}
+  .fab:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(61,122,92,.5);}
+
+  dialog{border:none; border-radius:20px; width:min(94vw,480px); padding:0; background:var(--card);
+    border:1px solid var(--line); box-shadow:0 24px 64px rgba(0,0,0,.6);}
+  dialog::backdrop{background:rgba(0,0,0,.7); backdrop-filter:blur(4px);}
+  .sheet{padding:24px; max-height:85vh; overflow-y:auto;}
+  .sheet h2{margin:0 0 4px; font-size:18px; font-weight:700;}
+  .sheet .sub{font-size:12px; color:var(--mut); margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--mut); margin-bottom:6px; font-weight:600;}
+  .field select,.field input,.field textarea{width:100%; padding:11px 14px; border:1px solid var(--line);
+    border-radius:10px; font-size:14px; background:var(--card2); color:var(--ink); font-family:inherit;}
+  .field select:focus,.field input:focus,.field textarea:focus{outline:none; border-color:var(--leaf);}
+  .field input::placeholder,.field textarea::placeholder{color:var(--dim);}
   .row2{display:flex; gap:10px;}
   .row2 .field{flex:1;}
-  .sheet-actions{display:flex; gap:10px; margin-top:14px;}
-  .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600;}
-  .btn-cancel{background:#EDEFEA; color:var(--ink);}
-  .btn-save{background:var(--leaf); color:#fff;}
-  .loading{text-align:center; color:#8A968A; font-size:13px; margin-top:20px;}
-  .prod-row{border:1px solid var(--line); border-radius:10px; padding:8px; margin-bottom:8px;}
-  .prod-row-top{display:flex; gap:8px; align-items:center; margin-bottom:6px;}
-  .prod-row-top input{flex:1; padding:9px; border:1px solid var(--line); border-radius:8px; font-size:14px;}
-  .prod-row-bottom{display:flex; gap:8px; align-items:center;}
-  .prod-row-bottom input.dose100-input{flex:0 0 70px; padding:9px; border:1px solid var(--line); border-radius:8px; font-size:14px;}
-  .prod-row-bottom select.unidade-input{flex:0 0 64px; padding:9px 4px; border:1px solid var(--line); border-radius:8px; font-size:13px; background:#fff;}
-  .prod-row-bottom .prod-total-calc{flex:1; font-size:12px; color:var(--leaf); font-weight:600; text-align:right;}
-  .rm-row{flex:0 0 auto; width:32px; height:32px; border:none; background:#F3E4E0; color:var(--danger); border-radius:8px; font-size:16px; line-height:1;}
-  .add-row{width:100%; padding:9px; border:1px dashed var(--line); border-radius:8px; background:transparent; color:var(--leaf); font-size:13px; font-weight:600; margin-bottom:14px;}
-  .prod-list{margin:8px 0 0; padding:0; list-style:none;}
-  .prod-list li{display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:5px 0; border-bottom:1px dashed var(--line);}
-  .prod-list li:last-child{border-bottom:none;}
-  .prod-list .p-nome{color:var(--ink);}
-  .prod-list .p-dose{color:#54614F; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12.5px; white-space:nowrap; text-align:right;}
-  .prod-list .p-total{color:var(--leaf); font-size:11px; display:block; font-weight:600;}
+  .sheet-actions{display:flex; gap:10px; margin-top:18px;}
+  .sheet-actions button{flex:1; padding:13px; border-radius:10px; border:none; font-size:14px;
+    font-weight:600; cursor:pointer; font-family:inherit; transition:.15s;}
+  .btn-cancel{background:var(--card2); color:var(--mut); border:1px solid var(--line) !important;}
+  .btn-cancel:hover{color:var(--ink);}
+  .btn-save{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .btn-save:hover{opacity:.9;}
+
   .estufa-grid{display:flex; flex-wrap:wrap; gap:8px;}
-  .estufa-chip{
-    width:44px; height:44px; border-radius:10px; border:1px solid var(--line); background:#fff;
-    display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;
-    color:var(--ink); cursor:pointer; user-select:none;
+  .estufa-chip{width:46px; height:46px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card2); display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:600; color:var(--mut); cursor:pointer; user-select:none; transition:.15s;}
+  .estufa-chip:hover{border-color:var(--leaf); color:var(--ink);}
+  .estufa-chip.sel{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;
+    box-shadow:0 4px 12px rgba(61,122,92,.35);}
+
+  .litros-grid{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+  .litros-row{display:flex; align-items:center; gap:10px; background:var(--card2); border:1px solid var(--line);
+    border-radius:10px; padding:10px 14px;}
+  .litros-row label{flex:0 0 70px; font-size:13px; font-weight:600; color:var(--lime);}
+  .litros-row input{flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .litros-row input:focus{outline:none; border-color:var(--leaf);}
+  .litros-total{display:flex; justify-content:space-between; align-items:center; padding:12px 14px;
+    background:rgba(61,122,92,.1); border:1px solid rgba(61,122,92,.2); border-radius:10px; margin-top:4px;}
+  .litros-total span{font-size:13px; color:var(--mut);}
+  .litros-total b{font-size:18px; color:var(--lime); font-weight:700;}
+
+  .prod-row{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;}
+  .prod-row-top{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .prod-row-top input{flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .prod-row-top input:focus{outline:none; border-color:var(--leaf);}
+  .rm-row{flex:0 0 auto; width:34px; height:34px; border:none; background:rgba(224,120,95,.15);
+    color:var(--red); border-radius:8px; font-size:18px; cursor:pointer; transition:.15s;}
+  .rm-row:hover{background:rgba(224,120,95,.25);}
+  .prod-row-bottom{display:flex; gap:8px; align-items:center;}
+  .prod-row-bottom input.dose100-input{flex:0 0 80px; padding:9px 12px; border:1px solid var(--line);
+    border-radius:8px; font-size:14px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .prod-row-bottom input.dose100-input:focus{outline:none; border-color:var(--leaf);}
+  .prod-row-bottom select.unidade-input{flex:0 0 70px; padding:9px 8px; border:1px solid var(--line);
+    border-radius:8px; font-size:13px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .prod-calc{flex:1; font-size:12px; color:var(--lime); font-weight:600; text-align:right; line-height:1.4;}
+  .add-row{width:100%; padding:10px; border:1px dashed var(--line); border-radius:10px;
+    background:transparent; color:var(--mut); font-size:13px; font-weight:600; cursor:pointer;
+    font-family:inherit; transition:.15s; margin-bottom:14px;}
+  .add-row:hover{border-color:var(--leaf); color:var(--lime); background:rgba(61,122,92,.05);}
+
+  @media (max-width:600px){
+    .page{padding:24px 14px 80px;}
+    .hdr h1{font-size:22px;}
+    .row2{flex-direction:column;}
+    .prod-row-bottom{flex-wrap:wrap;}
+    .prod-calc{flex:1 1 100%; text-align:left; margin-top:4px;}
   }
-  .estufa-chip.sel{background:var(--leaf); color:#fff; border-color:var(--leaf);}
-  .resumo h3{margin:8px 0 10px; font-size:16px;}
-  .resumo .rsec{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#8A968A; margin:10px 0 6px;}
-  .resumo .rsec:first-of-type{margin-top:2px;}
-  .rrow{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:5px;}
-  .rrow .rn{flex:0 0 130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .rrow .rbar{flex:1; height:8px; background:#EDEFEA; border-radius:99px; overflow:hidden;}
-  .rrow .rbar i{display:block; height:100%; background:var(--leaf); border-radius:99px;}
-  .rrow .rv{flex:0 0 26px; text-align:right; font-weight:700; font-family:ui-monospace,Menlo,monospace; font-size:12px;}
-  body.tdark .rrow .rbar{background:#0E1F14; border:1px solid #24402F;}
 </style>
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body data-page="pulverizacoes" class="tdark">
-<header>
-  <a href="index.html">‹ voltar</a>
-  <h1>Pulverizações</h1>
+<div class="page">
+  <div class="hdr">
+    <h1>Pulverizações</h1>
+    <p>Controle de aplicações por estufa</p>
+  </div>
+
   <div class="tabs">
     <div class="tab active" data-f="pendente">Pendentes</div>
     <div class="tab" data-f="feito">Feitas</div>
-    <div class="tab" data-f="todas">Todas</div>
   </div>
+
   <div class="estufa-filter">
     <label for="filtroEstufaSel">Estufa</label>
     <select id="filtroEstufaSel">
@@ -130,16 +184,19 @@
       <option value="7">Estufa 7</option>
     </select>
   </div>
-</header>
-<main id="list"><div class="loading">Carregando…</div></main>
+
+  <main id="list"><div class="loading">Carregando…</div></main>
+</div>
 
 <button class="fab" onclick="openForm()">+ Nova pulverização</button>
 
 <dialog id="dialog">
   <div class="sheet">
     <h2 id="dlgTitle">Nova pulverização</h2>
+    <p class="sub">Selecione as estufas e informe o volume de água de cada uma.</p>
+
     <div class="field">
-      <label>Estufas <span class="hint" style="margin:0; font-size:12px; color:#8A968A;">(toque em quantas precisar)</span></label>
+      <label>Estufas <span style="font-weight:400; color:var(--dim);">(toque em quantas precisar)</span></label>
       <div class="estufa-grid" id="estufaGrid">
         <div class="estufa-chip" data-e="1">1</div>
         <div class="estufa-chip" data-e="2">2</div>
@@ -150,36 +207,45 @@
         <div class="estufa-chip" data-e="7">7</div>
       </div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label>Situação</label>
-        <select id="fStatus">
-          <option value="pendente">Precisa fazer</option>
-          <option value="feito">Já foi feito</option>
-        </select>
+
+    <div class="field" id="litrosField" style="display:none">
+      <label>Volume de água por estufa (litros)</label>
+      <div class="litros-grid" id="litrosGrid"></div>
+      <div class="litros-total">
+        <span>Volume total da aplicação</span>
+        <b id="litrosTotal">0 L</b>
       </div>
     </div>
+
     <div class="field">
-      <label>Litros de água usados na aplicação</label>
-      <input id="fLitros" type="number" step="any" inputmode="decimal" placeholder="ex: 300">
+      <label>Situação</label>
+      <select id="fStatus">
+        <option value="pendente">Precisa fazer</option>
+        <option value="feito">Já foi feito</option>
+      </select>
     </div>
+
     <div class="field">
-      <label>Produtos e doses <span class="hint" style="margin:0; font-size:12px; color:#8A968A;">(dose para cada 100L de água)</span></label>
+      <label>Produtos e doses <span style="font-weight:400; color:var(--dim);">(dose para cada 100L de água)</span></label>
       <div id="produtosList"></div>
       <button type="button" class="add-row" onclick="addProdutoRow()">+ Adicionar produto</button>
     </div>
+
     <div class="field">
       <label>Alvo / motivo</label>
       <input id="fAlvo" type="text" placeholder="ex: requeima, mosca branca...">
     </div>
+
     <div class="field">
       <label>Data (prevista ou feita)</label>
       <input id="fData" type="date">
     </div>
+
     <div class="field">
       <label>Observação</label>
       <textarea id="fObs" rows="2"></textarea>
     </div>
+
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="closeForm()">Cancelar</button>
       <button class="btn-save" onclick="salvar()">Salvar</button>
@@ -193,11 +259,36 @@
 let dados = [];
 let filtro = 'pendente';
 let filtroEstufa = 'todas';
+let editandoId = null;
+let estufasSelecionadas = new Set();
+let litrosPorEstufa = {};
+let prodRowCount = 0;
 
-// ===== INTEGRAÇÃO ESTOQUE (baixa automática) =====
+// ===== Helpers =====
+const num = v => { const n = parseFloat(String(v??'').replace(',','.')); return isNaN(n)?0:n; };
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN = n => (Math.round(n*100)/100).toString().replace('.',',');
+const hojeISO = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+function fmtData(v){
+  if(!v) return '—';
+  const s = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(s) return s[3]+'/'+s[2]+'/'+s[1];
+  return String(v);
+}
+function dataParaISO(v){
+  if(!v) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  const d = new Date(v);
+  if(!isNaN(d)) return d.toISOString().slice(0,10);
+  return String(v);
+}
+
+// ===== Estoque =====
 async function baixarEstoque(produtoNome, quantidade, unidade, origem, origemId, obs) {
   try {
-    const qtd = parseFloat(String(quantidade).replace(',', '.'));
+    const qtd = num(quantidade);
     if (!produtoNome || !qtd || qtd <= 0) return;
     const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({
       action: 'movimentar',
@@ -209,18 +300,17 @@ async function baixarEstoque(produtoNome, quantidade, unidade, origem, origemId,
   } catch(e) { console.warn('Falha ao dar baixa no estoque:', produtoNome, e); }
 }
 
-// Autocompletar com os nomes cadastrados no estoque (evita duplicados por erro de digitação)
 async function carregarNomesEstoque(){
   try{
     const arr = (typeof buscarTipo === 'function') ? await buscarTipo('estoque') : ((await (await fetch(`${API_URL}?tipo=estoque`)).json()).data || []);
     const dl = document.getElementById('dlEstoque');
-    if(dl) dl.innerHTML = arr.map(p => `<option value="${escapeHtml(p.nome)}">`).join('');
+    if(dl) dl.innerHTML = arr.map(p => `<option value="${esc(p.nome)}">`).join('');
   }catch(e){}
 }
 carregarNomesEstoque();
 
+// ===== Carregamento =====
 async function carregar(){
-  // Mostra cache na hora p/ não travar em "Carregando"
   try {
     if (typeof cacheLerTipo === 'function') {
       const c = cacheLerTipo('pulverizacao');
@@ -235,15 +325,15 @@ async function carregar(){
   }catch(e){
     const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo('pulverizacao') : null;
     if (c && c.length) { dados = c; render(); return; }
-    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
+    document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false" style="color:var(--lime)">Tentar de novo</a></div>';
   }
 }
 
+// ===== Lógica =====
 function isAtrasado(d){
   if(d.status === 'feito' || !d.dataPrevista) return false;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const dt = new Date(d.dataPrevista + 'T00:00:00');
-  return dt < hoje;
+  return new Date(d.dataPrevista + 'T00:00:00') < hoje;
 }
 
 function parseProdutos(d){
@@ -259,8 +349,6 @@ function estufasArray(d){
   const raw = d.estufa;
   if (raw === null || raw === undefined || raw === '') return [];
   const s = String(raw).trim();
-  // Registro antigo corrompido: o Sheets converteu "1,3,7" em data 01/03/2007.
-  // Recupera dia, mês e ano (2 dígitos) como nºs de estufa.
   const mIso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (mIso) {
     const out = [];
@@ -270,37 +358,87 @@ function estufasArray(d){
     if (out.length) return out.sort((a, b) => a - b);
     return [];
   }
-  // O Sheets também converteu "1,2" em número 1.2: trata ponto como vírgula.
   return s.replace(/\./g, ',').split(',').map(x => x.trim()).filter(x => /^[1-7]$/.test(x)).sort((a, b) => a - b);
 }
 
-function calcTotalProduto(p, litros){
-  const dose = parseFloat(p.dose100);
-  const l = parseFloat(litros);
-  if(p.dose100 === undefined || isNaN(dose) || isNaN(l) || l <= 0) return null;
-  return `${formatNum((dose/100)*l)} ${p.unidade || ''}`;
+function parseLitrosPorEstufa(d){
+  if(d.litrosPorEstufa){
+    try{ return JSON.parse(d.litrosPorEstufa); }catch(e){}
+  }
+  // Compatível com registro antigo: litrosAgua único
+  const estufas = estufasArray(d);
+  const litros = num(d.litrosAgua);
+  if(litros > 0 && estufas.length){
+    const por = {};
+    const igual = litros / estufas.length;
+    estufas.forEach(e => por[e] = fmtN(igual));
+    return por;
+  }
+  return {};
 }
 
+function calcProdutoPorEstufa(p, litros){
+  const dose = num(p.dose100);
+  const l = num(litros);
+  if(!p.dose100 || dose <= 0 || l <= 0) return null;
+  return (dose/100)*l;
+}
+
+// ===== Render =====
 function itemCard(d){
   const atrasado = isAtrasado(d);
   const statusLabel = d.status === 'feito' ? 'Feito' : (atrasado ? 'Atrasado' : 'Pendente');
   const statusClass = d.status === 'feito' ? 'feito' : (atrasado ? 'atrasado' : 'pendente');
   const produtos = parseProdutos(d);
   const estufas = estufasArray(d);
+  const litrosMap = parseLitrosPorEstufa(d);
   const badgeTxt = estufas.length > 1 ? `Estufas ${estufas.join(', ')}` : `Estufa ${estufas[0] || '?'}`;
-  const tituloProdutos = produtos.length
-    ? produtos.map(p => escapeHtml(p.nome)).join(' + ')
-    : '(produto não informado)';
-  const doseTxt = p => p.dose100 !== undefined
-    ? (p.dose100 ? `${escapeHtml(p.dose100)} ${p.unidade || ''}/100L` : '')
-    : (p.dose ? escapeHtml(p.dose) : '');
-  const totalTxt = p => {
-    const t = calcTotalProduto(p, d.litrosAgua);
-    return t ? `<span class="p-total">gastou ${t}</span>` : '';
-  };
-  const listaProdutos = produtos.length > 1
-    ? `<ul class="prod-list">${produtos.map(p => `<li><span class="p-nome">${escapeHtml(p.nome)}</span><span class="p-dose">${doseTxt(p)}${totalTxt(p)}</span></li>`).join('')}</ul>`
-    : (produtos[0] ? `<p>Dose: ${doseTxt(produtos[0]) || '—'}${produtos[0] && calcTotalProduto(produtos[0], d.litrosAgua) ? ' · gastou ' + calcTotalProduto(produtos[0], d.litrosAgua) : ''}</p>` : '');
+  const tituloProdutos = produtos.length ? produtos.map(p => esc(p.nome)).join(' + ') : '(produto não informado)';
+
+  // Calcula total de água
+  const totalAgua = estufas.reduce((s,e) => s + num(litrosMap[e]), 0);
+
+  // Lista de produtos com cálculo por estufa
+  let listaProdutos = '';
+  if(produtos.length){
+    listaProdutos = '<ul class="prod-list">' + produtos.map(p => {
+      let doseTxt = '';
+      if(p.dose100 !== undefined && p.dose100 !== ''){
+        doseTxt = `${esc(p.dose100)} ${p.unidade || ''}/100L`;
+      } else if(p.dose){
+        doseTxt = esc(p.dose);
+      }
+
+      // Calcula por estufa
+      let detalhe = '';
+      if(p.dose100 && estufas.length > 1){
+        const partes = estufas.map(e => {
+          const t = calcProdutoPorEstufa(p, litrosMap[e]);
+          return t ? `E${e}: ${fmtN(t)} ${p.unidade||''}` : null;
+        }).filter(Boolean);
+        if(partes.length) detalhe = partes.join(' · ');
+      }
+
+      // Total geral
+      const totalGeral = totalAgua > 0 ? calcProdutoPorEstufa(p, totalAgua) : null;
+      const totalTxt = totalGeral ? `<span class="p-total">Total: ${fmtN(totalGeral)} ${p.unidade||''}</span>` : '';
+
+      return `<li>
+        <span class="p-nome">${esc(p.nome)}</span>
+        <span class="p-dose">${doseTxt}${detalhe ? '<br>'+detalhe : ''}${totalTxt}</span>
+      </li>`;
+    }).join('') + '</ul>';
+  }
+
+  // Litros por estufa (se múltiplas)
+  let litrosTxt = '';
+  if(estufas.length > 1 && totalAgua > 0){
+    const partes = estufas.map(e => `E${e}: ${fmtN(num(litrosMap[e]))} L`).join(' · ');
+    litrosTxt = `<p>💧 Água: ${partes} = <b>${fmtN(totalAgua)} L</b></p>`;
+  } else if(totalAgua > 0){
+    litrosTxt = `<p>💧 Água usada: ${fmtN(totalAgua)} L</p>`;
+  }
+
   return `
     <div class="item">
       <div class="item-top">
@@ -309,9 +447,9 @@ function itemCard(d){
       </div>
       <h3>${tituloProdutos}</h3>
       ${listaProdutos}
-      ${d.alvo ? `<p>Alvo: ${escapeHtml(d.alvo)}</p>` : ''}
-      ${d.litrosAgua !== undefined && d.litrosAgua !== null ? `<p>Água usada: ${escapeHtml(String(d.litrosAgua).replace('.',','))} L</p>` : ''}
-      ${d.obs ? `<p>${escapeHtml(d.obs)}</p>` : ''}
+      ${litrosTxt}
+      ${d.alvo ? `<p>Alvo: ${esc(d.alvo)}</p>` : ''}
+      ${d.obs ? `<p>${esc(d.obs)}</p>` : ''}
       <div class="meta">${d.status === 'feito' ? (d.dataExecucao ? 'Feito em ' + fmtData(d.dataExecucao) : '') : (d.dataPrevista ? 'Previsto para ' + fmtData(d.dataPrevista) : 'Sem data definida')}</div>
       <div class="actions">
         ${d.status !== 'feito' ? `<button class="btn-done" onclick="marcarFeito('${d.id}')">Marcar como feito</button>` : ''}
@@ -322,78 +460,28 @@ function itemCard(d){
   `;
 }
 
-// ===== Mini relatório da semana (seg–dom): estufas, alvos e produtos =====
-function isoCurto(v){
-  if(!v) return '';
-  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
-}
-function resumoSemana(){
-  const h = new Date(); h.setHours(0,0,0,0);
-  const seg = new Date(h); seg.setDate(h.getDate() - ((h.getDay()+6)%7));
-  const dom = new Date(seg); dom.setDate(seg.getDate()+7);
-  const noFiltro = filtroEstufa === 'todas' ? dados : dados.filter(d => estufasArray(d).includes(filtroEstufa));
-  const naSemana = noFiltro.filter(d => {
-    const s = d.status === 'feito' ? (isoCurto(d.dataExecucao) || isoCurto(d.dataPrevista)) : isoCurto(d.dataPrevista);
-    if(!s) return false;
-    const dt = new Date(s+'T00:00:00');
-    return dt >= seg && dt < dom;
-  });
-  if(!naSemana.length) return '';
-  const feitas = naSemana.filter(d => d.status === 'feito').length;
-  const contaE = {}, contaA = {}, contaP = {};
-  naSemana.forEach(d => {
-    estufasArray(d).forEach(e => contaE[e] = (contaE[e]||0)+1);
-    const a = String(d.alvo||'').trim();
-    if(a) { const k = a.toLowerCase(); contaA[k] = contaA[k] || { n: a, c: 0 }; contaA[k].c++; }
-    parseProdutos(d).forEach(p => {
-      const n = String(p.nome||'').trim();
-      if(n) { const k = n.toLowerCase(); contaP[k] = contaP[k] || { n, c: 0 }; contaP[k].c++; }
-    });
-  });
-  const top = (obj, n) => Object.values(obj).sort((a,b) => (b.c||b[1]) - (a.c||a[1])).slice(0, n);
-  const topE = Object.entries(contaE).sort((a,b) => b[1]-a[1]).slice(0,3);
-  const topA = top(contaA, 3), topP = top(contaP, 3);
-  const maxE = topE.length ? topE[0][1] : 1;
-  const barra = (nome, c, max) => `<div class="rrow"><span class="rn">${escapeHtml(nome)}</span>` +
-    `<span class="rbar"><i style="width:${Math.max(8, Math.round(c/max*100))}%"></i></span><span class="rv">${c}</span></div>`;
-  const lbl = `${String(seg.getDate()).padStart(2,'0')}/${String(seg.getMonth()+1).padStart(2,'0')} – ` +
-    `${String(new Date(dom-1).getDate()).padStart(2,'0')}/${String(new Date(dom-1).getMonth()+1).padStart(2,'0')}`;
-  return `<div class="item resumo"><div class="item-top"><span class="cat">Resumo da semana</span>` +
-    `<span class="meta">${lbl}</span></div>` +
-    `<h3>${naSemana.length} aplicações · ${feitas} feitas · ${naSemana.length-feitas} a fazer</h3>` +
-    (topE.length ? `<div class="rsec">Estufas mais pulverizadas</div>` +
-      topE.map(([e,c]) => barra('Estufa ' + e, c, maxE)).join('') : '') +
-    (topA.length ? `<div class="rsec">Alvo que mais atacou</div>` +
-      topA.map(a => barra(a.n, a.c, topA[0].c)).join('') : '') +
-    (topP.length ? `<div class="rsec">Produtos mais usados</div>` +
-      topP.map(p => barra(p.n, p.c, topP[0].c)).join('') : '') +
-    `</div>`;
-}
-
 function render(){
   const list = document.getElementById('list');
-  const resumo = resumoSemana();
-  let itens = dados;
-  if(filtro !== 'todas') itens = itens.filter(d => d.status === filtro);
+  let itens = dados.filter(d => d.status === filtro);
   if(filtroEstufa !== 'todas') itens = itens.filter(d => estufasArray(d).includes(filtroEstufa));
+
   if(itens.length === 0){
-    list.innerHTML = resumo + '<div class="empty">Nada por aqui.</div>';
+    list.innerHTML = '<div class="empty">Nada por aqui.</div>';
     return;
   }
 
   if(filtro === 'feito'){
-    itens = itens.slice().sort((a,b) => new Date(b.dataExecucao||b.dataCriacao) - new Date(a.dataExecucao||a.dataCriacao));
-    list.innerHTML = resumo + itens.map(itemCard).join('');
+    itens = itens.sort((a,b) => new Date(b.dataExecucao||b.dataCriacao) - new Date(a.dataExecucao||a.dataCriacao));
+    list.innerHTML = itens.map(itemCard).join('');
     return;
   }
 
-  itens = itens.slice().sort((a,b) => {
+  itens = itens.sort((a,b) => {
     if(!a.dataPrevista) return 1;
     if(!b.dataPrevista) return -1;
     return new Date(a.dataPrevista) - new Date(b.dataPrevista);
   });
-  let html = resumo;
+  let html = '';
   let grupoAtual = null;
   itens.forEach(d => {
     const chave = d.dataPrevista || 'sem-data';
@@ -407,25 +495,7 @@ function render(){
   list.innerHTML = html;
 }
 
-function dataParaISO(v){
-  if(!v) return '';
-  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
-  const d = new Date(v);
-  if(!isNaN(d)) return d.toISOString().slice(0,10);
-  return String(v);
-}
-function fmtData(v){
-  if(!v) return '—';
-  const s = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(s) return s[3]+'/'+s[2]+'/'+s[1];
-  return String(v);
-}
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
+// ===== Tabs =====
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
@@ -438,34 +508,67 @@ document.getElementById('filtroEstufaSel').addEventListener('change', (e) => {
   render();
 });
 
-function hojeISO(){
-  const d = new Date();
-  return d.toISOString().slice(0,10);
-}
+// ===== Estufas no form =====
+document.querySelectorAll('#estufaGrid .estufa-chip').forEach(chip => chip.addEventListener('click', () => {
+  const e = chip.dataset.e;
+  if(estufasSelecionadas.has(e)){ estufasSelecionadas.delete(e); chip.classList.remove('sel'); }
+  else { estufasSelecionadas.add(e); chip.classList.add('sel'); }
+  atualizarCamposLitros();
+}));
 
-function formatNum(n){
-  const r = Math.round(n * 100) / 100;
-  return r.toString().replace('.', ',');
-}
-
-function atualizarTotais(){
-  const litros = parseFloat(document.getElementById('fLitros').value) || 0;
-  document.querySelectorAll('#produtosList .prod-row').forEach(row => {
-    const dose = parseFloat(row.querySelector('.dose100-input').value);
-    const unidade = row.querySelector('.unidade-input').value;
-    const totalEl = row.querySelector('.prod-total-calc');
-    if(!isNaN(dose) && litros > 0){
-      totalEl.textContent = `= ${formatNum((dose/100)*litros)} ${unidade} no total`;
-    } else {
-      totalEl.textContent = '';
-    }
+function setEstufasSelecionadas(lista){
+  estufasSelecionadas = new Set(lista);
+  document.querySelectorAll('#estufaGrid .estufa-chip').forEach(chip => {
+    chip.classList.toggle('sel', estufasSelecionadas.has(chip.dataset.e));
   });
+  atualizarCamposLitros();
 }
-document.getElementById('fLitros').addEventListener('input', atualizarTotais);
-document.getElementById('produtosList').addEventListener('input', atualizarTotais);
-document.getElementById('produtosList').addEventListener('change', atualizarTotais);
 
-let prodRowCount = 0;
+// ===== Campos de litros por estufa =====
+function atualizarCamposLitros(){
+  const grid = document.getElementById('litrosGrid');
+  const field = document.getElementById('litrosField');
+  const lista = Array.from(estufasSelecionadas).sort((a,b) => a-b);
+
+  if(lista.length === 0){
+    field.style.display = 'none';
+    return;
+  }
+  field.style.display = '';
+
+  // Mantém valores já digitados
+  const antigos = {...litrosPorEstufa};
+  litrosPorEstufa = {};
+  lista.forEach(e => {
+    litrosPorEstufa[e] = antigos[e] || '';
+  });
+
+  grid.innerHTML = lista.map(e => `
+    <div class="litros-row">
+      <label>Estufa ${e}</label>
+      <input type="number" step="any" inputmode="decimal" data-e="${e}"
+        placeholder="litros" value="${litrosPorEstufa[e] || ''}"
+        oninput="onLitrosInput(this)">
+    </div>
+  `).join('');
+
+  atualizarTotalLitros();
+  atualizarTotaisProdutos();
+}
+
+function onLitrosInput(input){
+  const e = input.dataset.e;
+  litrosPorEstufa[e] = input.value;
+  atualizarTotalLitros();
+  atualizarTotaisProdutos();
+}
+
+function atualizarTotalLitros(){
+  const total = Object.values(litrosPorEstufa).reduce((s,v) => s + num(v), 0);
+  document.getElementById('litrosTotal').textContent = fmtN(total) + ' L';
+}
+
+// ===== Produtos =====
 function addProdutoRow(nome, dose100, unidade){
   prodRowCount++;
   const id = 'row' + prodRowCount;
@@ -476,22 +579,22 @@ function addProdutoRow(nome, dose100, unidade){
   const un = unidade || 'mL';
   row.innerHTML = `
     <div class="prod-row-top">
-      <input type="text" class="nome-input" list="dlEstoque" placeholder="Produto (ex: Amistar Top)" value="${nome ? escapeHtml(nome) : ''}" autocomplete="off">
+      <input type="text" class="nome-input" list="dlEstoque" placeholder="Produto (ex: Amistar Top)" value="${nome ? esc(nome) : ''}" autocomplete="off">
       <button type="button" class="rm-row" onclick="removeProdutoRow('${id}')">×</button>
     </div>
     <div class="prod-row-bottom">
-      <input type="number" step="any" inputmode="decimal" class="dose100-input" placeholder="Dose/100L" value="${dose100 !== undefined && dose100 !== '' ? escapeHtml(String(dose100)) : ''}">
+      <input type="number" step="any" inputmode="decimal" class="dose100-input" placeholder="Dose/100L" value="${dose100 !== undefined && dose100 !== '' ? esc(String(dose100)) : ''}">
       <select class="unidade-input">
         <option value="mL" ${un==='mL'?'selected':''}>mL</option>
         <option value="g" ${un==='g'?'selected':''}>g</option>
         <option value="L" ${un==='L'?'selected':''}>L</option>
         <option value="kg" ${un==='kg'?'selected':''}>kg</option>
       </select>
-      <span class="prod-total-calc"></span>
+      <span class="prod-calc"></span>
     </div>
   `;
   wrap.appendChild(row);
-  atualizarTotais();
+  atualizarTotaisProdutos();
 }
 function removeProdutoRow(id){
   const row = document.getElementById(id);
@@ -506,44 +609,48 @@ function resetProdutosRows(){
   addProdutoRow();
 }
 
-function normalizeUnidade(u){
-  const s = String(u || '').toLowerCase();
-  if(s.startsWith('kg')) return 'kg';
-  if(s.startsWith('g')) return 'g';
-  if(s.startsWith('l')) return 'L';
-  return 'mL';
-}
-function parseDoseLegado(texto){
-  if(!texto) return { valor:'', unidade:'mL' };
-  const m = String(texto).match(/([\d.,]+)\s*([a-zA-Zµ]+)/);
-  if(m) return { valor: m[1].replace(',', '.'), unidade: normalizeUnidade(m[2]) };
-  return { valor:'', unidade:'mL' };
-}
+function atualizarTotaisProdutos(){
+  const totalAgua = Object.values(litrosPorEstufa).reduce((s,v) => s + num(v), 0);
+  const lista = Array.from(estufasSelecionadas).sort((a,b) => a-b);
 
-let estufasSelecionadas = new Set();
-document.querySelectorAll('#estufaGrid .estufa-chip').forEach(chip => chip.addEventListener('click', () => {
-  const e = chip.dataset.e;
-  if(estufasSelecionadas.has(e)){ estufasSelecionadas.delete(e); chip.classList.remove('sel'); }
-  else { estufasSelecionadas.add(e); chip.classList.add('sel'); }
-}));
-function setEstufasSelecionadas(lista){
-  estufasSelecionadas = new Set(lista);
-  document.querySelectorAll('#estufaGrid .estufa-chip').forEach(chip => {
-    chip.classList.toggle('sel', estufasSelecionadas.has(chip.dataset.e));
+  document.querySelectorAll('#produtosList .prod-row').forEach(row => {
+    const dose = num(row.querySelector('.dose100-input').value);
+    const unidade = row.querySelector('.unidade-input').value;
+    const calcEl = row.querySelector('.prod-calc');
+
+    if(dose <= 0 || totalAgua <= 0){
+      calcEl.textContent = '';
+      return;
+    }
+
+    if(lista.length <= 1){
+      const t = (dose/100)*totalAgua;
+      calcEl.textContent = `= ${fmtN(t)} ${unidade}`;
+    } else {
+      const partes = lista.map(e => {
+        const l = num(litrosPorEstufa[e]);
+        const t = l > 0 ? (dose/100)*l : 0;
+        return `E${e}: ${fmtN(t)}`;
+      });
+      const total = (dose/100)*totalAgua;
+      calcEl.innerHTML = `${partes.join(' · ')}<br><b>Total: ${fmtN(total)} ${unidade}</b>`;
+    }
   });
 }
 
-let editandoId = null;
+document.getElementById('produtosList').addEventListener('input', atualizarTotaisProdutos);
+document.getElementById('produtosList').addEventListener('change', atualizarTotaisProdutos);
 
+// ===== Form =====
 function openForm(){
   editandoId = null;
   document.getElementById('dlgTitle').textContent = 'Nova pulverização';
-  setEstufasSelecionadas(['1']);
   document.getElementById('fStatus').value='pendente';
   document.getElementById('fAlvo').value='';
   document.getElementById('fData').value=hojeISO();
   document.getElementById('fObs').value='';
-  document.getElementById('fLitros').value='';
+  litrosPorEstufa = {};
+  setEstufasSelecionadas(['1']);
   resetProdutosRows();
   document.getElementById('dialog').showModal();
 }
@@ -553,22 +660,20 @@ function editarItem(id){
   if(!d) return;
   editandoId = id;
   document.getElementById('dlgTitle').textContent = 'Editar pulverização';
-  setEstufasSelecionadas(estufasArray(d));
   document.getElementById('fStatus').value = d.status || 'pendente';
   document.getElementById('fAlvo').value = d.alvo || '';
-  // Converte data original para formato ISO (yyyy-mm-dd) que o input type=date espera
   const status = d.status || 'pendente';
   let dataOriginal = '';
   if(status === 'feito' && d.dataExecucao) dataOriginal = dataParaISO(d.dataExecucao);
   if(status !== 'feito' && d.dataPrevista) dataOriginal = dataParaISO(d.dataPrevista);
   document.getElementById('fData').value = dataOriginal || hojeISO();
-  const obs = d.obs || '';
-  document.getElementById('fObs').value = obs;
-  // Litros: preservar valor numérico original, evitar que undefined/vazio limpe o campo
-  let litOriginal = '';
-  if(d.litrosAgua !== undefined && d.litrosAgua !== null && !isNaN(d.litrosAgua)) litOriginal = String(d.litrosAgua);
-  document.getElementById('fLitros').value = litOriginal;
+  document.getElementById('fObs').value = d.obs || '';
 
+  // Litros por estufa
+  litrosPorEstufa = parseLitrosPorEstufa(d);
+  setEstufasSelecionadas(estufasArray(d));
+
+  // Produtos
   document.getElementById('produtosList').innerHTML = '';
   prodRowCount = 0;
   const produtos = parseProdutos(d);
@@ -577,8 +682,9 @@ function editarItem(id){
       if(p.dose100 !== undefined){
         addProdutoRow(p.nome, p.dose100, p.unidade);
       } else {
-        const legado = parseDoseLegado(String(p.dose || ''));
-        addProdutoRow(p.nome, legado.valor, legado.unidade);
+        const m = String(p.dose || '').match(/([\d.,]+)\s*([a-zA-Zµ]+)/);
+        if(m) addProdutoRow(p.nome, m[1].replace(',', '.'), m[2].toLowerCase().startsWith('kg') ? 'kg' : m[2].toLowerCase().startsWith('l') ? 'L' : m[2].toLowerCase().startsWith('g') ? 'g' : 'mL');
+        else addProdutoRow(p.nome, '', 'mL');
       }
     });
   } else {
@@ -593,17 +699,22 @@ function closeForm(){ document.getElementById('dialog').close(); }
 
 async function salvar(){
   if(estufasSelecionadas.size === 0){ alert('Selecione ao menos uma estufa.'); return; }
+  const lista = Array.from(estufasSelecionadas).sort((a,b) => a-b);
+
+  // Valida litros
+  const temLitros = lista.some(e => num(litrosPorEstufa[e]) > 0);
+  if(!temLitros){ alert('Informe o volume de água de pelo menos uma estufa.'); return; }
+
   let rawData = document.getElementById('fData').value;
-  // Normaliza data: se vier em formato dd/mm/yyyy, converte para yyyy-mm-dd
   if(rawData && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawData)){
     const m = rawData.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     rawData = `${m[3]}-${m[2]}-${m[1]}`;
   }
   const data = rawData || '';
-  const litrosAgua = document.getElementById('fLitros').value;
-  const litrosNorm = litrosAgua ? String(litrosAgua).replace(',', '.') : '';
   const statusVal = document.getElementById('fStatus').value;
-  const estufasOrdenadas = Array.from(estufasSelecionadas).sort((a,b) => a - b);
+
+  const totalAgua = Object.values(litrosPorEstufa).reduce((s,v) => s + num(v), 0);
+
   const produtos = Array.from(document.querySelectorAll('#produtosList .prod-row')).map(row => ({
     nome: row.querySelector('.nome-input').value.trim(),
     dose100: row.querySelector('.dose100-input').value.trim(),
@@ -611,18 +722,21 @@ async function salvar(){
   })).filter(p => p.nome);
 
   const campos = {
-    estufa: estufasOrdenadas.join(','),
+    estufa: lista.join(','),
     produto: JSON.stringify(produtos),
     alvo: document.getElementById('fAlvo').value,
     dose: '',
-    litrosAgua: litrosNorm,
+    litrosAgua: fmtN(totalAgua),
+    litrosPorEstufa: JSON.stringify(litrosPorEstufa),
     obs: document.getElementById('fObs').value,
     status: statusVal,
     dataPrevista: statusVal === 'pendente' ? data : '',
     dataExecucao: statusVal === 'feito' ? data : ''
   };
+
   closeForm();
   let origemId = editandoId;
+
   if(editandoId){
     await fetch(API_URL, {method:'POST', body: JSON.stringify({tipo:'pulverizacao', action:'update', id: editandoId, data: campos})});
   } else {
@@ -633,17 +747,20 @@ async function salvar(){
       await fetch(API_URL, {method:'POST', body: JSON.stringify({tipo:'pulverizacao', action:'add', data: campos})});
     }
   }
-  if(campos.status === 'feito'){
-    const litros = parseFloat(String(litrosAgua).replace(',','.')) || 0;
+
+  // Baixa no estoque (só ao salvar como feito E não era feito antes)
+  const eraFeito = editandoId ? (dados.find(x=>x.id===editandoId)||{}).status === 'feito' : false;
+  if(statusVal === 'feito' && !eraFeito){
     for(const p of produtos){
-      const dose100 = parseFloat(String(p.dose100).replace(',','.')) || 0;
-      if(dose100 > 0 && litros > 0){
-        const gasto = (dose100/100)*litros;
+      const dose100 = num(p.dose100);
+      if(dose100 > 0 && totalAgua > 0){
+        const gasto = (dose100/100)*totalAgua;
         await baixarEstoque(p.nome, gasto, p.unidade, 'pulverizacao', origemId,
-          `Pulverizacao estufa(s) ${campos.estufa} - ${litros}L agua`);
+          `Pulverizacao estufa(s) ${campos.estufa} - ${fmtN(totalAgua)}L agua`);
       }
     }
   }
+
   carregar();
 }
 
@@ -654,18 +771,16 @@ async function marcarFeito(id){
     data:{ status:'feito', dataExecucao: hojeISO() }
   })});
   if(d){
-    try{
-      const parsed = JSON.parse(d.produto || '[]');
-      const arr = Array.isArray(parsed) ? parsed : [{ nome: d.produto, dose100: d.dose }];
-      const litros = parseFloat(String(d.litrosAgua).replace(',','.')) || 0;
-      for(const p of arr){
-        const dose100 = parseFloat(String(p.dose100 ?? '').replace(',','.')) || 0;
-        if(dose100 > 0 && litros > 0){
-          await baixarEstoque(p.nome, (dose100/100)*litros, p.unidade || 'mL', 'pulverizacao', id,
-            `Pulverizacao estufa(s) ${d.estufa}`);
-        }
+    const produtos = parseProdutos(d);
+    const litrosMap = parseLitrosPorEstufa(d);
+    const totalAgua = Object.values(litrosMap).reduce((s,v) => s + num(v), 0);
+    for(const p of produtos){
+      const dose100 = num(p.dose100);
+      if(dose100 > 0 && totalAgua > 0){
+        await baixarEstoque(p.nome, (dose100/100)*totalAgua, p.unidade || 'mL', 'pulverizacao', id,
+          `Pulverizacao estufa(s) ${d.estufa}`);
       }
-    }catch(e){}
+    }
   }
   carregar();
 }

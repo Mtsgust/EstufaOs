@@ -10,7 +10,7 @@
 var SHEETS = {
   pulverizacao: {
     name: 'Pulverizacoes',
-    headers: ['id', 'dataCriacao', 'estufa', 'produto', 'alvo', 'dose', 'dataPrevista', 'status', 'dataExecucao', 'obs', 'litrosAgua']
+    headers: ['id', 'dataCriacao', 'estufa', 'produto', 'alvo', 'dose', 'dataPrevista', 'status', 'dataExecucao', 'obs', 'litrosAgua', 'litrosPorEstufa']
   },
   nutricao: {
     name: 'Nutricao',
@@ -63,10 +63,18 @@ function getSheet_(tipo) {
     sheet = ss.insertSheet(cfg.name);
     sheet.appendRow(cfg.headers);
     sheet.setFrozenRows(1);
+  } else {
+    // Se a planilha existe mas falta alguma coluna (ex: litrosAgua), adiciona no fim
+    var existing = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var missing = cfg.headers.filter(function(h) { return existing.indexOf(h) === -1; });
+    if (missing.length) {
+      var startCol = existing.length + 1;
+      var row = [];
+      for (var mi = 0; mi < existing.length; mi++) row.push('');
+      missing.forEach(function(h) { row.push(h); });
+      sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    }
   }
-  // A coluna "estufa" guarda listas como "1,3,7". O Sheets em pt-BR tenta
-  // converter isso em data (01/03/2007) ou número (1,2 -> 1.2), então
-  // força a coluna inteira como texto. Não apaga nada já gravado.
   try {
     var ei = cfg.headers.indexOf('estufa');
     if (ei > -1) sheet.getRange(1, ei + 1, sheet.getMaxRows(), 1).setNumberFormat('@');

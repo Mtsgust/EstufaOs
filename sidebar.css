@@ -1,22 +1,24 @@
 ﻿/* Menu lateral premium + hambúrguer no celular. Controlado pelo sidebar.js. */
 .sb-aside{position:fixed; left:0; top:0; bottom:0; width:224px; z-index:60;
-  background:linear-gradient(180deg,#10241A,#0C1B13); border-right:1px solid #24402F;
+  background:linear-gradient(180deg,#0F1512,#0A0E0C); border-right:1px solid #1E2E25;
   padding:22px 14px; display:flex; flex-direction:column; gap:4px;
   font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
-.sb-brand{display:flex; align-items:center; gap:10px; padding:4px 8px 20px; color:#E9F2EA;}
-.sb-logo{width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,#46a06f,#2A5A41); color:#fff;
+.sb-brand{display:flex; align-items:center; gap:10px; padding:4px 8px 20px; color:#E8F0EA;}
+.sb-logo{width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,#3D7A5C,#1A3327); color:#fff;
   display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19px;
-  box-shadow:0 6px 16px rgba(61,122,92,.4);}
+  box-shadow:0 6px 16px rgba(61,122,92,.4); overflow:hidden;}
+.sb-logo img{width:100%; height:100%; object-fit:cover;}
 .sb-brand b{font-size:15.5px; display:block; letter-spacing:-.01em;}
-.sb-brand small{color:#9DB8A4; font-size:11px;}
-.sb-sec{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6E8A75; padding:12px 12px 4px;}
+.sb-brand small{color:#7A9184; font-size:11px;}
+.sb-sec{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#4A5E52; padding:12px 12px 4px;}
 .sb-nav{display:flex; flex-direction:column; gap:3px;}
 .sb-nav a{display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:12px;
-  color:#9DB8A4; text-decoration:none; font-size:14px; font-weight:500; transition:.18s;}
+  color:#7A9184; text-decoration:none; font-size:14px; font-weight:500; transition:.18s;}
 .sb-nav a svg{width:19px; height:19px; flex:0 0 19px; opacity:.85;}
-.sb-nav a:hover{background:#152A1F; color:#E9F2EA; transform:translateX(2px);}
-.sb-nav a.active{background:linear-gradient(135deg,#2c5a3f,#1A3327); color:#fff; box-shadow:inset 2px 0 0 #8FD19A, 0 6px 16px rgba(0,0,0,.3);}
-.sb-foot{margin-top:auto; font-size:11px; color:#6E8A75; padding:8px 12px;}
+.sb-nav a:hover{background:#131A16; color:#E8F0EA; transform:translateX(2px);}
+.sb-nav a.active{background:linear-gradient(135deg,#1A2E22,#131A16); color:#fff;
+  box-shadow:inset 2px 0 0 #8FD19A, 0 6px 16px rgba(0,0,0,.3);}
+.sb-foot{margin-top:auto; font-size:11px; color:#4A5E52; padding:8px 12px;}
 .sb-burger{display:none;}
 .sb-topbar{display:none;}
 .sb-overlay{display:none;}
@@ -30,13 +32,12 @@ body.has-sidebar{margin-left:224px;}
 }
 
 @media (max-width:860px){
-  /* Sem barra fixa no topo (bate no notch). Botão flutuante + menu lateral. */
   body.has-sidebar{margin-left:0; padding-top:env(safe-area-inset-top, 0px);}
   .sb-topbar{display:none !important;}
   .sb-fab{display:flex; align-items:center; justify-content:center;
     position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 18px); left:12px; z-index:80;
-    width:48px; height:48px; border-radius:15px; border:1px solid #24402F;
-    background:rgba(21,42,31,.94); color:#E9F2EA; font-size:21px; cursor:pointer;
+    width:48px; height:48px; border-radius:15px; border:1px solid #1E2E25;
+    background:rgba(19,26,22,.94); color:#E8F0EA; font-size:21px; cursor:pointer;
     box-shadow:0 8px 22px rgba(0,0,0,.45);}
   .sb-aside{transform:translateX(-105%); transition:transform .28s ease; width:min(270px, 82vw);
     box-shadow:24px 0 60px rgba(0,0,0,.5); padding-top:calc(env(safe-area-inset-top, 0px) + 20px);}
@@ -45,7 +46,7 @@ body.has-sidebar{margin-left:224px;}
   body.sb-open{overflow:hidden;}
   .sb-close{display:flex; align-items:center; justify-content:center; position:absolute;
     top:calc(env(safe-area-inset-top, 0px) + 14px); right:12px; width:36px; height:36px;
-    border-radius:10px; border:1px solid #24402F; background:#152A1F; color:#9DB8A4;
+    border-radius:10px; border:1px solid #1E2E25; background:#131A16; color:#7A9184;
     font-size:15px; cursor:pointer;}
   body.has-sidebar header{top:0;}
 }

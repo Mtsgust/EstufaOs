@@ -299,17 +299,17 @@ function addDias(iso, n){
 }
 
 function filtrarPorCultura(colhs, ciclos, termos){
-  // termos: array de strings pra match (ex: ['tomate'] ou ['pepino'])
+  const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const ids = new Set();
   ciclos.forEach(c=>{
-    const texto = `${c.cultura||''} ${c.variedade||''}`.toLowerCase();
-    if(termos.some(t=>texto.includes(t))) ids.add(String(c.id));
+    const texto = norm(`${c.cultura||''} ${c.variedade||''}`);
+    if(termos.some(t=>texto.includes(norm(t)))) ids.add(String(c.id));
   });
   return colhs.filter(h=>{
-    if(String(h.unidade).toUpperCase()==='CX') return false; // só KG
+    if(String(h.unidade).toUpperCase()==='CX') return false;
     const byCiclo = ids.has(String(h.cicloId));
-    const texto = `${h.cultura||''} ${h.produto||''}`.toLowerCase();
-    const byNome = termos.some(t=>texto.includes(t));
+    const texto = norm(`${h.cultura||''} ${h.produto||''} ${h.obs||''}`);
+    const byNome = termos.some(t=>texto.includes(norm(t)));
     return byCiclo || byNome;
   });
 }

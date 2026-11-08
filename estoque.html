@@ -12,127 +12,320 @@
 <meta name="apple-mobile-web-app-title" content="Estufas">
 <meta name="theme-color" content="#0D1B13">
 <title>Estoque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F2F5EF; --ink:#1D2B22; --leaf:#234D35; --leaf-dark:#173425;
-    --paper:#FFFFFF; --line:#DCE3D8; --pend:#C68A2E; --feito:#3D7A5C; --danger:#B5432F;
+    --bg:#0A0E0C; --bg2:#0F1512; --card:#131A16; --card2:#18221C;
+    --line:#1E2E25; --ink:#E8F0EA; --mut:#7A9184; --dim:#4A5E52;
+    --leaf:#3D7A5C; --lime:#8FD19A; --gold:#D9A441; --red:#E0785F; --blue:#4A9BD9;
+    --r:16px;
   }
-  *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:100px;}
-  header{background:var(--leaf-dark); color:#fff; padding:16px 20px 20px; position:sticky; top:0; z-index:5;}
-  header a{color:#CFE0D3; text-decoration:none; font-size:13px;}
-  header h1{margin:6px 0 0; font-size:20px;}
-  header p{margin:4px 0 0; font-size:12.5px; color:#CFE0D3;}
-  .tabs{display:flex; gap:8px; margin:14px 20px 0;}
-  .tab{flex:1; text-align:center; padding:9px 0; border-radius:9px; font-size:13px; background:var(--paper); border:1px solid var(--line); cursor:pointer; color:var(--ink);}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; padding-bottom:110px; -webkit-font-smoothing:antialiased;}
+  a{color:var(--lime); text-decoration:none;}
+
+  .page{max-width:900px; margin:0 auto; padding:32px 20px 80px;}
+  .hdr{margin-bottom:18px;}
+  .hdr h1{font-size:26px; font-weight:800; letter-spacing:-.03em;}
+  .hdr p{color:var(--mut); font-size:13px; margin-top:4px;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center;}
+  .kpi-val{font-size:20px; font-weight:800; color:var(--lime); line-height:1.2; word-break:break-word;}
+  .kpi-val.gold{color:var(--gold);}
+  .kpi-val.red{color:var(--red);}
+  .kpi-val.mut{color:var(--mut);}
+  .kpi-lab{font-size:11px; color:var(--mut); margin-top:4px; font-weight:500;}
+
+  .tabs{display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:2px;}
+  .tab{flex:1; min-width:100px; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:600;
+    background:var(--card); border:1px solid var(--line); cursor:pointer; color:var(--mut); transition:.18s; white-space:nowrap;}
+  .tab:hover{background:var(--card2); color:var(--ink);}
   .tab.active{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
-  .filters{margin:10px 20px 0; display:flex; gap:8px;}
-  .filters input,.filters select{padding:10px 12px; border-radius:9px; border:none; font-size:14px; background:rgba(255,255,255,.12); color:#fff;}
-  .filters input{flex:2;} .filters select{flex:1;}
-  .filters input::placeholder{color:#CFE0D3;}
-  .filters select option{color:#000;}
-  main{padding:16px 20px;}
-  .empty{text-align:center; color:#6C7A67; font-size:14px; margin-top:40px;}
-  .item{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px;}
-  .item.low{border-color:#E5B25E; background:#FFFDF6;}
-  .item.zero{border-color:#E08A7A; background:#FFF9F7;}
+
+  section[hidden]{display:none !important;}
+
+  .filters{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center;}
+  .filters select,.filters input{padding:9px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:13px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .filters select:focus,.filters input:focus{outline:none; border-color:var(--leaf);}
+  .filters select option{background:var(--card); color:var(--ink);}
+  .filters label{font-size:11px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .filters .f-group{display:flex; align-items:center; gap:6px;}
+  .filters input[type=date]{color-scheme:dark;}
+  .filters .f-busca{flex:1; min-width:160px;}
+
+  .empty{text-align:center; color:var(--dim); font-size:14px; padding:44px 0;}
+  .loading{text-align:center; color:var(--dim); font-size:13px; padding:32px 0;}
+  .sec-title{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--mut); margin:20px 0 10px;}
+
+  /* Cartão de produto */
+  .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px 16px 16px 18px; margin-bottom:12px;
+    transition:border-color .18s; position:relative; overflow:hidden;}
+  .item:hover{border-color:#2A4A35;}
   .item-top{display:flex; justify-content:space-between; align-items:center; gap:10px;}
-  .cat{font-size:11px; padding:3px 9px; border-radius:20px; font-weight:600; background:#E4EFE6; color:var(--feito);}
-  .alert{font-size:11px; padding:3px 8px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
-  .alert.ok{background:#DCEFE3; color:var(--feito);}
-  .alert.low{background:#FBEBD3; color:var(--pend);}
-  .alert.zero{background:#F7DAD2; color:var(--danger);}
-  .item h3{margin:8px 0 2px; font-size:16px;}
-  .saldo{font-size:22px; font-weight:700; margin:6px 0 0;}
-  .saldo small{font-size:13px; font-weight:500; color:#54614F;}
-  .meta{font-size:12px; color:#8A968A; margin-top:4px;}
-  .actions{display:flex; gap:8px; margin-top:10px;}
-  .actions button{flex:1; border-radius:8px; padding:9px 0; font-size:13px; font-weight:600; cursor:pointer;}
-  .btn-in{background:var(--feito); color:#fff; border:none;}
-  .btn-out{background:transparent; color:var(--pend); border:1px solid var(--pend) !important;}
-  .btn-hist{background:transparent; color:var(--leaf); border:1px solid var(--leaf) !important;}
-  .btn-edit{background:transparent; color:#8A968A; border:1px solid var(--line) !important; flex:0 0 44px !important;}
-  .fab{position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto; background:var(--leaf); color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:600; box-shadow:0 4px 14px rgba(23,52,37,.35); cursor:pointer;}
-  .fab2{position:fixed; bottom:78px; right:20px; left:20px; max-width:420px; margin:0 auto; background:transparent; color:var(--leaf); border:1px dashed var(--leaf); border-radius:14px; padding:11px; font-size:13px; font-weight:600; cursor:pointer;}
-  dialog{border:none; border-radius:16px; width:min(92vw,420px); padding:0;}
-  dialog::backdrop{background:rgba(23,52,37,.45);}
-  .sheet{padding:20px; max-height:85vh; overflow-y:auto;}
-  .sheet h2{margin:0 0 4px; font-size:18px;}
-  .sheet .sub{font-size:12.5px; color:#8A968A; margin:0 0 14px;}
-  .field{margin-bottom:12px;}
-  .field label{display:block; font-size:12px; color:#54614F; margin-bottom:5px;}
-  .field input,.field select,.field textarea{width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:15px; background:#fff; font-family:inherit;}
-  .row2{display:flex; gap:10px;} .row2 .field{flex:1;}
-  .sheet-actions{display:flex; gap:10px; margin-top:14px;}
-  .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600; cursor:pointer;}
-  .btn-cancel{background:#EDEFEA; color:var(--ink);}
-  .btn-save{background:var(--leaf); color:#fff;}
-  .prod-del{width:100%; padding:10px; border:1px solid var(--danger); border-radius:9px; background:transparent; color:var(--danger); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer;}
-  .loading{text-align:center; color:#8A968A; font-size:13px; margin-top:20px;}
-  .mov{display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .cat{font-size:11px; padding:4px 12px; border-radius:20px; font-weight:700; background:rgba(143,209,154,.14); color:var(--lime);
+    text-transform:uppercase; letter-spacing:.04em; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .alert{font-size:10.5px; padding:4px 11px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .alert.ok{background:rgba(143,209,154,.14); color:var(--lime);}
+  .alert.low{background:rgba(217,164,65,.15); color:var(--gold);}
+  .alert.zero{background:rgba(224,120,95,.15); color:var(--red);}
+  .estock-top{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;}
+  .estock-top b{font-size:15.5px; letter-spacing:-.01em;}
+  .estock-qty{font-size:13px; font-weight:800; padding:4px 13px; border-radius:12px; white-space:nowrap;
+    background:rgba(143,209,154,.14); color:var(--lime);}
+  .estock-qty.warn{background:rgba(217,164,65,.15); color:var(--gold);}
+  .estock-qty.danger{background:rgba(224,120,95,.16); color:var(--red);}
+  .qbar{height:8px; background:#0E1F14; border:1px solid var(--line); border-radius:99px; overflow:hidden; margin-top:10px;}
+  .qbar>i{display:block; height:100%; border-radius:99px; transition:width .5s ease;}
+  .qbar.ok>i{background:linear-gradient(90deg,#46a06f,#8FD19A);}
+  .qbar.warn>i{background:linear-gradient(90deg,#b07f24,#E8C86A);}
+  .qbar.danger>i{background:linear-gradient(90deg,#b34a35,#F0907A);}
+  .qbar.big{height:11px;}
+  .qbar-lbl{font-size:11.5px; color:var(--mut); margin-top:5px; display:block;}
+  .meta{font-size:12px; color:var(--mut); margin-top:7px;}
+
+  .actions{display:flex; gap:8px; margin-top:12px;}
+  .actions button{flex:1; border-radius:10px; padding:10px 0; font-size:12.5px; font-weight:600;
+    cursor:pointer; font-family:inherit; border:1px solid transparent; transition:.15s; min-width:0;}
+  .actions button:hover{transform:translateY(-1px);}
+  .btn-in{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .btn-out{background:transparent; color:var(--gold); border:1px solid rgba(217,164,65,.4)!important;}
+  .btn-adj{background:transparent; color:var(--blue); border:1px solid rgba(74,155,217,.4)!important;}
+  .btn-hist{background:transparent; color:var(--lime); border:1px solid var(--leaf)!important; flex:2!important;}
+  .btn-edit{background:transparent; color:var(--mut); border:1px solid var(--line)!important; flex:0 0 52px!important;}
+
+  /* Painel / formulários */
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px;}
+  .saldo-info{font-size:13px; color:var(--mut); margin:-2px 0 12px;}
+  .saldo-info b{color:var(--lime); font-weight:700;}
+  .feed{display:none; margin-top:12px; padding:10px 14px; border-radius:12px; font-size:13.5px; font-weight:600;}
+  .feed.ok{display:block; background:rgba(143,209,154,.12); color:var(--lime); border:1px solid rgba(143,209,154,.3);}
+  .feed.err{display:block; background:rgba(224,120,95,.12); color:var(--red); border:1px solid rgba(224,120,95,.3);}
+
+  /* Histórico */
+  .hrow{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:8px;}
+  .hrow-top{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .hrow-top b{font-size:14px;}
+  .mtag{font-size:10.5px; font-weight:700; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .mtag.in{background:rgba(143,209,154,.14); color:var(--lime);}
+  .mtag.out{background:rgba(224,120,95,.15); color:var(--red);}
+  .mtag.adj{background:rgba(217,164,65,.15); color:var(--gold);}
+  .hrow-sub{font-size:13px; color:var(--mut); margin-top:5px;}
+  .hrow-sub b{color:var(--ink); font-weight:700;}
+  .hrow small{display:block; font-size:11.5px; color:var(--dim); margin-top:4px;}
+  .btn-mais{width:100%; padding:12px; border-radius:12px; background:var(--card2); border:1px solid var(--line);
+    color:var(--ink); font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:4px;}
+  .btn-mais:hover{border-color:var(--leaf);}
+
+  /* Movimentações recentes */
+  .mov{display:flex; justify-content:space-between; gap:10px; padding:10px 2px; border-bottom:1px dashed var(--line); font-size:13px;}
   .mov:last-child{border-bottom:none;}
-  .mov .q-in{color:var(--feito); font-weight:700;}
-  .mov .q-out{color:var(--danger); font-weight:700;}
-  .mov small{display:block; color:#8A968A; font-size:11.5px;}
+  .mov .q-in{color:var(--lime); font-weight:700;}
+  .mov .q-out{color:var(--red); font-weight:700;}
+  .mov small{display:block; color:var(--mut); font-size:11.5px; margin-top:2px;}
+
+  /* FABs */
+  .fab{position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto;
+    background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border:none; border-radius:14px;
+    padding:16px; font-size:16px; font-weight:600; cursor:pointer; font-family:inherit;
+    box-shadow:0 8px 24px rgba(61,122,92,.4); transition:.2s; z-index:50;}
+  .fab:hover{transform:translateY(-2px);}
+  .fab2{position:fixed; bottom:78px; right:20px; left:20px; max-width:420px; margin:0 auto;
+    background:transparent; color:var(--lime); border:1px dashed var(--leaf); border-radius:14px;
+    padding:11px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; z-index:50;}
+
+  /* Diálogos */
+  dialog{border:none; border-radius:20px; width:min(94vw,480px); padding:0; background:var(--card);
+    color:var(--ink); box-shadow:0 24px 60px rgba(0,0,0,.5);}
+  dialog::backdrop{background:rgba(0,0,0,.7); backdrop-filter:blur(4px);}
+  .sheet{padding:24px; max-height:85vh; overflow-y:auto;}
+  .sheet h2{margin:0 0 4px; font-size:18px; font-weight:700;}
+  .sheet .sub{font-size:12.5px; color:var(--mut); margin:0 0 14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--mut); margin-bottom:5px; font-weight:600;}
+  .field input,.field select,.field textarea{width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:15px;
+    background:var(--bg2); color:var(--ink); font-family:inherit;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none; border-color:var(--leaf);}
+  .field select option{background:var(--card); color:var(--ink);}
+  .field input[type=date]{color-scheme:dark;}
+  .row2{display:flex; gap:10px;} .row2 .field{flex:1;}
+  .prev{background:var(--card2); border:1px solid var(--line); border-radius:9px; padding:10px 12px; font-size:15px; font-weight:700; margin-bottom:12px;}
+  .prev small{font-weight:400; color:var(--mut); font-size:12px; display:block;}
+  .prev span{color:var(--lime);}
+  .prev span.neg{color:var(--red);}
+  .prev span.pos{color:var(--lime);}
+  .prev span.okv{color:var(--mut);}
+  .sheet-actions{display:flex; gap:10px; margin-top:14px;}
+  .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;}
+  .btn-cancel{background:var(--card2); color:var(--ink); border:1px solid var(--line)!important;}
+  .btn-save{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .prod-del{width:100%; padding:10px; border:1px solid var(--red); border-radius:9px; background:transparent;
+    color:var(--red); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer; font-family:inherit;}
+
+  @media (max-width:600px){
+    .page{padding:24px 14px 80px;}
+    .hdr h1{font-size:22px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .row2{flex-direction:column;}
+    .filters{flex-direction:column; align-items:stretch;}
+    .filters .f-group{width:100%;}
+    .filters .f-group select{flex:1;}
+    .filters select,.filters input{width:100%;}
+    .filters .f-busca{min-width:0;}
+    .actions{flex-wrap:wrap;}
+    .actions button{min-width:0; flex:1 1 calc(50% - 4px);}
+    .tab{min-width:92px;}
+  }
 </style>
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body data-page="estoque" class="tdark">
-<header>
-  <a href="index.html">‹ voltar</a>
-  <h1>Estoque</h1>
-  <p>Entradas, saídas e saldo. Pulverizações e nutrições feitas dão baixa sozinhas.</p>
-  <div class="tabs">
-    <div class="tab active" data-f="todos">Todos</div>
-    <div class="tab" data-f="baixo">Estoque baixo</div>
-    <div class="tab" data-f="zerado">Zerado / negativo</div>
+<div class="page">
+  <div class="hdr">
+    <h1>Estoque</h1>
+    <p>Controle físico de insumos: o que entrou, o que saiu e o que está disponível. Pulverizações e nutrições feitas dão baixa sozinhas.</p>
   </div>
-  <div class="filters">
-    <input id="busca" type="text" placeholder="Buscar produto...">
-    <select id="filtroCat">
-      <option value="todas">Todas categ.</option>
-      <option value="Defensivo">Defensivo</option>
-      <option value="Fertilizante">Fertilizante</option>
-      <option value="Biológico">Biológico</option>
-      <option value="Outro">Outro</option>
-    </select>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val" id="kTot">—</div><div class="kpi-lab">Produtos</div></div>
+    <div class="kpi"><div class="kpi-val" id="kDisp">—</div><div class="kpi-lab">Com estoque</div></div>
+    <div class="kpi"><div class="kpi-val gold" id="kBaixo">—</div><div class="kpi-lab">Abaixo do mínimo</div></div>
+    <div class="kpi"><div class="kpi-val red" id="kZero">—</div><div class="kpi-lab">Zerados</div></div>
   </div>
-</header>
 
-<main id="list"><div class="loading">Carregando…</div></main>
+  <div class="tabs" id="secTabs">
+    <div class="tab active" data-s="prod">Produtos</div>
+    <div class="tab" data-s="mov">Movimentações</div>
+    <div class="tab" data-s="hist">Histórico</div>
+  </div>
 
-<button class="fab" onclick="openProduto()">+ Novo produto</button>
-<button class="fab2" onclick="auditar()">Auditar saldos negativos</button>
+  <!-- ===== PRODUTOS ===== -->
+  <section id="secProd">
+    <div class="filters">
+      <input id="busca" class="f-busca" type="text" placeholder="Buscar produto...">
+      <div class="f-group"><label for="filtroCat">Categoria</label>
+        <select id="filtroCat">
+          <option value="todas">Todas</option>
+          <option value="Defensivo">Defensivo</option>
+          <option value="Fertilizante">Fertilizante</option>
+          <option value="Biológico">Biológico</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="f-group"><label for="filtroSit">Situação</label>
+        <select id="filtroSit">
+          <option value="todos">Todas</option>
+          <option value="ok">OK</option>
+          <option value="baixo">Abaixo do mínimo</option>
+          <option value="zerado">Zerado</option>
+        </select>
+      </div>
+    </div>
+    <div id="list"><div class="loading">Carregando…</div></div>
+  </section>
+
+  <!-- ===== MOVIMENTAÇÕES ===== -->
+  <section id="secMov" hidden>
+    <div class="panel">
+      <div class="row2">
+        <div class="field"><label for="mvTipo">Tipo</label>
+          <select id="mvTipo">
+            <option value="entrada">Entrada (recebida)</option>
+            <option value="saida">Saída (uso / retirada)</option>
+          </select>
+        </div>
+        <div class="field"><label for="mvData">Data</label><input id="mvData" type="date"></div>
+      </div>
+      <div class="field"><label for="mvProd">Produto</label><select id="mvProd"><option value="">Carregando…</option></select></div>
+      <div class="saldo-info" id="mvSaldo">Escolha um produto para ver o saldo.</div>
+      <div class="field"><label for="mvQtd">Quantidade</label><input id="mvQtd" type="number" step="any" inputmode="decimal" placeholder="ex: 500"></div>
+      <div class="row2">
+        <div class="field" id="gEstufa" style="display:none"><label for="mvEstufa">Estufa de destino (opcional)</label>
+          <select id="mvEstufa">
+            <option value="">—</option>
+            <option value="1">Estufa 1</option><option value="2">Estufa 2</option><option value="3">Estufa 3</option>
+            <option value="4">Estufa 4</option><option value="5">Estufa 5</option><option value="6">Estufa 6</option>
+            <option value="7">Estufa 7</option>
+          </select>
+        </div>
+        <div class="field" id="gMotivo" style="display:none"><label for="mvMotivo">Motivo da saída</label>
+          <input id="mvMotivo" type="text" placeholder="ex: aplicação, reposição, descarte">
+        </div>
+      </div>
+      <div class="field"><label for="mvObs">Observação (opcional)</label><input id="mvObs" type="text" placeholder="ex: nota 123, compra do mês..."></div>
+      <div class="sheet-actions" style="margin-top:4px">
+        <button class="btn-save" onclick="salvarMov()">Registrar movimentação</button>
+      </div>
+      <div class="feed" id="mvFeed"></div>
+    </div>
+
+    <div class="sec-title">Últimas movimentações</div>
+    <div id="ultMovs"><div class="loading">Carregando…</div></div>
+  </section>
+
+  <!-- ===== HISTÓRICO ===== -->
+  <section id="secHist" hidden>
+    <div class="filters">
+      <div class="f-group"><label for="hProd">Produto</label><select id="hProd"><option value="todos">Todos</option></select></div>
+      <div class="f-group"><label for="hCat">Categoria</label><select id="hCat"><option value="todas">Todas</option></select></div>
+      <div class="f-group"><label for="hTipo">Tipo</label>
+        <select id="hTipo">
+          <option value="todas">Todos</option>
+          <option value="entrada">Entradas</option>
+          <option value="saida">Saídas</option>
+        </select>
+      </div>
+      <div class="f-group"><label for="hOri">Origem</label>
+        <select id="hOri">
+          <option value="todas">Todas</option>
+          <option value="manual">Manual</option>
+          <option value="pulverizacao">Pulverização</option>
+          <option value="nutricao">Nutrição</option>
+          <option value="ajuste">Ajuste de inventário</option>
+          <option value="compra">Compra</option>
+        </select>
+      </div>
+      <div class="f-group"><label for="hDe">De</label><input id="hDe" type="date"></div>
+      <div class="f-group"><label for="hAte">Até</label><input id="hAte" type="date"></div>
+    </div>
+    <div id="listHist"><div class="loading">Carregando…</div></div>
+    <button class="btn-mais" id="btnMaisHist" style="display:none" onclick="maisHist()">Carregar mais</button>
+  </section>
+</div>
+
+<button class="fab" id="fabNovo" onclick="openProduto()">+ Novo produto</button>
+<button class="fab2" id="fabAudit" onclick="auditar()">Auditar saldos negativos</button>
 
 <!-- Cadastro / edição de produto -->
 <dialog id="dlgProduto">
   <div class="sheet">
     <h2 id="dlgProdTitle">Novo produto</h2>
     <p class="sub">Saldo inicial vira uma movimentação de entrada.</p>
-    <div class="field"><label>Nome do produto</label><input id="pNome" type="text" placeholder="ex: Amistar Top"></div>
+    <div class="field"><label for="pNome">Nome do produto</label><input id="pNome" type="text" placeholder="ex: Amistar Top"></div>
     <div class="row2">
-      <div class="field"><label>Categoria</label>
+      <div class="field"><label for="pCategoria">Categoria</label>
         <select id="pCategoria">
           <option>Defensivo</option><option>Fertilizante</option><option>Biológico</option><option>Outro</option>
         </select>
       </div>
-      <div class="field"><label>Unidade</label>
+      <div class="field"><label for="pUnidade">Unidade</label>
         <select id="pUnidade">
-          <option value="mL">mL</option><option value="L">L</option>
-          <option value="g">g</option><option value="kg">kg</option><option value="un">un</option>
+          <option value="mL">mL</option><option value="L">L</option><option value="g">g</option><option value="kg">kg</option><option value="un">un</option>
         </select>
       </div>
     </div>
     <div class="row2">
-      <div class="field"><label>Saldo inicial</label><input id="pSaldo" type="number" step="any" inputmode="decimal" value="0"></div>
-      <div class="field"><label>Estoque mínimo (alerta)</label><input id="pMinimo" type="number" step="any" inputmode="decimal" value="0"></div>
+      <div class="field"><label for="pSaldo" id="pSaldoLab">Saldo inicial</label><input id="pSaldo" type="number" step="any" inputmode="decimal" value="0"></div>
+      <div class="field"><label for="pMinimo">Estoque mínimo (alerta)</label><input id="pMinimo" type="number" step="any" inputmode="decimal" value="0"></div>
     </div>
-    <div class="field"><label>Fornecedor</label><input id="pFornecedor" type="text" placeholder="opcional"></div>
-    <div class="field"><label>Foto (link ou arquivo do celular)</label><input id="pFoto" type="text" inputmode="url" placeholder="https://... ou escolha abaixo"></div>
+    <div class="field"><label for="pFornecedor">Fornecedor</label><input id="pFornecedor" type="text" placeholder="opcional"></div>
+    <div class="field"><label for="pFoto">Foto (link ou arquivo do celular)</label><input id="pFoto" type="text" inputmode="url" placeholder="https://... ou escolha abaixo"></div>
     <div class="field"><input id="pFotoFile" type="file" accept="image/*" style="padding:8px">
       <div id="pFotoPrev"></div></div>
-    <div class="field"><label>Observação</label><textarea id="pObs" rows="2"></textarea></div>
+    <div class="field"><label for="pObs">Observação</label><textarea id="pObs" rows="2"></textarea></div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgProduto').close()">Cancelar</button>
       <button class="btn-save" onclick="salvarProduto()">Salvar</button>
@@ -141,21 +334,18 @@
   </div>
 </dialog>
 
-<!-- Entrada / saída -->
-<dialog id="dlgMov">
+<!-- Ajuste de inventário -->
+<dialog id="dlgAjuste">
   <div class="sheet">
-    <h2 id="movTitle">Movimentação</h2>
-    <p class="sub" id="movSub"></p>
-    <div class="row2">
-      <div class="field"><label>Tipo</label>
-        <select id="mTipo"><option value="entrada">Entrada (compra)</option><option value="saida">Saída (uso/ajuste)</option></select>
-      </div>
-      <div class="field"><label>Quantidade</label><input id="mQtd" type="number" step="any" inputmode="decimal" placeholder="ex: 500"></div>
-    </div>
-    <div class="field"><label>Motivo / observação</label><input id="mObs" type="text" placeholder="ex: compra, uso estufa 3..."></div>
+    <h2>Ajuste de inventário</h2>
+    <p class="sub" id="ajSub">Informe a contagem física real do produto.</p>
+    <div class="prev"><small>Saldo registrado</small><span id="ajReg">—</span></div>
+    <div class="field"><label for="ajQtd">Contagem física</label><input id="ajQtd" type="number" step="any" inputmode="decimal" placeholder="quantidade contada"></div>
+    <div class="prev"><small>Diferença para o registrado</small><span id="ajDiff">—</span></div>
+    <div class="field"><label for="ajObs">Observação (opcional)</label><input id="ajObs" type="text" placeholder="ex: contagem no armário"></div>
     <div class="sheet-actions">
-      <button class="btn-cancel" onclick="document.getElementById('dlgMov').close()">Cancelar</button>
-      <button class="btn-save" onclick="salvarMov()">Confirmar</button>
+      <button class="btn-cancel" onclick="document.getElementById('dlgAjuste').close()">Cancelar</button>
+      <button class="btn-save" onclick="salvarAjuste()">Confirmar ajuste</button>
     </div>
   </div>
 </dialog>
@@ -172,18 +362,6 @@
   </div>
 </dialog>
 
-<!-- Histórico -->
-<dialog id="dlgHist">
-  <div class="sheet">
-    <h2 id="histTitle">Histórico</h2>
-    <p class="sub" id="histSub"></p>
-    <div id="histList"></div>
-    <div class="sheet-actions">
-      <button class="btn-cancel" onclick="document.getElementById('dlgHist').close()">Fechar</button>
-    </div>
-  </div>
-</dialog>
-
 <script src="config.js"></script>
 <script>
 let estoque = [];
@@ -191,8 +369,9 @@ let movs = [];
 let filtro = 'todos';
 let busca = '';
 let filtroCat = 'todas';
-let movProdutoId = null;
 let editandoId = null;
+let ajProdutoId = null;
+let histLimite = 30;
 
 function num(v){
   if(v===''||v==null) return 0;
@@ -210,6 +389,7 @@ function fmtData(v){
   const dt = new Date(v.length===10 ? v+'T00:00:00' : v);
   return isNaN(dt) ? v : dt.toLocaleDateString('pt-BR');
 }
+function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 // Apelidos: o plano às vezes traz "B+" em vez de "Nutrilife B+",
 // e "Soil Vita Cal" é lançado como "Carbonato de cálcio".
@@ -234,7 +414,6 @@ function converterQtd(qtd, de, para){
   const n = q => String(q??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
   const a = n(de), b = n(para);
   if(!a || !b || a===b) return qtd;
-  const mapa = { ml:'l', l:'ml', g:'kg', kg:'g', mg:'g', g2:'kg' };
   if(a==='ml' && b==='l') return qtd/1000;
   if(a==='l' && b==='ml') return qtd*1000;
   if(a==='g' && b==='kg') return qtd/1000;
@@ -246,20 +425,28 @@ function converterQtd(qtd, de, para){
 function parseData(v){
   if(!v) return 0;
   let s = String(v).trim();
-  // formato brasileiro dd/mm/aaaa
   const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if(br) return new Date(+br[3], +br[2]-1, +br[1]).getTime();
   const t = new Date(s).getTime();
   return isNaN(t) ? 0 : t;
 }
+function diaDe(v){
+  const s = String(v||'');
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if(m) return m[1];
+  const t = parseData(s);
+  if(!t) return '';
+  const d = new Date(t);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function movData(m){ return m.data || m.dataCriacao || ''; }
 function totalComprado(p){
   // Sempre a ÚLTIMA compra (entrada mais recente), não a soma de todas.
   const entradas = movsDoProduto(p).filter(m=>m.tipo==='entrada');
   if(!entradas.length) return 0;
-  entradas.sort((a,b)=> parseData(b.dataCriacao) - parseData(a.dataCriacao) || 0);
+  entradas.sort((a,b)=> parseData(movData(b)) - parseData(movData(a)) || 0);
   const ultima = entradas[0];
   const qtd = converterQtd(num(ultima.quantidade), ultima.unidade||'', p.unidade||'');
-  // Se a última entrada parece absurda (>100x o estoque atual), mostra o estoque como referência
   const atual = num(p.estoqueAtual);
   if(qtd > 0 && atual > 0 && qtd > atual * 100) return atual;
   return qtd;
@@ -332,7 +519,7 @@ async function carregar(){
   try {
     if (typeof cacheLerTipo === 'function') {
       const ce = cacheLerTipo('estoque'), cm = cacheLerTipo('movimentacoes');
-      if (ce && ce.length) { estoque = ce; movs = cm || []; render(); }
+      if (ce && ce.length) { estoque = ce; movs = cm || []; popularSelects(); render(); }
       else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
     } else document.getElementById('list').innerHTML = '<div class="loading">Carregando…</div>';
   } catch (e) {}
@@ -347,9 +534,10 @@ async function carregar(){
     }
     estoque = e.data || [];
     movs = m.data || [];
+    popularSelects();
     render();
   }catch(err){
-    if (estoque && estoque.length) { render(); return; }
+    if (estoque && estoque.length) { popularSelects(); render(); return; }
     document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
@@ -357,16 +545,16 @@ async function carregar(){
 function statusOf(p){
   const s = num(p.estoqueAtual), min = num(p.estoqueMinimo);
   if(s <= 0) return {k:'zero', label:'Zerado'};
-  if(min > 0 && s <= min) return {k:'low', label:'Estoque baixo'};
+  if(min > 0 && s <= min) return {k:'low', label:'Abaixo do mínimo'};
   return {k:'ok', label:'OK'};
 }
 
 // Ponto de referência pra barra: mínimo (ou 3x mínimo) faz mais sentido que "total comprado".
 function refBarra(p){
   const min = num(p.estoqueMinimo);
-  if(min > 0) return min * 3;          // zona segura ≈ até 3x o mínimo
+  if(min > 0) return min * 3;
   const comprado = totalComprado(p);
-  if(comprado > 0) return comprado;     // sem mínimo definido, usa o comprado
+  if(comprado > 0) return comprado;
   return num(p.estoqueAtual) || 1;
 }
 function pctBarra(p){
@@ -375,26 +563,54 @@ function pctBarra(p){
   return Math.max(0, Math.min(100, num(p.estoqueAtual)/ref*100));
 }
 
-function render(){
+// ---------- Seções ----------
+function irPara(nova){
+  aba = nova;
+  document.querySelectorAll('#secTabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.s===nova));
+  document.getElementById('secProd').hidden = nova!=='prod';
+  document.getElementById('secMov').hidden = nova!=='mov';
+  document.getElementById('secHist').hidden = nova!=='hist';
+  const soProd = nova==='prod';
+  document.getElementById('fabNovo').style.display = soProd ? '' : 'none';
+  document.getElementById('fabAudit').style.display = soProd ? '' : 'none';
+}
+let aba = 'prod';
+
+// ---------- Indicadores ----------
+function renderKPIs(){
+  let disp = 0, baixo = 0, zero = 0;
+  estoque.forEach(p=>{
+    const st = statusOf(p);
+    if(st.k==='zero') zero++;
+    else { disp++; if(st.k==='low') baixo++; }
+  });
+  document.getElementById('kTot').textContent = estoque.length;
+  document.getElementById('kDisp').textContent = disp;
+  document.getElementById('kBaixo').textContent = baixo;
+  document.getElementById('kZero').textContent = zero;
+}
+
+// ---------- Produtos ----------
+function renderProdutos(){
   const list = document.getElementById('list');
   let itens = estoque.slice().sort((a,b)=> String(a.nome).localeCompare(String(b.nome)));
-  if(filtro==='baixo') itens = itens.filter(p=>{ const st=statusOf(p); return st.k==='low'; });
-  if(filtro==='zerado') itens = itens.filter(p=> num(p.estoqueAtual) <= 0);
+  if(filtro==='baixo') itens = itens.filter(p=>statusOf(p).k==='low');
+  if(filtro==='zerado') itens = itens.filter(p=>statusOf(p).k==='zero');
+  if(filtro==='ok') itens = itens.filter(p=>statusOf(p).k==='ok');
   if(filtroCat!=='todas') itens = itens.filter(p=> (p.categoria||'Outro')===filtroCat);
   if(busca) itens = itens.filter(p=> String(p.nome||'').toLowerCase().includes(busca.toLowerCase()));
 
-  if(!itens.length){ list.innerHTML = '<div class="empty">Nada por aqui. Cadastre um produto ou importe do Bulário.</div>'; return; }
+  if(!itens.length){ list.innerHTML = '<div class="empty">Nada por aqui. Cadastre um produto ou ajuste os filtros.</div>'; return; }
 
   list.innerHTML = itens.map(p=>{
     const st = statusOf(p);
     const cls = st.k==='low'?'low':(st.k==='zero'?'zero':'');
     const atual = num(p.estoqueAtual);
-    const dispTxt = `Disponível ${fmt(atual)} ${escapeHtml(p.unidade||'')} · `;
     const pct = pctBarra(p);
     const barCls = st.k==='zero' ? 'danger' : (st.k==='low' ? 'warn' : 'ok');
     const qtyCls = st.k==='ok' ? '' : (st.k==='low' ? 'warn' : 'danger');
     const min = num(p.estoqueMinimo);
-    const sobra = num(p.estoqueAtual) - min;
+    const sobra = atual - min;
     let lbl;
     if(st.k==='zero'){
       lbl = 'Zerado — precisa comprar';
@@ -402,7 +618,6 @@ function render(){
       lbl = min > 0 ? `Abaixo do mínimo (${fmt(min)} ${escapeHtml(p.unidade||'')})` : 'Acabando';
     } else {
       if(min > 0){
-        // OK acima do mínimo: mostra quanto sobra até/b depois do mínimo
         lbl = pct < 15 ? `Pouco — só ${fmt(sobra)} ${escapeHtml(p.unidade||'')} acima do mínimo`
             : pct < 50 ? 'Atenção — começando a baixar'
             : 'Saudável — acima do mínimo';
@@ -416,32 +631,255 @@ function render(){
         <span class="cat">${escapeHtml(p.categoria||'Outro')}</span>
         <span class="alert ${st.k}">${st.label}</span>
       </div>
-      <div class="estock-top"><b>${escapeHtml(p.nome)}</b><span class="estock-qty ${qtyCls}">${fmt(num(p.estoqueAtual))} ${escapeHtml(p.unidade||'')}</span></div>
+      <div class="estock-top"><b>${escapeHtml(p.nome)}</b><span class="estock-qty ${qtyCls}">${fmt(atual)} ${escapeHtml(p.unidade||'')}</span></div>
       <div class="qbar big ${barCls}"><i style="width:${pct}%"></i></div>
       <span class="qbar-lbl">${lbl}</span>
-      <div class="meta">${dispTxt}Mínimo: ${fmt(min)} ${escapeHtml(p.unidade||'')} ${p.fornecedor?' · '+escapeHtml(p.fornecedor):''}</div>
+      <div class="meta">Mínimo: ${fmt(min)} ${escapeHtml(p.unidade||'')}${p.fornecedor?' · '+escapeHtml(p.fornecedor):''}</div>
       <div class="actions">
         <button class="btn-in" onclick="openMov('${p.id}','entrada')">+ Entrada</button>
         <button class="btn-out" onclick="openMov('${p.id}','saida')">− Saída</button>
-        <button class="btn-hist" onclick="openHist('${p.id}')">Histórico</button>
+        <button class="btn-adj" onclick="openAjuste('${p.id}')">Ajustar</button>
+      </div>
+      <div class="actions">
+        <button class="btn-hist" onclick="openHist('${p.id}')">Histórico de movimentações</button>
         <button class="btn-edit" onclick="editarProduto('${p.id}')">✎</button>
       </div>
     </div>`;
   }).join('');
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active'); filtro=t.dataset.f; render();
-}));
-document.getElementById('busca').addEventListener('input',e=>{busca=e.target.value;render();});
-document.getElementById('filtroCat').addEventListener('change',e=>{filtroCat=e.target.value;render();});
+// ---------- Saldo após cada movimentação (por produto) ----------
+function mapaSaldos(){
+  const ord = movs.map((m,i)=>({m,i})).sort((a,b)=> parseData(movData(a.m)) - parseData(movData(b.m)) || a.i - b.i);
+  const acc = {};
+  const res = {};
+  const acharProd = m => (m.produtoId && estoque.find(p=>p.id===m.produtoId))
+    || (m.produtoNome && estoque.find(p=>chave(p.nome)===chave(m.produtoNome)));
+  ord.forEach(({m})=>{
+    const p = acharProd(m);
+    const key = p ? p.id : 'x:'+chave(m.produtoNome||m.produtoId||'?');
+    if(!(key in acc)) acc[key] = 0;
+    acc[key] += (m.tipo==='entrada' ? num(m.quantidade) : -num(m.quantidade));
+    res[m.id] = acc[key];
+  });
+  return res;
+}
+
+const ORIGENS = {manual:'Manual', pulverizacao:'Pulverização', nutricao:'Nutrição', ajuste:'Ajuste de inventário', compra:'Compra'};
+function origemLabel(o){
+  if(!o) return 'Manual';
+  return ORIGENS[o] || String(o).charAt(0).toUpperCase()+String(o).slice(1);
+}
+function prodDaMov(m){
+  return (m.produtoId && estoque.find(p=>p.id===m.produtoId))
+    || (m.produtoNome && estoque.find(p=>chave(p.nome)===chave(m.produtoNome)));
+}
+function linhaMovHTML(m, saldoDepois){
+  const p = prodDaMov(m);
+  const nome = (p && p.nome) || m.produtoNome || '—';
+  const un = (p && p.unidade) || m.unidade || '';
+  const qtd = (m.tipo==='entrada'?'+':'−') + ' ' + fmt(num(m.quantidade)) + ' ' + (m.unidade||un||'');
+  const tipoCls = m.tipo==='entrada' ? 'in' : 'out';
+  const tipoTxt = m.tipo==='entrada' ? 'Entrada' : 'Saída';
+  const dia = fmtData(movData(m)) || '—';
+  const bits = [dia, origemLabel(m.origem)];
+  if(m.estufa) bits.push('Estufa '+m.estufa);
+  if(m.motivo) bits.push(m.motivo);
+  if(m.obs) bits.push(m.obs);
+  const sd = (saldoDepois!==undefined && saldoDepois!==null)
+    ? '<div class="hrow-sub">Saldo após: <b>'+fmt(saldoDepois)+' '+escapeHtml(un)+'</b></div>' : '';
+  return `
+    <div class="hrow">
+      <div class="hrow-top"><b>${escapeHtml(nome)}</b><span class="mtag ${tipoCls}">${tipoTxt}</span></div>
+      <div class="hrow-sub"><b>${qtd}</b></div>
+      ${sd}
+      <small>${bits.map(escapeHtml).join(' · ')}</small>
+    </div>`;
+}
+
+// ---------- Movimentações (form + últimas) ----------
+function popularSelects(){
+  const ord = estoque.slice().sort((a,b)=> String(a.nome).localeCompare(String(b.nome)));
+  const opts = ord.map(p=>'<option value="'+escapeHtml(p.id)+'">'+escapeHtml(p.nome)+' ('+fmt(num(p.estoqueAtual))+' '+escapeHtml(p.unidade||'')+')</option>').join('');
+  const mv = document.getElementById('mvProd'), hp = document.getElementById('hProd');
+  const smv = mv.value, shp = hp.value;
+  mv.innerHTML = '<option value="">Selecione o produto…</option>' + opts;
+  hp.innerHTML = '<option value="todos">Todos os produtos</option>' + opts;
+  if(smv) mv.value = smv;
+  if(shp) hp.value = shp;
+  const cats = [...new Set(estoque.map(p=>p.categoria||'Outro'))].sort();
+  const hc = document.getElementById('hCat');
+  const shc = hc.value;
+  hc.innerHTML = '<option value="todas">Todas</option>' + cats.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join('');
+  if(shc) hc.value = shc;
+}
+function infoSaldo(){
+  const p = estoque.find(x=>x.id===document.getElementById('mvProd').value);
+  document.getElementById('mvSaldo').innerHTML = p
+    ? 'Saldo atual: <b>'+fmt(num(p.estoqueAtual))+' '+escapeHtml(p.unidade||'')+'</b>'
+    : 'Escolha um produto para ver o saldo.';
+}
+function toggleSaida(){
+  const s = document.getElementById('mvTipo').value==='saida';
+  document.getElementById('gEstufa').style.display = s ? '' : 'none';
+  document.getElementById('gMotivo').style.display = s ? '' : 'none';
+}
+function openMov(id, tipo){
+  irPara('mov');
+  document.getElementById('mvProd').value = id;
+  document.getElementById('mvTipo').value = tipo;
+  document.getElementById('mvQtd').value = '';
+  document.getElementById('mvData').value = hojeISO();
+  document.getElementById('mvObs').value = '';
+  document.getElementById('mvEstufa').value = '';
+  document.getElementById('mvMotivo').value = '';
+  document.getElementById('mvFeed').className = 'feed';
+  document.getElementById('mvFeed').textContent = '';
+  toggleSaida();
+  infoSaldo();
+  document.getElementById('mvQtd').focus();
+}
+async function salvarMov(){
+  const feed = document.getElementById('mvFeed');
+  const p = estoque.find(x=>x.id===document.getElementById('mvProd').value);
+  if(!p){ feed.className='feed err'; feed.textContent='Escolha o produto.'; return; }
+  const tipo = document.getElementById('mvTipo').value;
+  const qtd = num(document.getElementById('mvQtd').value);
+  if(!document.getElementById('mvQtd').value || qtd<=0){ feed.className='feed err'; feed.textContent='Digite uma quantidade válida.'; return; }
+  if(tipo==='saida' && qtd > num(p.estoqueAtual)){
+    feed.className='feed err';
+    feed.textContent='Saldo insuficiente: disponível '+fmt(num(p.estoqueAtual))+' '+(p.unidade||'')+'. Se a contagem real for outra, use "Ajustar".';
+    return;
+  }
+  const r = await apiPost({action:'movimentar', data:{
+    produtoId:p.id, produtoNome:p.nome, tipo, quantidade:qtd,
+    unidade:p.unidade||'', origem:'manual',
+    data: document.getElementById('mvData').value || hojeISO(),
+    estufa: tipo==='saida' ? document.getElementById('mvEstufa').value : '',
+    motivo: tipo==='saida' ? document.getElementById('mvMotivo').value.trim() : '',
+    obs: document.getElementById('mvObs').value.trim()
+  }});
+  if(!r || !r.ok){ feed.className='feed err'; feed.textContent='Erro: '+((r&&r.error)||'falha ao registrar'); return; }
+  feed.className='feed ok';
+  feed.textContent=(tipo==='entrada'?'✓ Entrada registrada — ':'✓ Saída registrada — ')+'novo saldo: '+fmt(num(r.novoSaldo))+' '+(p.unidade||'')+(r.aviso?' · '+r.aviso:'');
+  document.getElementById('mvQtd').value='';
+  document.getElementById('mvObs').value='';
+  await carregar();
+  infoSaldo();
+}
+function renderMovs(){
+  const sd = mapaSaldos();
+  const box = document.getElementById('ultMovs');
+  const ord = movs.map((m,i)=>({m,i})).sort((a,b)=> parseData(movData(b.m)) - parseData(movData(a.m)) || b.i - a.i);
+  const top = ord.slice(0,8);
+  box.innerHTML = top.length
+    ? top.map(({m})=>{
+        const p = prodDaMov(m);
+        const un = (p&&p.unidade) || m.unidade || '';
+        return '<div class="mov"><div><b class="'+(m.tipo==='entrada'?'q-in':'q-out')+'">'+
+          (m.tipo==='entrada'?'+':'−')+' '+fmt(num(m.quantidade))+' '+escapeHtml(m.unidade||un)+'</b> '+escapeHtml((p&&p.nome)||m.produtoNome||'')+
+          '<small>'+fmtData(movData(m))+' · '+escapeHtml(origemLabel(m.origem))+(m.estufa?' · Estufa '+escapeHtml(m.estufa):'')+(m.motivo?' · '+escapeHtml(m.motivo):'')+(m.obs?' · '+escapeHtml(m.obs):'')+'</small></div>'+
+          '<div style="text-align:right"><small>saldo '+fmt(sd[m.id]!==undefined?sd[m.id]:0)+' '+escapeHtml(un)+'</small></div></div>';
+      }).join('')
+    : '<div class="empty">Nenhuma movimentação ainda.</div>';
+}
+
+// ---------- Histórico ----------
+function renderHist(){
+  const sd = mapaSaldos();
+  const hProd = document.getElementById('hProd').value;
+  const hCat = document.getElementById('hCat').value;
+  const hTipo = document.getElementById('hTipo').value;
+  const hOri = document.getElementById('hOri').value;
+  const hDe = document.getElementById('hDe').value;
+  const hAte = document.getElementById('hAte').value;
+  let arr = movs.filter(m=>{
+    if(hProd && hProd!=='todos'){
+      const p = estoque.find(x=>x.id===hProd);
+      if(!(m.produtoId===hProd || (p && chave(m.produtoNome)===chave(p.nome)))) return false;
+    }
+    if(hCat && hCat!=='todas'){
+      const p = prodDaMov(m);
+      if((p ? (p.categoria||'Outro') : '') !== hCat) return false;
+    }
+    if(hTipo && hTipo!=='todas' && m.tipo!==hTipo) return false;
+    if(hOri && hOri!=='todas' && (m.origem||'manual')!==hOri) return false;
+    const d = diaDe(movData(m));
+    if(hDe && (!d || d < hDe)) return false;
+    if(hAte && (!d || d > hAte)) return false;
+    return true;
+  });
+  arr = arr.map((m,i)=>({m,i})).sort((a,b)=> parseData(movData(b.m)) - parseData(movData(a.m)) || b.i - a.i).map(x=>x.m);
+  const total = arr.length;
+  const mostra = arr.slice(0, histLimite);
+  const box = document.getElementById('listHist');
+  box.innerHTML = total
+    ? mostra.map(m=>linhaMovHTML(m, sd[m.id])).join('')
+    : '<div class="empty">Nenhuma movimentação com esses filtros.</div>';
+  const btn = document.getElementById('btnMaisHist');
+  const falta = total - mostra.length;
+  btn.style.display = falta > 0 ? 'block' : 'none';
+  btn.textContent = 'Carregar mais ('+falta+')';
+}
+function maisHist(){ histLimite += 30; renderHist(); }
+function openHist(id){
+  irPara('hist');
+  document.getElementById('hProd').value = id;
+  histLimite = 30;
+  renderHist();
+}
+
+// ---------- Ajuste de inventário ----------
+function openAjuste(id){
+  const p = estoque.find(x=>x.id===id); if(!p) return;
+  ajProdutoId = id;
+  document.getElementById('ajSub').textContent = 'Informe a contagem física real de "'+p.nome+'".';
+  document.getElementById('ajReg').textContent = fmt(num(p.estoqueAtual))+' '+(p.unidade||'');
+  document.getElementById('ajQtd').value = '';
+  document.getElementById('ajObs').value = '';
+  document.getElementById('ajDiff').textContent = '—';
+  document.getElementById('ajDiff').className = '';
+  document.getElementById('dlgAjuste').showModal();
+  document.getElementById('ajQtd').focus();
+}
+function calcDiffAjuste(){
+  const p = estoque.find(x=>x.id===ajProdutoId); if(!p) return;
+  const el = document.getElementById('ajQtd');
+  const span = document.getElementById('ajDiff');
+  if(el.value===''){ span.textContent='—'; span.className=''; return; }
+  const fisico = num(el.value), reg = num(p.estoqueAtual);
+  const diff = Math.round((fisico-reg)*100)/100;
+  if(diff===0){ span.textContent='confere com o registrado'; span.className='okv'; return; }
+  span.textContent = (diff>0?'+':'−')+fmt(Math.abs(diff))+' '+(p.unidade||'')+(diff>0?' (entrada)':' (saída)');
+  span.className = diff>0 ? 'pos' : 'neg';
+}
+document.getElementById('ajQtd').addEventListener('input', calcDiffAjuste);
+async function salvarAjuste(){
+  const p = estoque.find(x=>x.id===ajProdutoId); if(!p) return;
+  const el = document.getElementById('ajQtd');
+  if(el.value===''){ alert('Informe a contagem física.'); return; }
+  const fisico = num(el.value);
+  if(fisico < 0){ alert('A contagem não pode ser negativa.'); return; }
+  const reg = num(p.estoqueAtual);
+  const diff = Math.round((fisico-reg)*100)/100;
+  if(diff===0){ alert('O saldo já confere com a contagem.'); return; }
+  const obs = 'Ajuste de inventário: registrado '+fmt(reg)+' → contagem '+fmt(fisico)+(document.getElementById('ajObs').value.trim()?' · '+document.getElementById('ajObs').value.trim():'');
+  const r = await apiPost({action:'movimentar', data:{
+    produtoId:p.id, produtoNome:p.nome,
+    tipo: diff>0?'entrada':'saida', quantidade: Math.abs(diff),
+    unidade:p.unidade||'', origem:'ajuste', data: hojeISO(), obs
+  }});
+  if(!r || !r.ok){ alert('Erro: '+((r&&r.error)||'falha ao ajustar')); return; }
+  document.getElementById('dlgAjuste').close();
+  await carregar();
+}
 
 // ---- Produto ----
 function openProduto(){
   editandoId=null;
   document.getElementById('btnExcluirProd').style.display='none';
   document.getElementById('dlgProdTitle').textContent='Novo produto';
+  document.getElementById('pSaldoLab').textContent='Saldo inicial';
   document.getElementById('pNome').value='';
   document.getElementById('pCategoria').value='Defensivo';
   document.getElementById('pUnidade').value='mL';
@@ -458,6 +896,7 @@ function editarProduto(id){
   const p = estoque.find(x=>x.id===id); if(!p) return;
   editandoId=id;
   document.getElementById('dlgProdTitle').textContent='Editar produto';
+  document.getElementById('pSaldoLab').textContent='Saldo atual (corrige via movimentação)';
   document.getElementById('pNome').value=p.nome||'';
   document.getElementById('pCategoria').value=p.categoria||'Defensivo';
   document.getElementById('pUnidade').value=p.unidade||'mL';
@@ -476,7 +915,8 @@ async function excluirProduto(){
   const s = num(p.estoqueAtual);
   if(!confirm(`Excluir "${p.nome}" do estoque?${s!==0?` (saldo atual: ${fmt(s)} ${p.unidade||''})`:''}\nO histórico de movimentações dele será mantido na planilha.`)) return;
   document.getElementById('dlgProduto').close();
-  await apiPost({tipo:'estoque', action:'delete', id:editandoId});
+  const r = await apiPost({tipo:'estoque', action:'delete', id:editandoId});
+  if(!r || !r.ok){ alert('Erro ao excluir: '+((r&&r.error)||'falha')); return; }
   editandoId = null;
   carregar();
 }
@@ -506,69 +946,28 @@ async function salvarProduto(){
     // Ajusta saldo via movimentação para manter histórico correto
     const p = estoque.find(x=>x.id===editandoId);
     const diff = saldoIni - num(p.estoqueAtual);
-    await apiPost({action:'update', tipo:'estoque', id:editandoId, data:dadosForm});
+    const r1 = await apiPost({action:'update', tipo:'estoque', id:editandoId, data:dadosForm});
+    if(!r1 || !r1.ok){ alert('Erro ao salvar: '+((r1&&r1.error)||'falha')); return; }
     if(diff!==0){
-      await apiPost({action:'movimentar', data:{
+      const r2 = await apiPost({action:'movimentar', data:{
         produtoId:editandoId, produtoNome:nome,
         tipo: diff>0?'entrada':'saida', quantidade: Math.abs(diff),
-        unidade: dadosForm.unidade, origem:'ajuste', obs:'Ajuste manual de saldo'
+        unidade: dadosForm.unidade, origem:'ajuste', data: hojeISO(), obs:'Ajuste manual de saldo'
       }});
+      if(!r2 || !r2.ok){ alert('Produto salvo, mas o saldo não pôde ser corrigido: '+((r2&&r2.error)||'falha')); }
     }
   }else{
     const res = await apiPost({action:'add', tipo:'estoque', data:Object.assign({}, dadosForm, {estoqueAtual:0})});
+    if(!res || !res.ok){ alert('Erro ao criar produto: '+((res&&res.error)||'falha')); return; }
     if(saldoIni>0 && res.id){
-      await apiPost({action:'movimentar', data:{
+      const r2 = await apiPost({action:'movimentar', data:{
         produtoId:res.id, produtoNome:nome, tipo:'entrada',
-        quantidade:saldoIni, unidade:dadosForm.unidade, origem:'compra', obs:'Saldo inicial'
+        quantidade:saldoIni, unidade:dadosForm.unidade, origem:'compra', data: hojeISO(), obs:'Saldo inicial'
       }});
+      if(!r2 || !r2.ok){ alert('Produto criado, mas o saldo inicial não foi registrado: '+((r2&&r2.error)||'falha')); }
     }
   }
   carregar();
-}
-
-// ---- Movimentação ----
-function openMov(id, tipo){
-  const p = estoque.find(x=>x.id===id); if(!p) return;
-  movProdutoId=id;
-  document.getElementById('movTitle').textContent = (tipo==='entrada'?'+ Entrada — ':'− Saída — ') + p.nome;
-  document.getElementById('movSub').textContent = `Saldo atual: ${fmt(num(p.estoqueAtual))} ${p.unidade||''}`;
-  document.getElementById('mTipo').value=tipo;
-  document.getElementById('mQtd').value='';
-  document.getElementById('mObs').value='';
-  document.getElementById('dlgMov').showModal();
-}
-async function salvarMov(){
-  const qtd = num(document.getElementById('mQtd').value);
-  if(!qtd||qtd<=0){ alert('Digite uma quantidade válida.'); return; }
-  const p = estoque.find(x=>x.id===movProdutoId);
-  document.getElementById('dlgMov').close();
-  await apiPost({action:'movimentar', data:{
-    produtoId:movProdutoId, produtoNome:p?p.nome:'',
-    tipo:document.getElementById('mTipo').value, quantidade:qtd,
-    unidade:p?p.unidade:'', origem:'manual',
-    obs:document.getElementById('mObs').value
-  }});
-  carregar();
-}
-
-// ---- Histórico ----
-function openHist(id){
-  const p = estoque.find(x=>x.id===id); if(!p) return;
-  document.getElementById('histTitle').textContent = p.nome;
-  // Saldo após cada movimentação (da mais antiga pra mais nova, partindo do zero)
-  const todas = movsDoProduto(p).sort((a,b)=> new Date(a.dataCriacao)-new Date(b.dataCriacao));
-  let acc = 0;
-  const saldoDepois = {};
-  todas.forEach(m=>{ acc += (m.tipo==='entrada'?num(m.quantidade):-num(m.quantidade)); saldoDepois[m.id] = acc; });
-  const lista = todas.sort((a,b)=> new Date(b.dataCriacao)-new Date(a.dataCriacao)).slice(0,50);
-  document.getElementById('histSub').textContent = todas.length? `${todas.length} movimentações · disponível ${fmt(num(p.estoqueAtual))} ${p.unidade||''}` : 'Sem movimentações ainda';
-  document.getElementById('histList').innerHTML = lista.length? lista.map(m=>`
-    <div class="mov">
-      <div><b class="${m.tipo==='entrada'?'q-in':'q-out'}">${m.tipo==='entrada'?'+':'−'} ${fmt(num(m.quantidade))} ${escapeHtml(m.unidade||'')}</b>
-      <small>${fmtData(m.dataCriacao)} · ${escapeHtml(m.origem||'manual')}${m.obs?' · '+escapeHtml(m.obs):''}</small>
-      <small>ficou ${fmt(saldoDepois[m.id] ?? 0)} ${escapeHtml(p.unidade||m.unidade||'')} disponível</small></div>
-    </div>`).join('') : '<div class="empty">Nenhuma movimentação.</div>';
-  document.getElementById('dlgHist').showModal();
 }
 
 // ---- Importar do Bulário ----
@@ -589,6 +988,25 @@ async function importarBulario(){
     carregar();
   }catch(e){ alert('Erro ao importar.'); }
 }
+
+// ---------- Render mestre ----------
+function render(){
+  renderKPIs();
+  renderProdutos();
+  renderMovs();
+  renderHist();
+}
+
+// ---------- Eventos ----------
+document.querySelectorAll('#secTabs .tab').forEach(t=>t.addEventListener('click',()=>irPara(t.dataset.s)));
+document.getElementById('busca').addEventListener('input',e=>{busca=e.target.value;renderProdutos();});
+document.getElementById('filtroCat').addEventListener('change',e=>{filtroCat=e.target.value;renderProdutos();});
+document.getElementById('filtroSit').addEventListener('change',e=>{filtro=e.target.value;renderProdutos();});
+document.getElementById('mvTipo').addEventListener('change',toggleSaida);
+document.getElementById('mvProd').addEventListener('change',infoSaldo);
+['hProd','hCat','hTipo','hOri','hDe','hAte'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{histLimite=30;renderHist();});
+});
 
 carregar();
 </script>

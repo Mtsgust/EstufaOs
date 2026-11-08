@@ -26,7 +26,7 @@ var SHEETS = {
   },
   movimentacoes: {
     name: 'Movimentacoes',
-    headers: ['id', 'dataCriacao', 'produtoId', 'produtoNome', 'tipo', 'quantidade', 'unidade', 'origem', 'origemId', 'obs']
+    headers: ['id', 'dataCriacao', 'produtoId', 'produtoNome', 'tipo', 'quantidade', 'unidade', 'origem', 'origemId', 'obs', 'data', 'estufa', 'motivo']
   },
   ciclos: {
     name: 'Ciclos',
@@ -450,6 +450,15 @@ function movimentar_(data) {
   var conv = converterUnidade_(qtd, unidadeMov, unidadeProd);
   var qtdEstoque = conv.qtd;
 
+  // Saída manual nunca pode deixar saldo negativo (pulverização/nutrição seguem liberadas
+  // pela regra do sistema: origem delas não é 'manual').
+  if (tipo === 'saida' && norm_(data.origem || 'manual') === 'manual' && rowIdx !== -1) {
+    var saldoDisp = parseNum_(estSheet.getRange(rowIdx, cSaldo + 1).getValue());
+    if (qtdEstoque > saldoDisp + 1e-9) {
+      return { ok: false, error: 'Saldo insuficiente: disponível ' + (Math.round(saldoDisp * 100) / 100) + ' ' + (unidadeProd || '') };
+    }
+  }
+
   var criadoAgora = false;
   var novoSaldo = 0;
 
@@ -477,7 +486,8 @@ function movimentar_(data) {
 
   var movSheet = getSheet_('movimentacoes');
   movSheet.appendRow([Utilities.getUuid(), new Date(), prodId, prodNome, tipo,
-    qtdEstoque, unidadeProd || '', data.origem || 'manual', data.origemId || '', obsFinal]);
+    qtdEstoque, unidadeProd || '', data.origem || 'manual', data.origemId || '', obsFinal,
+    dataISO_(data.data) || new Date(), data.estufa || '', data.motivo || '']);
 
   return { ok: true, produtoId: prodId, produtoNome: prodNome, novoSaldo: novoSaldo, criadoAgora: criadoAgora, aviso: conv.aviso || '' };
 }

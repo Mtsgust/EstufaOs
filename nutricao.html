@@ -454,13 +454,15 @@ function getBaixado(d){
   return parseItens(d);
 }
 function dataExibicao(d){
-  if(d.status === 'feito') return d.dataExecucao || d.dataPrevista || '';
-  return d.dataPrevista || d.dataOriginal || '';
+  if(d.status === 'feito') return isoD(d.dataExecucao) || isoD(d.dataPrevista) || '';
+  return isoD(d.dataPrevista) || isoD(d.dataOriginal) || '';
 }
 function isAtrasado(d){
   if(d.status !== 'pendente' || !d.dataPrevista) return false;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  return new Date(d.dataPrevista + 'T00:00:00') < hoje;
+  const dt = isoD(d.dataPrevista);
+  if(!dt) return false;
+  return new Date(dt + 'T00:00:00') < hoje;
 }
 function statusInfo(d){
   if(d.status === 'feito') return {label:'Feita', cls:'feito'};

@@ -11,557 +11,448 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Estufas">
 <meta name="theme-color" content="#0D1B13">
-<title>Painel — Estufas</title>
+<title>Painel — EstufaOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0D1B13; --bg2:#10241A; --card:#152A1F; --card2:#1A3327;
-    --line:#24402F; --ink:#E9F2EA; --mut:#9DB8A4; --dim:#6E8A75;
+    --bg:#0A0E0C; --bg2:#0F1512; --card:#131A16; --card2:#18221C;
+    --line:#1E2E25; --ink:#E8F0EA; --mut:#7A9184; --dim:#4A5E52;
     --leaf:#3D7A5C; --lime:#8FD19A; --gold:#D9A441; --red:#E0785F;
-    --radius:16px;
+    --r:18px;
   }
-  *{box-sizing:border-box;}
-  body{margin:0; background:radial-gradient(1200px 500px at 80% -10%, #16301f 0%, #0D1B13 55%) fixed, var(--bg); color:var(--ink);
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh;}
-  .app{display:flex; min-height:100vh;}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased;}
+  a{color:var(--lime); text-decoration:none;}
 
-  /* ===== Sidebar (abas da esquerda) ===== */
-  aside{width:208px; flex:0 0 208px; background:var(--bg2); border-right:1px solid var(--line);
-    padding:20px 14px; display:flex; flex-direction:column; gap:4px;
-    position:sticky; top:0; height:100vh;}
-  .brand{display:flex; align-items:center; gap:10px; padding:4px 8px 18px;}
-  .brand .logo{width:34px; height:34px; border-radius:10px; background:var(--leaf);
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px;}
-  .brand b{font-size:15px; display:block;} .brand small{color:var(--mut); font-size:11px;}
-  nav a{display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:10px;
-    color:var(--mut); text-decoration:none; font-size:14px; font-weight:500;}
-  nav a svg{width:18px; height:18px; flex:0 0 18px; opacity:.85;}
-  nav a:hover{background:var(--card); color:var(--ink);}
-  nav a.active{background:var(--card2); color:#fff; box-shadow:inset 2px 0 0 var(--lime);}
-  aside .foot{margin-top:auto; font-size:11px; color:var(--dim); padding:8px;}
+  /* ===== Layout ===== */
+  .page{max-width:1080px; margin:0 auto; padding:40px 24px 80px;}
 
-  /* ===== Conteúdo ===== */
-  main{flex:1; padding:26px 28px 60px; max-width:1180px;}
-  .top{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:20px;}
-  .top h1{margin:0; font-size:24px;} .top p{margin:4px 0 0; color:var(--mut); font-size:13px;}
-  .top .date{font-size:12.5px; color:var(--mut); background:var(--card); border:1px solid var(--line);
-    padding:8px 14px; border-radius:20px; white-space:nowrap;}
+  /* ===== Header ===== */
+  .hdr{margin-bottom:36px;}
+  .hdr-top{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  .hdr-logo{width:42px; height:42px; border-radius:13px; overflow:hidden; background:linear-gradient(135deg,#3D7A5C,#1A3327); box-shadow:0 6px 20px rgba(61,122,92,.35);}
+  .hdr-logo img{width:100%; height:100%; object-fit:cover;}
+  .hdr-brand{font-size:17px; font-weight:700; letter-spacing:-.02em;}
+  .hdr-brand small{display:block; font-size:11px; font-weight:400; color:var(--mut); letter-spacing:0;}
+  .hdr h1{font-size:32px; font-weight:800; letter-spacing:-.03em; margin-top:16px;}
+  .hdr p{color:var(--mut); font-size:14px; margin-top:4px;}
+  .hdr-date{font-size:12px; color:var(--dim); margin-top:8px; text-transform:capitalize;}
 
-  .grid{display:grid; gap:14px;}
-  .stats{grid-template-columns:repeat(3, 1fr);}
-  .card{background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:20px;
-    box-shadow:0 10px 30px rgba(0,0,0,.35); transition:transform .18s ease, box-shadow .18s ease;}
-  .card:hover{transform:translateY(-2px); box-shadow:0 14px 34px rgba(0,0,0,.45);}
-  .stat .lbl{font-size:12px; color:var(--mut); display:flex; align-items:center; gap:7px; font-weight:600;}
-  .stat .lbl svg{width:15px; height:15px; flex:0 0 15px;}
-  .stat .dot{width:9px; height:9px; border-radius:50%; background:var(--lime);}
-  .stat.hero{background:linear-gradient(135deg,#8ff0b3,#2fa36b) !important; border:none !important;}
-  .stat.hero .lbl, .stat.hero .sub{color:#0c2b1a !important;}
-  .stat.hero .num{color:#081f12 !important;}
-  .stat.hero .num small{color:#0c2b1a !important;}
-  .stat.hero a.link{color:#081f12 !important; font-weight:700;}
-  .stat .num{font-size:34px; font-weight:800; margin:8px 0 2px;}
-  .stat .num small{font-size:14px; font-weight:500; color:var(--mut);}
-  .stat .sub{font-size:12px; color:var(--mut);}
-  .stat.warn .num{color:var(--gold);} .stat.danger .num{color:var(--red);}
-  .stat a.link{font-size:12px; color:var(--lime); text-decoration:none;}
+  /* ===== Indicadores ===== */
+  .kpis{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:22px 24px; position:relative; overflow:hidden;}
+  .kpi::after{content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--leaf),transparent);}
+  .kpi-label{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin-bottom:8px;}
+  .kpi-val{font-size:42px; font-weight:800; letter-spacing:-.04em; line-height:1;}
+  .kpi-val span{font-size:14px; font-weight:500; color:var(--mut); margin-left:4px;}
+  .kpi-sub{font-size:12px; color:var(--dim); margin-top:6px;}
 
-  .cols2{grid-template-columns:1.2fr 1fr; margin-top:14px;}
-  .card h2{margin:0 0 4px; font-size:15px;}
-  .card .hint{margin:0 0 12px; font-size:12px; color:var(--dim);}
-  .task{display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px dashed var(--line); font-size:13px;}
-  .task:last-child{border-bottom:none;}
-  .task .tag{font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:12px; white-space:nowrap; margin-top:1px;}
-  .tag.pulv{background:#1E3A5C; color:#9CC4EE;} .tag.nutr{background:#4A3A17; color:#E8C86A;}
-  .task b{display:block; font-size:13.5px;}
-  .task span{color:var(--mut); font-size:12px;}
-  .task .late{color:var(--red); font-weight:700;}
-  .empty{color:var(--dim); font-size:13px; padding:14px 0; text-align:center;}
+  /* ===== Clima ===== */
+  .wx{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:28px; margin-bottom:24px;}
+  .wx-hdr{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;}
+  .wx-hdr h2{font-size:15px; font-weight:600;}
+  .wx-hdr .wx-loc{font-size:12px; color:var(--mut); margin-top:2px;}
+  .wx-hdr .wx-upd{font-size:11px; color:var(--dim); text-align:right;}
+  .wx-main{display:flex; align-items:center; gap:28px; margin-bottom:24px; flex-wrap:wrap;}
+  .wx-temp{display:flex; align-items:flex-start; gap:4px;}
+  .wx-temp .deg{font-size:72px; font-weight:800; letter-spacing:-.05em; line-height:1;}
+  .wx-temp .unit{font-size:24px; font-weight:600; color:var(--mut); margin-top:8px;}
+  .wx-icon{font-size:56px; line-height:1;}
+  .wx-cond{font-size:15px; font-weight:600; margin-top:4px;}
+  .wx-feels{font-size:12px; color:var(--mut); margin-top:2px;}
+  .wx-details{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:24px;}
+  .wx-d{background:var(--card2); border-radius:12px; padding:14px 16px;}
+  .wx-d-lbl{font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:6px;}
+  .wx-d-val{font-size:20px; font-weight:700; letter-spacing:-.02em;}
+  .wx-d-val small{font-size:11px; font-weight:400; color:var(--mut);}
+  .wx-days{display:grid; grid-template-columns:repeat(5,1fr); gap:10px;}
+  .wx-day{background:var(--card2); border-radius:12px; padding:14px 8px; text-align:center;}
+  .wx-day .wd{font-size:11px; font-weight:600; color:var(--mut); text-transform:uppercase; letter-spacing:.04em;}
+  .wx-day .wi{font-size:28px; margin:8px 0 6px;}
+  .wx-day .wt{font-size:13px; font-weight:700;}
+  .wx-day .wt span{font-weight:400; color:var(--mut);}
+  .wx-day .wr{font-size:11px; color:var(--dim); margin-top:4px;}
+  .wx-err{text-align:center; padding:30px; color:var(--dim); font-size:13px;}
 
-  /* Clima */
-  .wx-now{display:flex; align-items:center; gap:10px; margin:6px 0;}
-  .wx-now .ic{font-size:46px;}
-  .wx-now .t{font-size:44px; font-weight:800;}
-  .wx-now .c{color:var(--mut); font-size:13px;}
-  .wx-row{display:flex; gap:14px; font-size:12.5px; color:var(--mut); flex-wrap:wrap; margin-bottom:10px;}
-  .wx-row b{color:var(--ink);}
-  .wx-days{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:6px;}
-  .wx-day{background:var(--card2); border-radius:10px; padding:9px 6px; text-align:center; font-size:11.5px;}
-  .wx-day b{display:block; font-size:12.5px; margin:2px 0;}
-  .wx-day span{color:var(--mut);}
+  /* ===== Gráficos ===== */
+  .charts{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .chart-card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:24px;}
+  .chart-card h2{font-size:15px; font-weight:600; margin-bottom:4px;}
+  .chart-card .chart-sub{font-size:12px; color:var(--mut); margin-bottom:20px;}
+  .chart-stats{display:flex; gap:20px; margin-bottom:18px; flex-wrap:wrap;}
+  .cs{flex:1; min-width:100px;}
+  .cs-lbl{font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin-bottom:4px;}
+  .cs-val{font-size:22px; font-weight:700; letter-spacing:-.02em;}
+  .cs-val small{font-size:11px; font-weight:400; color:var(--mut);}
+  .cs-delta{font-size:11px; font-weight:600; margin-top:2px;}
+  .cs-delta.up{color:var(--lime);} .cs-delta.down{color:var(--red);} .cs-delta.flat{color:var(--dim);}
+  canvas{max-height:220px;}
+  .chart-empty{color:var(--dim); font-size:13px; text-align:center; padding:40px 0;}
 
-  canvas{max-height:240px;}
-  .legend{font-size:11.5px; color:var(--dim); margin-top:8px;}
+  /* ===== Loading ===== */
+  .loading{text-align:center; color:var(--dim); font-size:13px; padding:60px 0;}
 
-  /* ===== Carrossel de widgets (Smart Stack) ===== */
-  .stack-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
-  .stack-bar h2{margin:0 !important;}
-  .stack-nav{display:flex; gap:6px;}
-  .stack-nav button{background:var(--card2); border:1px solid var(--line); color:var(--ink);
-    width:28px; height:28px; border-radius:8px; cursor:pointer; font-size:16px; line-height:1;}
-  .stack{display:grid;}
-  .slide{grid-area:1/1; opacity:0; visibility:hidden; transform:translateX(16px);
-    transition:opacity .35s, transform .35s, visibility .35s;}
-  .slide.on{opacity:1; visibility:visible; transform:none;}
-  .slide h3{margin:0 0 10px; font-size:14px;}
-  .dots{display:flex; gap:6px; justify-content:center; margin-top:12px;}
-  .dots button{width:8px; height:8px; border-radius:50%; border:none; background:var(--line); padding:0; cursor:pointer;}
-  .dots button.on{background:var(--lime);}
-  .wtop{display:flex; gap:14px; align-items:center;}
-  .wtop .medal{font-size:44px;}
-  .wtop .e{font-size:22px; font-weight:800;}
-  .wtop .c{font-size:12.5px; color:var(--mut);}
-  .wtop .n{font-size:26px; font-weight:800; color:var(--lime); margin-top:4px;}
-  .wtop .n small{font-size:12px; font-weight:400; color:var(--mut);}
-  .wtop2{margin-top:10px; font-size:12.5px; color:var(--mut);}
-  .mapa7{display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px;}
-  .mini{background:var(--card2); border-radius:10px; padding:9px 6px; font-size:11px; text-align:center;}
-  .mini b{display:block; font-size:13px;}
-  .mini .cul{color:var(--mut); display:block; min-height:14px;}
-  .mini .tot{display:block; font-weight:700; margin-top:2px;}
-  .st{display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin:4px 0;}
-  .st.on{background:#123B28; color:#8FD19A;} .st.grow{background:#4A3A17; color:#E8C86A;} .st.off{background:#222; color:#888;}
-  .tag.colh{background:#123B28; color:#8FD19A;}
-
-  /* ===== Mobile: sidebar vira barra no topo ===== */
-  @media (max-width:860px){
-    .app{flex-direction:column;}
-    aside{width:100%; flex:none; height:auto; position:static; flex-direction:row;
-      align-items:center; padding:calc(env(safe-area-inset-top, 0px) + 10px) 10px 10px; overflow-x:auto; gap:6px;}
-    .brand{padding:0 6px 0 0;} .brand small, aside .foot{display:none;}
-    nav{display:flex; gap:6px;} nav a{white-space:nowrap; padding:9px 12px;}
-    main{padding:18px 14px 90px;}
-    .stats{grid-template-columns:1fr 1fr;}
-    .cols2{grid-template-columns:1fr;}
+  /* ===== Mobile ===== */
+  @media (max-width:700px){
+    .page{padding:28px 16px 80px;}
+    .hdr h1{font-size:26px;}
+    .kpis{grid-template-columns:1fr 1fr; gap:10px;}
+    .kpi{padding:16px 18px;}
+    .kpi-val{font-size:32px;}
+    .wx{padding:20px;}
+    .wx-main{gap:16px;}
+    .wx-temp .deg{font-size:56px;}
+    .wx-icon{font-size:42px;}
+    .wx-details{grid-template-columns:repeat(2,1fr);}
+    .wx-days{grid-template-columns:repeat(5,1fr); gap:6px;}
+    .wx-day{padding:10px 4px;}
+    .wx-day .wi{font-size:22px;}
+    .charts{grid-template-columns:1fr;}
+    .chart-card{padding:18px;}
+    .chart-stats{gap:12px;}
+    .cs-val{font-size:18px;}
   }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="page">
 
-  <!-- ===== BLOCO: Menu lateral (para adicionar abas, copie um <a>) ===== -->
-  <aside>
-    <div class="brand">
-      <div class="logo"><img src="logo.png" alt="Estufas" style="width:100%;height:100%;object-fit:cover;border-radius:10px"></div>
-      <div><b>Estufas</b><small>Controle · Capão Bonito SP</small></div>
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-top">
+      <div class="hdr-logo"><img src="logo.png" alt="EstufaOS"></div>
+      <div class="hdr-brand">EstufaOS<small>Gestão da propriedade</small></div>
     </div>
-    <nav>
-      <a href="index.html" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Painel</a>
-      <a href="pulverizacoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Pulverizações</a>
-      <a href="nutricao.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21c-5 0-8-3-8-8 0-6 5-9 14-10-.5 9-2 18-6 18z"/><path d="M12 21c0-6 2-11 6-14"/></svg>Nutrição</a>
-      <a href="estoque.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Estoque</a>
-      <a href="colheita.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M6 21v-9M12 21V5M18 21v-12"/></svg>Colheita</a>
-      <a href="vendas.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8l7-5 7 5M5 8c0 5 3 9 7 9s7-4 7-9"/></svg>Vendas</a>
-      <a href="financeiro.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>Financeiro</a>
-      <a href="bulario.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>Bulário</a>
-      <a href="relatorios.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios</a>
-      <a href="configuracoes.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>Configurações</a>
-    </nav>
-    <div class="foot">v1 · dados da planilha</div>
-  </aside>
+    <h1>Visão geral</h1>
+    <p id="subtitulo">Carregando dados…</p>
+    <div class="hdr-date" id="hoje"></div>
+  </header>
 
-  <main>
-    <div class="top">
-      <div><h1>Visão geral</h1><p id="subtitulo">Carregando dados da planilha…</p></div>
-      <div class="date" id="hoje"></div>
+  <!-- Indicadores -->
+  <section class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Estufas ativas</div>
+      <div class="kpi-val" id="kEstufas">—</div>
+      <div class="kpi-sub" id="kEstufasSub">—</div>
     </div>
-
-    <!-- ===== BLOCO: Cards de resumo ===== -->
-    <div class="grid stats">
-      <div class="card stat" id="cPulv">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Pulverizações pendentes</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="pulverizacoes.html">Abrir pulverizações →</a>
-      </div>
-      <div class="card stat" id="cNutr">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21c-5 0-8-3-8-8 0-6 5-9 14-10-.5 9-2 18-6 18z"/></svg>Nutrições pendentes</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="nutricao.html">Abrir nutrição →</a>
-      </div>
-      <div class="card stat" id="cEst">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Estoque baixo / zerado</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="estoque.html">Abrir estoque →</a>
-      </div>
-      <div class="card stat" id="cProd">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Produtos no estoque</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="estoque.html">Ver produtos →</a>
-      </div>
-      <div class="card stat hero" id="cAtivas">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M6 21v-9M12 21V5M18 21v-12"/></svg>Estufas ativas</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="colheita.html">Ver colheita →</a>
-      </div>
-      <div class="card stat" id="cSemana">
-        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Pulverizações da semana</div>
-        <div class="num">—</div><div class="sub"></div>
-        <a class="link" href="pulverizacoes.html">Ver agenda →</a>
-      </div>
+    <div class="kpi">
+      <div class="kpi-label">Ciclos de cultivo ativos</div>
+      <div class="kpi-val" id="kCiclos">—</div>
+      <div class="kpi-sub" id="kCiclosSub">—</div>
     </div>
+  </section>
 
-    <div class="grid cols2">
-      <!-- ===== BLOCO: Carrossel A — destaques da colheita ===== -->
-      <div class="card">
-        <div class="stack-bar"><h2>Colheita em destaque</h2>
-          <div class="stack-nav"><button data-s="stackA" data-dir="-1">‹</button><button data-s="stackA" data-dir="1">›</button></div>
-        </div>
-        <div class="stack" id="stackA">
-          <div class="slide"><h3>🏆 Estufa da semana</h3><div id="wTop"><div class="empty">Carregando…</div></div></div>
-          <div class="slide"><h3>Colheita por semana (KG)</h3><canvas id="chEvol"></canvas>
-            <div class="legend">Últimas 8 semanas (seg–dom).</div></div>
-          <div class="slide"><h3>Ranking do mês por estufa</h3><canvas id="chRank"></canvas>
-            <div class="legend" id="rankLeg"></div></div>
-        </div>
-        <div class="dots" id="dotsA"></div>
+  <!-- Clima -->
+  <section class="wx" id="wxCard">
+    <div class="wx-hdr">
+      <div>
+        <h2>Clima</h2>
+        <div class="wx-loc" id="wxLoc">Capão Bonito, SP</div>
       </div>
-      <!-- ===== BLOCO: Carrossel B — estufas ===== -->
-      <div class="card">
-        <div class="stack-bar"><h2>Estufas</h2>
-          <div class="stack-nav"><button data-s="stackB" data-dir="-1">‹</button><button data-s="stackB" data-dir="1">›</button></div>
-        </div>
-        <div class="stack" id="stackB">
-          <div class="slide"><h3>Mapa das estufas</h3><div class="mapa7" id="wMapa"></div></div>
-          <div class="slide"><h3>Safra acumulada (ciclo ativo)</h3><div id="wSafra"></div></div>
-        </div>
-        <div class="dots" id="dotsB"></div>
-      </div>
+      <div class="wx-upd" id="wxUpd"></div>
     </div>
+    <div id="wxBody"><div class="loading">Carregando clima…</div></div>
+  </section>
 
-    <div class="grid cols2">
-      <!-- ===== BLOCO: Próximas tarefas ===== -->
-      <div class="card">
-        <h2>Próximas tarefas</h2>
-        <p class="hint">Pendências de pulverização e nutrição por data prevista.</p>
-        <div id="upcoming"><div class="empty">Carregando…</div></div>
-      </div>
-
-      <!-- ===== BLOCO: Clima Capão Bonito SP ===== -->
-      <div class="card">
-        <h2>Clima hoje · Capão Bonito SP</h2>
-        <p class="hint">Fonte: Open-Meteo (atualizado a cada abertura).</p>
-        <div id="wx"><div class="empty">Carregando clima…</div></div>
-      </div>
+  <!-- Gráficos de produção -->
+  <section class="charts">
+    <div class="chart-card">
+      <h2>Produção — Tomate grape</h2>
+      <p class="chart-sub">Últimas 4 semanas · valores em quilogramas</p>
+      <div id="tomStats"><div class="loading">Carregando…</div></div>
+      <canvas id="chTomate"></canvas>
+      <div class="chart-empty" id="tomEmpty" style="display:none">Sem registros de colheita para esta cultura.</div>
     </div>
-
-    <div class="grid cols2">
-      <!-- ===== BLOCO: Gráfico tarefas feitas/semana ===== -->
-      <div class="card">
-        <h2>Tarefas feitas por semana</h2>
-        <p class="hint">Pulverizações + nutrições marcadas como feitas.</p>
-        <canvas id="chFeitas"></canvas>
-      </div>
-      <!-- ===== BLOCO: Gráfico produtos por categoria ===== -->
-      <div class="card">
-        <h2>Produtos por categoria</h2>
-        <p class="hint">Itens cadastrados no estoque.</p>
-        <canvas id="chCateg"></canvas>
-      </div>
+    <div class="chart-card">
+      <h2>Produção — Pepino japonês</h2>
+      <p class="chart-sub">Últimas 4 semanas · valores em quilogramas</p>
+      <div id="pepStats"><div class="loading">Carregando…</div></div>
+      <canvas id="chPepino"></canvas>
+      <div class="chart-empty" id="pepEmpty" style="display:none">Sem registros de colheita para esta cultura.</div>
     </div>
+  </section>
 
-    <!-- ===== BLOCO: Espaço para futuros blocos (cole novos cards aqui) ===== -->
-  </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <script>
-// Cidade do clima (Capão Bonito SP). Para trocar: pegue lat/lon em open-meteo.com
-const WX_LAT = -24.01, WX_LON = -48.35;
-
-document.getElementById('hoje').textContent =
-  new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
-
+// ===== Helpers =====
 const num = v => { const n = parseFloat(String(v??'').replace(',','.')); return isNaN(n)?0:n; };
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtD = v => { if(!v) return 'sem data'; const d = new Date(v.length===10?v+'T00:00:00':v);
-  return isNaN(d)? v : d.toLocaleDateString('pt-BR'); };
-const ehAtrasado = d => {
-  if(!d || d.status==='feito' || !d.dataPrevista) return false;
-  const h = new Date(); h.setHours(0,0,0,0);
-  return new Date(d.dataPrevista+'T00:00:00') < h;
-};
+const hojeISO = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const parseISO = v => { if(!v) return null; const s=String(v).slice(0,10); const d=new Date(s+'T00:00:00'); return isNaN(d)?null:d; };
+const fmtN = n => (Math.round(n*100)/100).toString().replace('.',',');
+
+document.getElementById('hoje').textContent =
+  new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+// ===== Indicadores =====
+function renderIndicadores(ciclos){
+  const ativos = ciclos.filter(c=>c.status!=='encerrada');
+  const estufas = [...new Set(ativos.map(c=>String(c.estufa)).filter(Boolean))];
+  const culturas = [...new Set(ativos.map(c=>c.cultura).filter(Boolean))];
+
+  document.getElementById('kEstufas').innerHTML = `${estufas.length}<span>/ 7</span>`;
+  document.getElementById('kEstufasSub').textContent = culturas.length
+    ? culturas.slice(0,3).join(', ') + (culturas.length>3 ? ` +${culturas.length-3}` : '')
+    : 'nenhuma cultura ativa';
+
+  document.getElementById('kCiclos').textContent = ativos.length;
+  document.getElementById('kCiclosSub').textContent = ativos.length
+    ? `em ${estufas.length} estufa(s)`
+    : 'nenhum ciclo ativo';
+
+  document.getElementById('subtitulo').textContent = ativos.length
+    ? `${estufas.length} estufas em operação · ${ativos.length} ciclo(s) ativo(s)`
+    : 'Nenhum ciclo ativo no momento.';
+}
+
+// ===== Clima =====
+const WX_TXT = {0:'Céu limpo',1:'Quase limpo',2:'Parcialmente nublado',3:'Nublado',45:'Nevoeiro',48:'Nevoeiro',
+  51:'Garoa leve',53:'Garoa',55:'Garoa forte',56:'Garoa congelante',57:'Garoa congelante',
+  61:'Chuva fraca',63:'Chuva',65:'Chuva forte',66:'Chuva congelante',67:'Chuva congelante forte',
+  71:'Neve fraca',73:'Neve',75:'Neve forte',77:'Granizo',
+  80:'Pancadas leves',81:'Pancadas',82:'Pancadas fortes',85:'Nevascas leves',86:'Nevascas',
+  95:'Tempestade',96:'Tempestade com granizo',99:'Tempestade forte com granizo'};
+const WX_ICON = c => [95,96,99].includes(c) ? '⛈️' : [80,81,82,61,63,65,66,67].includes(c) ? '🌧️'
+  : [71,73,75,77,85,86].includes(c) ? '🌨️' : [51,53,55,56,57].includes(c) ? '🌦️'
+  : [45,48].includes(c) ? '🌫️' : [3].includes(c) ? '☁️' : [2].includes(c) ? '⛅' : '☀️';
+const WX_DIR = d => { const dirs=['N','NE','L','SE','S','SO','O','NO']; return dirs[Math.round(d/45)%8]; };
+
+async function carregarClima(){
+  const body = document.getElementById('wxBody');
+  const upd = document.getElementById('wxUpd');
+  try{
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=-24.01&longitude=-48.35` +
+      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant` +
+      `&timezone=America%2FSao_Paulo&forecast_days=5&wind_speed_unit=kmh`;
+    const j = await (await fetch(u)).json();
+    const c = j.current;
+    const dias = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+    // Última atualização
+    const agora = new Date();
+    upd.innerHTML = `Atualizado<br>${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+
+    body.innerHTML = `
+      <div class="wx-main">
+        <div class="wx-temp">
+          <span class="deg">${Math.round(c.temperature_2m)}</span><span class="unit">°C</span>
+        </div>
+        <div class="wx-icon">${WX_ICON(c.weather_code)}</div>
+        <div>
+          <div class="wx-cond">${WX_TXT[c.weather_code]||'—'}</div>
+          <div class="wx-feels">Sensação ${Math.round(c.apparent_temperature)}°C</div>
+        </div>
+      </div>
+      <div class="wx-details">
+        <div class="wx-d">
+          <div class="wx-d-lbl">Umidade</div>
+          <div class="wx-d-val">${c.relative_humidity_2m}<small>%</small></div>
+        </div>
+        <div class="wx-d">
+          <div class="wx-d-lbl">Chuva hoje</div>
+          <div class="wx-d-val">${j.daily.precipitation_probability_max[0]??0}<small>%</small></div>
+        </div>
+        <div class="wx-d">
+          <div class="wx-d-lbl">Volume previsto</div>
+          <div class="wx-d-val">${(j.daily.precipitation_sum[0]??0).toFixed(1)}<small> mm</small></div>
+        </div>
+        <div class="wx-d">
+          <div class="wx-d-lbl">Vento</div>
+          <div class="wx-d-val">${Math.round(c.wind_speed_10m)}<small> km/h ${WX_DIR(c.wind_direction_10m)}</small></div>
+        </div>
+      </div>
+      <div class="wx-days">
+        ${j.daily.time.map((t,i)=>{
+          const d = new Date(t+'T00:00:00');
+          return `<div class="wx-day">
+            <div class="wd">${i===0?'hoje':dias[d.getDay()]}</div>
+            <div class="wi">${WX_ICON(j.daily.weather_code[i])}</div>
+            <div class="wt">${Math.round(j.daily.temperature_2m_max[i])}° <span>${Math.round(j.daily.temperature_2m_min[i])}°</span></div>
+            <div class="wr">${j.daily.precipitation_probability_max[i]??0}% · ${(j.daily.precipitation_sum[i]??0).toFixed(1)}mm</div>
+            <div class="wr">${Math.round(j.daily.wind_speed_10m_max[i])} km/h ${WX_DIR(j.daily.wind_direction_10m_dominant[i])}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }catch(e){
+    body.innerHTML = `<div class="wx-err">Clima indisponível.<br><small>Verifique a conexão com a internet.</small></div>`;
+    upd.textContent = '';
+  }
+}
+
+// ===== Gráficos de produção =====
+function semanaISO(d){
+  // Segunda da semana (ISO)
+  const x = new Date(d); x.setHours(0,0,0,0);
+  x.setDate(x.getDate() - ((x.getDay()+6)%7));
+  return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+}
+function addDias(iso, n){
+  const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function filtrarPorCultura(colhs, ciclos, termos){
+  // termos: array de strings pra match (ex: ['tomate'] ou ['pepino'])
+  const ids = new Set();
+  ciclos.forEach(c=>{
+    const texto = `${c.cultura||''} ${c.variedade||''}`.toLowerCase();
+    if(termos.some(t=>texto.includes(t))) ids.add(String(c.id));
+  });
+  return colhs.filter(h=>{
+    if(String(h.unidade).toUpperCase()==='CX') return false; // só KG
+    const byCiclo = ids.has(String(h.cicloId));
+    const texto = `${h.cultura||''} ${h.produto||''}`.toLowerCase();
+    const byNome = termos.some(t=>texto.includes(t));
+    return byCiclo || byNome;
+  });
+}
+
+function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor){
+  const canvas = document.getElementById(canvasId);
+  const stats = document.getElementById(statsId);
+  const empty = document.getElementById(emptyId);
+
+  const filtrados = filtrarPorCultura(colhs, ciclos, termos);
+
+  // Últimas 4 semanas (segunda a domingo)
+  const segAtual = semanaISO(new Date());
+  const semanas = [];
+  for(let i=3;i>=0;i--){
+    const ini = addDias(segAtual, -7*i);
+    const fim = addDias(ini, 7);
+    semanas.push({ini, fim, total:0, rotulo:''});
+  }
+  // Preenche totais
+  filtrados.forEach(h=>{
+    const dt = String(h.data||'').slice(0,10);
+    if(!dt) return;
+    semanas.forEach(s=>{ if(dt>=s.ini && dt<s.fim) s.total += num(h.quantidade); });
+  });
+  // Rótulos
+  semanas.forEach(s=>{
+    const d = new Date(s.ini+'T00:00:00');
+    s.rotulo = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  });
+
+  const totais = semanas.map(s=>Math.round(s.total*100)/100);
+  const somaPeriodo = Math.round(totais.reduce((a,b)=>a+b,0)*100)/100;
+
+  if(somaPeriodo === 0){
+    canvas.style.display='none';
+    empty.style.display='block';
+    stats.innerHTML='';
+    return;
+  }
+  canvas.style.display='block';
+  empty.style.display='none';
+
+  // Comparação: última semana vs anterior
+  const ultima = totais[3], anterior = totais[2];
+  let deltaTxt = '—', deltaCls = 'flat';
+  if(anterior > 0){
+    const pct = ((ultima - anterior)/anterior*100);
+    deltaTxt = `${pct>=0?'+':''}${pct.toFixed(1)}%`;
+    deltaCls = pct>0?'up':pct<0?'down':'flat';
+  } else if(ultima > 0){
+    deltaTxt = 'primeira semana'; deltaCls='flat';
+  }
+
+  stats.innerHTML = `
+    <div class="cs">
+      <div class="cs-lbl">Total período</div>
+      <div class="cs-val">${fmtN(somaPeriodo)} <small>KG</small></div>
+    </div>
+    <div class="cs">
+      <div class="cs-lbl">Última semana</div>
+      <div class="cs-val">${fmtN(ultima)} <small>KG</small></div>
+      <div class="cs-delta ${deltaCls}">${deltaTxt} vs semana anterior</div>
+    </div>`;
+
+  // Gráfico
+  if(canvas._chart) canvas._chart.destroy();
+  canvas._chart = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels: semanas.map(s=>s.rotulo),
+      datasets:[{
+        data: totais,
+        backgroundColor: cor,
+        borderRadius: 8,
+        borderSkipped: false,
+        barPercentage: 0.6
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: ctx => `${fmtN(ctx.parsed.y)} KG`
+          }
+        }
+      },
+      scales:{
+        x:{grid:{display:false}, ticks:{color:'#4A5E52', font:{size:11}}},
+        y:{beginAtZero:true, grid:{color:'#1E2E25'}, ticks:{color:'#4A5E52', font:{size:11}, callback:v=>v+' KG'}}
+      }
+    }
+  });
+}
+
+// ===== Carregamento principal =====
+async function carregarPainel(){
+  try{
+    // Cache primeiro
+    let ciclos = [], colhs = [];
+    if(typeof cacheLerTipo === 'function'){
+      ciclos = cacheLerTipo('ciclos') || [];
+      colhs = cacheLerTipo('colheitas') || [];
+      if(ciclos.length || colhs.length){
+        renderIndicadores(ciclos);
+        renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C');
+        renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441');
+        document.getElementById('subtitulo').textContent = 'Atualizando…';
+      }
+    }
+    // Busca fresca
+    let d;
+    if(typeof buscarLote === 'function'){
+      d = await buscarLote(['ciclos','colheitas']);
+    } else {
+      const r = await Promise.all([get('ciclos'), get('colheitas')]);
+      d = {ciclos:r[0], colheitas:r[1]};
+    }
+    ciclos = d.ciclos || [];
+    colhs = d.colheitas || [];
+    renderIndicadores(ciclos);
+    renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C');
+    renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441');
+  }catch(e){
+    document.getElementById('subtitulo').innerHTML =
+      'Erro ao carregar dados. <a href="#" onclick="carregarPainel();return false">Tentar de novo</a>';
+  }
+}
 
 async function get(tipo){
-  try {
-    if (typeof buscarTipo === 'function') return await buscarTipo(tipo);
-  } catch (e) {
-    const c = (typeof cacheLerTipo === 'function') ? cacheLerTipo(tipo) : null;
-    if (c) return c;
+  try{
+    if(typeof buscarTipo==='function') return await buscarTipo(tipo);
+  }catch(e){
+    const c = (typeof cacheLerTipo==='function') ? cacheLerTipo(tipo) : null;
+    if(c) return c;
     throw e;
   }
   const r = await fetch(`${API_URL}?tipo=${tipo}`);
   return (await r.json()).data || [];
 }
 
-function pintarPainel(pulv, nutr, est, ciclos, colhs){
-    const ativas = ciclos.filter(c=>c.status!=='encerrada');
-    const cults = [...new Set(ativas.map(c=>c.cultura).filter(Boolean))];
-    setStat('cAtivas', ativas.length, '/ 7', cults.length ? cults.slice(0,3).join(', ') : 'nenhuma cultura', '');
-    // Pulverizações da semana (seg–dom): previstas + feitas
-    const seg = new Date(); seg.setHours(0,0,0,0); seg.setDate(seg.getDate()-((seg.getDay()+6)%7));
-    const dom = new Date(seg); dom.setDate(seg.getDate()+7);
-    const naSemana = d => { const s = d.status==='feito' ? d.dataExecucao : d.dataPrevista;
-      if(!s) return false; const dt = new Date(s.length===10 ? s+'T00:00:00' : s); return dt >= seg && dt < dom; };
-    const ps = pulv.filter(naSemana);
-    const feitas = ps.filter(d=>d.status==='feito').length;
-    setStat('cSemana', ps.length, '', feitas+' feita(s) · '+(ps.length-feitas)+' a fazer', ps.length-feitas?'warn':'');
-    const pP = pulv.filter(d=>d.status!=='feito'), pN = nutr.filter(d=>d.status!=='feito');
-    const aP = pP.filter(ehAtrasado).length, aN = pN.filter(ehAtrasado).length;
-    const baixo = est.filter(p=>{ const s=num(p.estoqueAtual); return s<=0 || (num(p.estoqueMinimo)>0 && s<=num(p.estoqueMinimo)); });
-
-    setStat('cPulv', pP.length, '', aP? `${aP} atrasada(s)` : 'tudo em dia', aP?'danger':'');
-    setStat('cNutr', pN.length, '', aN? `${aN} atrasada(s)` : 'tudo em dia', aN?'danger':'');
-    setStat('cEst', baixo.length, '', baixo.length? baixo.slice(0,2).map(p=>p.nome).join(', ') : 'nenhum alerta', baixo.length?'warn':'');
-    setStat('cProd', est.length, '', `${new Set(est.map(p=>p.categoria||'Outro')).size} categorias`, '');
-
-    document.getElementById('subtitulo').textContent =
-      `${pP.length+pN.length} pendências no total · ${baixo.length} alertas de estoque`;
-
-    // Próximas tarefas
-    const prox = [...pP.map(d=>({...d, _t:'pulv'})), ...pN.map(d=>({...d, _t:'nutr'}))]
-      .sort((a,b)=> (a.dataPrevista||'9999') < (b.dataPrevista||'9999') ? -1 : 1).slice(0,6);
-    document.getElementById('upcoming').innerHTML = prox.length ? prox.map(d=>{
-      const nome = d._t==='pulv' ? nomePulv(d) : (d.produto||'(insumo não informado)');
-      const late = ehAtrasado(d) ? ' <span class="late">· atrasada</span>' : '';
-      return `<div class="task"><span class="tag ${d._t}">${d._t==='pulv'?'PULV':'NUTR'}</span>
-        <div><b>${esc(nome)}</b><span>Estufa ${esc(d.estufa||'?')} · ${fmtD(d.dataPrevista)}${late}</span></div></div>`;
-    }).join('') : '<div class="empty">Nenhuma pendência. Tudo em dia!</div>';
-
-    desenharGraficos(pulv, nutr, est);
-    renderColheita(ciclos, colhs);
-    initStack('stackA', 'dotsA', 'stkA', 9000);
-    initStack('stackB', 'dotsB', 'stkB', 11000);
-}
-
-async function carregarPainel(){
-  // 1) Mostra cache na hora (não trava em "Carregando")
-  try {
-    if (typeof cacheLerTipo === 'function') {
-      const cp = cacheLerTipo('pulverizacao'), cn = cacheLerTipo('nutricao'),
-            ce = cacheLerTipo('estoque'), cc = cacheLerTipo('ciclos'), ch = cacheLerTipo('colheitas');
-      if (cp && cn && ce) {
-        try { pintarPainel(cp, cn, ce, cc || [], ch || []); } catch (e) {}
-        document.getElementById('subtitulo').textContent = 'Atualizando dados...';
-      }
-    }
-  } catch (e) {}
-  // 2) Busca tudo em 1 chamada (lote) com timeout + retry
-  try {
-    let pulv, nutr, est, ciclos = [], colhs = [];
-    if (typeof buscarLote === 'function') {
-      const d = await buscarLote(['pulverizacao', 'nutricao', 'estoque', 'ciclos', 'colheitas']);
-      pulv = d.pulverizacao || []; nutr = d.nutricao || []; est = d.estoque || [];
-      ciclos = d.ciclos || []; colhs = d.colheitas || [];
-    } else {
-      const r = await Promise.all([get('pulverizacao'), get('nutricao'), get('estoque')]);
-      pulv = r[0]; nutr = r[1]; est = r[2];
-      try { const r2 = await Promise.all([get('ciclos'), get('colheitas')]); ciclos = r2[0]; colhs = r2[1]; } catch (e) {}
-    }
-    pintarPainel(pulv, nutr, est, ciclos, colhs);
-  } catch (e) {
-    const sub = document.getElementById('subtitulo');
-    sub.innerHTML = 'Demorou demais. <a href="#" onclick="carregarPainel();return false" style="color:var(--lime)">Tentar de novo</a>';
-    const up = document.getElementById('upcoming');
-    if (up && !up.innerHTML.trim()) up.innerHTML = '<div class="empty">Sem conexão. <a href="#" onclick="carregarPainel();return false">Tentar de novo</a></div>';
-  }
-}
-function nomePulv(d){
-  try{ const a = JSON.parse(d.produto); if(Array.isArray(a) && a.length) return a.map(p=>p.nome).join(' + '); }
-  catch(e){}
-  return d.produto || '(produto não informado)';
-}
-function setStat(id, n, suf, sub, cls){
-  const c = document.getElementById(id);
-  c.querySelector('.num').innerHTML = `${n} <small>${suf}</small>`;
-  c.querySelector('.sub').textContent = sub;
-  c.classList.remove('warn','danger'); if(cls) c.classList.add(cls);
-}
-
-function desenharGraficos(pulv, nutr, est){
-  if(!window.Chart) return;
-  Chart.defaults.color = '#9DB8A4';
-  Chart.defaults.borderColor = '#24402F';
-  Chart.defaults.font.family = '-apple-system,"Segoe UI",Roboto,sans-serif';
-  // Feitas por semana (últimas 6)
-  const sem = [], lbl = [];
-  const h = new Date(); h.setHours(0,0,0,0); h.setDate(h.getDate() - ((h.getDay()+6)%7)); // segunda desta semana
-  for(let i=5;i>=0;i--){
-    const ini = new Date(h); ini.setDate(h.getDate()-7*i);
-    const fim = new Date(ini); fim.setDate(ini.getDate()+7);
-    sem.push({ini, fim, n:0});
-    lbl.push(ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
-  }
-  [...pulv, ...nutr].filter(d=>d.status==='feito' && d.dataExecucao).forEach(d=>{
-    const dt = new Date(d.dataExecucao.length===10? d.dataExecucao+'T00:00:00' : d.dataExecucao);
-    sem.forEach(s=>{ if(dt>=s.ini && dt<s.fim) s.n++; });
-  });
-  new Chart(document.getElementById('chFeitas'), {type:'bar',
-    data:{labels:lbl, datasets:[{data:sem.map(s=>s.n), backgroundColor:'#3D7A5C', borderRadius:6}]},
-    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{stepSize:1}}}}});
-  // Produtos por categoria
-  const cats = {};
-  est.forEach(p=>{ const c=p.categoria||'Outro'; cats[c]=(cats[c]||0)+1; });
-  new Chart(document.getElementById('chCateg'), {type:'doughnut',
-    data:{labels:Object.keys(cats), datasets:[{data:Object.values(cats),
-      backgroundColor:['#3D7A5C','#D9A441','#5C8FD1','#B45FC1','#E0785F','#6E8A75']}]},
-    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:12, padding:12}}}}});
-}
-
-// ===== Widgets de colheita =====
-const isoD = v => { if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}-${m[2]}-${m[3]}` : ''; };
-const hojeD = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const fmtN = n => (Math.round(n*100)/100).toString().replace('.', ',');
-const ativoE = (ciclos, e) => ciclos.find(c => String(c.estufa)===String(e) && c.status!=='encerrada');
-function diasColhendo(ini, fim){
-  const a = isoD(ini); if(!a) return '';
-  const d = Math.round((new Date((isoD(fim)||hojeD())+'T00:00:00') - new Date(a+'T00:00:00'))/86400000);
-  return d >= 0 ? `${d} dias colhendo` : '';
-}
-function totTxt(t){ return (t.kg>0?`${fmtN(t.kg)} KG`:'') + (t.kg>0&&t.cx>0?' + ':'') + (t.cx>0?`${fmtN(t.cx)} CX`:''); }
-
-function renderColheita(ciclos, colhs){
-  const H = hojeD();
-  const soma = h => ({kg: String(h.unidade).toUpperCase()==='CX' ? 0 : num(h.quantidade),
-                      cx: String(h.unidade).toUpperCase()==='CX' ? num(h.quantidade) : 0});
-
-  // 1) Estufa da semana (últimos 7 dias, só ciclo ativo)
-  const d7 = new Date(); d7.setDate(d7.getDate()-6);
-  const d7s = `${d7.getFullYear()}-${String(d7.getMonth()+1).padStart(2,'0')}-${String(d7.getDate()).padStart(2,'0')}`;
-  const porE = {};
-  colhs.forEach(h=>{
-    const dt = isoD(h.data); if(!dt || dt < d7s || dt > H) return;
-    const c = ciclos.find(x=>String(x.id)===String(h.cicloId));
-    if(c && c.status==='encerrada') return;
-    const e = String(h.estufa||(c&&c.estufa)||'?');
-    porE[e] = porE[e] || {kg:0, cx:0};
-    const s = soma(h); porE[e].kg += s.kg; porE[e].cx += s.cx;
-  });
-  const rank = Object.entries(porE).filter(([,t])=>t.kg>0||t.cx>0)
-    .sort((a,b)=> (b[1].kg-a[1].kg) || (b[1].cx-a[1].cx));
-  document.getElementById('wTop').innerHTML = rank.length ? (() => {
-    const [e, t] = rank[0];
-    const c = ativoE(ciclos, e);
-    const outros = rank.slice(1,3).map(([e2,t2],i)=>`${i===0?'2º':'3º'}: E${esc(e2)} · ${totTxt(t2)}`).join(' &nbsp; ');
-    return `<div class="wtop"><div class="medal">🏆</div><div>
-      <div class="e">Estufa ${esc(e)}</div>
-      <div class="c">${esc((c&&(c.variedade||c.cultura))||'')}</div>
-      <div class="n">${totTxt(t)} <small>nos últimos 7 dias</small></div></div></div>
-      ${outros?`<div class="wtop2">${outros}</div>`:''}`;
-  })() : '<div class="empty">Sem colheita nos últimos 7 dias.</div>';
-
-  // 2) Evolução semanal (KG, últimas 8 semanas seg–dom)
-  // 3) Ranking do mês (KG + CX por estufa)
-  if(window.Chart){
-    const seg = new Date(); seg.setHours(0,0,0,0); seg.setDate(seg.getDate()-((seg.getDay()+6)%7));
-    const lbl = [], kgS = [];
-    for(let i=7;i>=0;i--){
-      const ini = new Date(seg); ini.setDate(seg.getDate()-7*i);
-      const fim = new Date(ini); fim.setDate(ini.getDate()+7);
-      let s = 0;
-      colhs.forEach(h=>{ if(String(h.unidade).toUpperCase()==='CX') return;
-        const dt = isoD(h.data); if(!dt) return;
-        const d = new Date(dt+'T00:00:00');
-        if(d>=ini && d<fim) s += num(h.quantidade); });
-      lbl.push(ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})); kgS.push(Math.round(s*100)/100);
-    }
-    new Chart(document.getElementById('chEvol'), {type:'line',
-      data:{labels:lbl, datasets:[{data:kgS, borderColor:'#8FD19A', backgroundColor:'rgba(143,209,154,.15)',
-        fill:true, tension:.35, pointRadius:3}]},
-      options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
-
-    const mes = H.slice(0,7);
-    const rk = {};
-    colhs.forEach(h=>{ const dt = isoD(h.data); if(!dt || dt.slice(0,7)!==mes) return;
-      const e = 'E'+String(h.estufa||'?'); rk[e] = rk[e]||{kg:0,cx:0};
-      const s = soma(h); rk[e].kg += s.kg; rk[e].cx += s.cx; });
-    const keys = Object.keys(rk).filter(k=>rk[k].kg>0||rk[k].cx>0).sort();
-    if(keys.length){
-      new Chart(document.getElementById('chRank'), {type:'bar',
-        data:{labels:keys, datasets:[
-          {label:'KG', data:keys.map(k=>Math.round(rk[k].kg*100)/100), backgroundColor:'#3D7A5C', borderRadius:5},
-          {label:'CX', data:keys.map(k=>Math.round(rk[k].cx*100)/100), backgroundColor:'#D9A441', borderRadius:5}]},
-        options:{plugins:{legend:{position:'bottom', labels:{boxWidth:12}}}, scales:{y:{beginAtZero:true}}}});
-      const totM = keys.reduce((a,k)=>({kg:a.kg+rk[k].kg, cx:a.cx+rk[k].cx}), {kg:0,cx:0});
-      document.getElementById('rankLeg').textContent = `Mês atual: ${totTxt(totM)}.`;
-    } else {
-      document.getElementById('rankLeg').textContent = 'Sem colheita neste mês ainda.';
-    }
-  }
-
-  // 4) Mapa das estufas
-  document.getElementById('wMapa').innerHTML = ['1','2','3','4','5','6','7'].map(e=>{
-    const c = ativoE(ciclos, e);
-    if(!c) return `<div class="mini"><b>E${e}</b><span class="cul">—</span><span class="st off">livre</span><span class="tot"> </span></div>`;
-    let kg = 0, cx = 0;
-    colhs.filter(h=>String(h.cicloId)===String(c.id)).forEach(h=>{ const s = soma(h); kg += s.kg; cx += s.cx; });
-    const colhendo = c.dataInicio && hojeD() >= isoD(c.dataInicio);
-    return `<div class="mini"><b>E${e}</b><span class="cul">${esc(c.cultura||'—')}</span>` +
-      `<span class="st ${colhendo?'on':'grow'}">${colhendo?'colhendo':'crescendo'}</span>` +
-      `<span class="tot">${totTxt({kg,cx})||'—'}</span></div>`;
-  }).join('');
-
-  // 5) Safra acumulada
-  const ativas = ciclos.filter(c=>c.status!=='encerrada');
-  document.getElementById('wSafra').innerHTML = ativas.length ? ativas.map(c=>{
-    let kg = 0, cx = 0;
-    colhs.filter(h=>String(h.cicloId)===String(c.id)).forEach(h=>{ const s = soma(h); kg += s.kg; cx += s.cx; });
-    return `<div class="task"><span class="tag colh">E${esc(c.estufa)}</span><div><b>${esc(c.cultura||'Cultura?')} — ${totTxt({kg,cx})||'sem colheita'}</b>` +
-      `<span>${c.variedade?esc(c.variedade)+' · ':''}${diasColhendo(c.dataInicio, c.dataFim)}</span></div></div>`;
-  }).join('') : '<div class="empty">Nenhum ciclo ativo.</div>';
-}
-
-// ===== Carrossel Smart Stack: gira sozinho + avança 1 a cada visita =====
-function initStack(stackId, dotsId, key, ms){
-  const box = document.getElementById(stackId);
-  if(!box || box.dataset.init) return; box.dataset.init = '1';
-  const slides = [...box.querySelectorAll('.slide')];
-  const dotsBox = document.getElementById(dotsId);
-  let idx = 0;
-  try{ idx = ((parseInt(localStorage.getItem(key)||'0',10)||0)+1)%slides.length; }catch(e){}
-  dotsBox.innerHTML = slides.map((_,i)=>`<button data-i="${i}" aria-label="widget ${i+1}"></button>`).join('');
-  const dots = [...dotsBox.children];
-  const show = i => { idx = (i+slides.length)%slides.length;
-    slides.forEach((s,k)=>s.classList.toggle('on', k===idx));
-    dots.forEach((d,k)=>d.classList.toggle('on', k===idx));
-    try{ localStorage.setItem(key, idx); }catch(e){} };
-  let t = null;
-  const restart = () => { if(t) clearInterval(t); t = setInterval(()=>show(idx+1), ms||9000); };
-  dots.forEach(d=>d.onclick=()=>{ show(+d.dataset.i); restart(); });
-  document.querySelectorAll(`.stack-nav button[data-s="${stackId}"]`).forEach(b=>b.onclick=()=>{ show(idx + +b.dataset.dir); restart(); });
-  restart(); show(idx);
-}
-
-// ===== Clima (Open-Meteo, sem chave) =====
-const WX_TXT = {0:'Limpo',1:'Quase limpo',2:'Parcial nublado',3:'Nublado',45:'Nevoeiro',48:'Nevoeiro',
-  51:'Garoa leve',53:'Garoa',55:'Garoa forte',61:'Chuva fraca',63:'Chuva',65:'Chuva forte',
-  80:'Pancadas leves',81:'Pancadas',82:'Pancadas fortes',95:'Tempestade'};
-const WX_ICON = c => [95].includes(c) ? '⛈️' : [80,81,82,61,63,65].includes(c) ? '🌧️'
-  : [51,53,55].includes(c) ? '🌦️' : [45,48].includes(c) ? '🌫️'
-  : [3].includes(c) ? '☁️' : [2].includes(c) ? '⛅' : '☀️';
-async function carregarClima(){
-  const box = document.getElementById('wx');
-  try{
-    const u = `https://api.open-meteo.com/v1/forecast?latitude=${WX_LAT}&longitude=${WX_LON}` +
-      `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
-      `&timezone=America%2FSao_Paulo&forecast_days=5&wind_speed_unit=kmh`;
-    const j = await (await fetch(u)).json();
-    const c = j.current, dias = ['dom','seg','ter','qua','qui','sex','sáb'];
-    box.innerHTML = `
-      <div class="wx-now"><span class="ic">${WX_ICON(c.weather_code)}</span><span class="t">${Math.round(c.temperature_2m)}°</span>
-        <span class="c">${WX_TXT[c.weather_code]||''}<br>Capão Bonito SP</span></div>
-      <div class="wx-row"><span>Umidade <b>${c.relative_humidity_2m}%</b></span>
-        <span>Vento <b>${Math.round(c.wind_speed_10m)} km/h</b></span>
-        <span>Chuva hoje <b>${j.daily.precipitation_probability_max[0]??0}%</b></span></div>
-      <div class="wx-days">${j.daily.time.map((t,i)=>{
-        const d = new Date(t+'T00:00:00');
-        return `<div class="wx-day">${i===0?'hoje':dias[d.getDay()]}<b>${Math.round(j.daily.temperature_2m_max[i])}°/${Math.round(j.daily.temperature_2m_min[i])}°</b><span>${j.daily.precipitation_probability_max[i]??0}% chuva</span></div>`;
-      }).join('')}</div>`;
-  }catch(e){ box.innerHTML = '<div class="empty">Clima indisponível (sem internet?).</div>'; }
-}
-
+// ===== Init =====
 carregarPainel();
 carregarClima();
 </script>

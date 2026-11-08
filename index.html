@@ -168,7 +168,7 @@
     </div>
     <div class="chart-card">
       <h2>Produção — Pepino japonês</h2>
-      <p class="chart-sub">Últimas 4 semanas · valores em quilogramas</p>
+      <p class="chart-sub">Últimas 4 semanas · valores em caixas (CX)</p>
       <div id="pepStats"><div class="loading">Carregando…</div></div>
       <canvas id="chPepino"></canvas>
       <div class="chart-empty" id="pepEmpty" style="display:none">Sem registros de colheita para esta cultura.</div>
@@ -308,46 +308,36 @@ function addDias(iso, n){
 function filtrarPorCultura(colhs, ciclos, termos, vendas){
   const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const ids = new Set();
-  const estufasCult = new Set();
 
-  // 1) Ciclos com a cultura
   ciclos.forEach(c=>{
     const texto = norm(`${c.cultura||''} ${c.variedade||''}`);
-    if(termos.some(t=>texto.includes(norm(t)))){
-      ids.add(String(c.id));
-      if(c.estufa) estufasCult.add(String(c.estufa));
-    }
-  });
-
-  // 2) Vendas com a cultura (se tiver estufa)
-  (vendas||[]).forEach(v=>{
-    const texto = norm(v.cultura);
-    if(termos.some(t=>texto.includes(norm(t))) && v.estufa) estufasCult.add(String(v.estufa));
+    if(termos.some(t=>texto.includes(norm(t)))) ids.add(String(c.id));
   });
 
   const ehTomate = termos.some(t=>norm(t)==='tomate');
 
   return colhs.filter(h=>{
-    if(String(h.unidade).toUpperCase()==='CX') return false;
-    const byCiclo = ids.has(String(h.cicloId));
-    const byEstufa = estufasCult.has(String(h.estufa));
-    const texto = norm(`${h.cultura||''} ${h.produto||''} ${h.obs||''}`);
-    const byNome = termos.some(t=>texto.includes(norm(t)));
+    const un = String(h.unidade||'').toUpperCase();
 
-    // Se é tomate: pega os que batem
-    if(ehTomate) return byCiclo || byEstufa || byNome;
-
-    // Se NÃO é tomate (pepino): pega tudo que NÃO é tomate
-    // (só tem tomate e pepino na propriedade)
-    const ehTomateColh = byCiclo || byNome || norm(h.cultura||'').includes('tomate');
-    return !ehTomateColh;
+    if(ehTomate){
+      // Tomate: só KG, e que bata com ciclo/nome
+      if(un==='CX') return false;
+      const byCiclo = ids.has(String(h.cicloId));
+      const texto = norm(`${h.cultura||''} ${h.produto||''} ${h.obs||''}`);
+      const byNome = termos.some(t=>texto.includes(norm(t)));
+      return byCiclo || byNome;
+    } else {
+      // Pepino: só CX
+      return un==='CX';
+    }
   });
 }
 
-function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor, vendas){
+function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor, vendas, unidade){
   const canvas = document.getElementById(canvasId);
   const stats = document.getElementById(statsId);
   const empty = document.getElementById(emptyId);
+  const un = unidade || 'KG';
 
   const filtrados = filtrarPorCultura(colhs, ciclos, termos, vendas);
 
@@ -397,11 +387,11 @@ function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor, 
   stats.innerHTML = `
     <div class="cs">
       <div class="cs-lbl">Total período</div>
-      <div class="cs-val">${fmtN(somaPeriodo)} <small>KG</small></div>
+      <div class="cs-val">${fmtN(somaPeriodo)} <small>${un}</small></div>
     </div>
     <div class="cs">
       <div class="cs-lbl">Última semana</div>
-      <div class="cs-val">${fmtN(ultima)} <small>KG</small></div>
+      <div class="cs-val">${fmtN(ultima)} <small>${un}</small></div>
       <div class="cs-delta ${deltaCls}">${deltaTxt} vs semana anterior</div>
     </div>`;
 
@@ -426,13 +416,13 @@ function renderProducao(canvasId, statsId, emptyId, colhs, ciclos, termos, cor, 
         legend:{display:false},
         tooltip:{
           callbacks:{
-            label: ctx => `${fmtN(ctx.parsed.y)} KG`
+            label: ctx => `${fmtN(ctx.parsed.y)} ${un}`
           }
         }
       },
       scales:{
         x:{grid:{display:false}, ticks:{color:'#4A5E52', font:{size:11}}},
-        y:{beginAtZero:true, grid:{color:'#1E2E25'}, ticks:{color:'#4A5E52', font:{size:11}, callback:v=>v+' KG'}}
+        y:{beginAtZero:true, grid:{color:'#1E2E25'}, ticks:{color:'#4A5E52', font:{size:11}, callback:v=>v+' '+un}}
       }
     }
   });
@@ -449,8 +439,8 @@ async function carregarPainel(){
       vendas = cacheLerTipo('vendas') || [];
       if(ciclos.length || colhs.length){
         renderIndicadores(ciclos, colhs);
-        renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas);
-        renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas);
+        renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas, 'KG');
+        renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas, 'CX');
         document.getElementById('subtitulo').textContent = 'Atualizando…';
       }
     }
@@ -466,8 +456,8 @@ async function carregarPainel(){
     colhs = d.colheitas || [];
     vendas = d.vendas || [];
     renderIndicadores(ciclos, colhs);
-    renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas);
-    renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas);
+    renderProducao('chTomate','tomStats','tomEmpty', colhs, ciclos, ['tomate'], '#3D7A5C', vendas, 'KG');
+    renderProducao('chPepino','pepStats','pepEmpty', colhs, ciclos, ['pepino'], '#D9A441', vendas, 'CX');
   }catch(e){
     document.getElementById('subtitulo').innerHTML =
       'Erro ao carregar dados. <a href="#" onclick="carregarPainel();return false">Tentar de novo</a>';

@@ -12,140 +12,190 @@
 <meta name="apple-mobile-web-app-title" content="Estufas">
 <meta name="theme-color" content="#0D1B13">
 <title>Vendas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F2F5EF; --ink:#1D2B22; --leaf:#234D35; --leaf-dark:#173425;
-    --paper:#FFFFFF; --line:#DCE3D8; --pend:#C68A2E; --feito:#3D7A5C; --danger:#B5432F;
+    --bg:#0A0E0C; --bg2:#0F1512; --card:#131A16; --card2:#18221C;
+    --line:#1E2E25; --ink:#E8F0EA; --mut:#7A9184; --dim:#4A5E52;
+    --leaf:#3D7A5C; --lime:#8FD19A; --gold:#D9A441; --red:#E0785F; --blue:#4A9BD9;
+    --r:16px;
   }
-  *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding-bottom:100px;}
-  header{background:var(--leaf-dark); color:#fff; padding:16px 20px 20px; position:sticky; top:0; z-index:5;}
-  header a{color:#CFE0D3; text-decoration:none; font-size:13px;}
-  header h1{margin:6px 0 0; font-size:20px;}
-  header p{margin:4px 0 0; font-size:12.5px; color:#CFE0D3;}
-  .tabs{display:flex; gap:8px; margin:14px 20px 0;}
-  .tab{flex:1; text-align:center; padding:9px 0; border-radius:9px; font-size:13px; background:var(--paper); border:1px solid var(--line); cursor:pointer; color:var(--ink);}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; padding-bottom:110px; -webkit-font-smoothing:antialiased;}
+  a{color:var(--lime); text-decoration:none;}
+
+  .page{max-width:900px; margin:0 auto; padding:32px 20px 80px;}
+  .hdr{margin-bottom:18px;}
+  .hdr h1{font-size:26px; font-weight:800; letter-spacing:-.03em;}
+  .hdr p{color:var(--mut); font-size:13px; margin-top:4px;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px;}
+  .kpi-row.qty{grid-template-columns:repeat(2,1fr); margin-bottom:18px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center;}
+  .kpi-val{font-size:20px; font-weight:800; color:var(--lime); line-height:1.2; word-break:break-word;}
+  .kpi-val.small{font-size:15px;}
+  .kpi-val.gold{color:var(--gold);}
+  .kpi-val.mut{color:var(--mut);}
+  .kpi-lab{font-size:11px; color:var(--mut); margin-top:4px; font-weight:500;}
+
+  .tabs{display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:2px;}
+  .tab{flex:1; min-width:90px; text-align:center; padding:10px 8px; border-radius:12px; font-size:12.5px; font-weight:600;
+    background:var(--card); border:1px solid var(--line); cursor:pointer; color:var(--mut); transition:.18s; white-space:nowrap;}
+  .tab:hover{background:var(--card2); color:var(--ink);}
   .tab.active{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
-  .filters{margin:10px 20px 0; display:flex; gap:8px;}
-  .filters input{flex:1; padding:10px 12px; border-radius:9px; border:none; font-size:14px; background:rgba(255,255,255,.12); color:#fff;}
-  .filters input::placeholder{color:#CFE0D3;}
-  main{padding:16px 20px;}
-  .res{display:flex; gap:8px; margin-bottom:8px;}
-  .ritem{flex:1; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 6px; text-align:center;}
-  .ritem span{font-size:11px; color:#8A968A; display:block;}
-  .ritem b{font-size:13px;}
-  .ritem.ok b{color:var(--feito);} .ritem.no b{color:var(--danger);}
-  .empty{text-align:center; color:#6C7A67; font-size:14px; margin-top:40px;}
-  .item{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px;}
-  .item.recebido{border-color:#9CCBAC; background:#FAFDFB;}
-  .item.pendente{border-color:#E08A7A; background:#FFF9F7;}
+
+  .filters{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center;}
+  .filters select,.filters input{padding:9px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:13px; background:var(--card); color:var(--ink); font-family:inherit;}
+  .filters select:focus,.filters input:focus{outline:none; border-color:var(--leaf);}
+  .filters select option{background:var(--card); color:var(--ink);}
+  .filters label{font-size:11px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .filters .f-group{display:flex; align-items:center; gap:6px;}
+  .filters input[type=date]{color-scheme:dark;}
+  .filters .f-busca{flex:1; min-width:160px;}
+
+  .empty{text-align:center; color:var(--dim); font-size:14px; padding:60px 0;}
+  .loading{text-align:center; color:var(--dim); font-size:13px; padding:40px 0;}
+
+  /* Cartão de venda */
+  .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px 18px 18px 22px; margin-bottom:12px;
+    transition:border-color .18s; position:relative; overflow:hidden;}
+  .item:hover{border-color:#2A4A35;}
+  .v-bar{position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--gold);}
+  .item.recebido .v-bar{background:var(--lime);}
   .item-top{display:flex; justify-content:space-between; align-items:center; gap:10px;}
-  .cat{font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600; background:#E4EFE6; color:var(--feito);}
-  .alert{font-size:10px; padding:2px 7px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
-  .alert.ok{background:#DCEFE3; color:var(--feito);}
-  .alert.zero{background:#F7DAD2; color:var(--danger);}
-  .item h3{margin:0; font-size:13px; font-weight:600;}
-  .l1{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-top:4px;}
-  .l1 span{font-size:12.5px;}
-  .l1 b{font-size:15px; white-space:nowrap;}
-  .item.recebido .l1 b{color:var(--feito);}
-  .item.pendente .l1 b{color:var(--danger);}
-  .cols{display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;}
-  .colh{font-size:13px; font-weight:700; margin:2px 0 8px; display:flex; justify-content:space-between;}
-  .colh span:last-child{color:#8A968A; font-weight:500;}
-  @media (max-width:860px){ .cols{grid-template-columns:1fr;} }
-  .meta{font-size:11px; color:#8A968A; margin-top:2px;}
-  .actions{display:flex; gap:8px; margin-top:6px;}
-  .actions button{flex:1; border-radius:8px; padding:6px 0; font-size:12px; font-weight:600; cursor:pointer;}
-  .btn-in{background:var(--feito); color:#fff; border:none;}
-  .btn-out{background:transparent; color:var(--pend); border:1px solid var(--pend) !important;}
-  .btn-edit{background:transparent; color:#8A968A; border:1px solid var(--line) !important; flex:0 0 44px !important;}
-  .fab{position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto; background:var(--leaf); color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:600; box-shadow:0 4px 14px rgba(23,52,37,.35); cursor:pointer;}
-  dialog{border:none; border-radius:16px; width:min(92vw,420px); padding:0;}
-  dialog::backdrop{background:rgba(23,52,37,.45);}
-  .sheet{padding:20px; max-height:85vh; overflow-y:auto;}
-  .sheet h2{margin:0 0 4px; font-size:18px;}
-  .sheet .sub{font-size:12.5px; color:#8A968A; margin:0 0 14px;}
+  .cat{font-size:11px; padding:4px 12px; border-radius:20px; font-weight:700; background:rgba(143,209,154,.14); color:var(--lime);
+    text-transform:uppercase; letter-spacing:.04em; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .alert{font-size:10.5px; padding:4px 11px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .alert.ok{background:rgba(143,209,154,.14); color:var(--lime);}
+  .alert.low{background:rgba(217,164,65,.15); color:var(--gold);}
+  .v-line1{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:10px;}
+  .v-who{font-size:16px; font-weight:700; letter-spacing:-.01em;}
+  .v-meta{font-size:12.5px; color:var(--mut); margin-top:3px;}
+  .v-calc{font-size:13.5px; color:var(--mut); margin-top:8px;}
+  .v-calc b{color:var(--ink); font-weight:600;}
+  .v-total{font-size:22px; font-weight:800; color:var(--lime); white-space:nowrap;}
+  .v-money{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .vm{background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:8px 12px;}
+  .vm span{display:block; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; font-weight:600;}
+  .vm b{font-size:15px; font-weight:700;}
+  .vm b.ok{color:var(--lime);}
+  .vm b.wait{color:var(--gold);}
+  .vm b.zero{color:var(--dim);}
+
+  .v-det{margin-top:12px; border-top:1px solid var(--line); padding-top:8px;}
+  .v-det summary{cursor:pointer; font-size:12px; color:var(--mut); font-weight:600; list-style:none; user-select:none;}
+  .v-det summary::-webkit-details-marker{display:none;}
+  .v-det summary::before{content:'▸ '; color:var(--dim);}
+  .v-det[open] summary::before{content:'▾ ';}
+  .v-det-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .v-det-grid .dg{background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:8px 12px;}
+  .v-det-grid span{display:block; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; font-weight:600;}
+  .v-det-grid b{font-size:14px; color:var(--ink); font-weight:600;}
+  .v-obs{font-size:12.5px; color:var(--mut); margin-top:8px;}
+
+  .actions{display:flex; gap:8px; margin-top:12px;}
+  .actions button{flex:1; border-radius:10px; padding:10px 0; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:inherit; border:none; transition:.15s;}
+  .btn-in{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .btn-in:hover{background:#4A8F6A;}
+  .btn-out{background:transparent; color:var(--gold); border:1px solid rgba(217,164,65,.4)!important;}
+  .btn-out:hover{background:rgba(217,164,65,.1);}
+  .btn-edit{background:transparent; color:var(--mut); border:1px solid var(--line)!important; flex:0 0 44px!important;}
+  .btn-edit:hover{border-color:var(--leaf)!important; color:var(--lime);}
+
+  /* FAB */
+  .fab{position:fixed; bottom:22px; right:20px; left:20px; max-width:420px; margin:0 auto;
+    background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border:none; border-radius:14px;
+    padding:16px; font-size:16px; font-weight:600; cursor:pointer; font-family:inherit;
+    box-shadow:0 8px 24px rgba(61,122,92,.4); transition:.2s; z-index:50;}
+  .fab:hover{transform:translateY(-2px);}
+
+  /* Diálogo */
+  dialog{border:none; border-radius:20px; width:min(94vw,480px); padding:0; background:var(--card);
+    color:var(--ink); box-shadow:0 24px 60px rgba(0,0,0,.5);}
+  dialog::backdrop{background:rgba(0,0,0,.7); backdrop-filter:blur(4px);}
+  .sheet{padding:24px; max-height:85vh; overflow-y:auto;}
+  .sheet h2{margin:0 0 4px; font-size:18px; font-weight:700;}
+  .sheet .sub{font-size:12.5px; color:var(--mut); margin:0 0 14px;}
   .field{margin-bottom:12px;}
-  .field label{display:block; font-size:12px; color:#54614F; margin-bottom:5px;}
-  .field input,.field select{width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:15px; background:#fff; font-family:inherit;}
+  .field label{display:block; font-size:12px; color:var(--mut); margin-bottom:5px; font-weight:600;}
+  .field input,.field select{width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:15px;
+    background:var(--bg2); color:var(--ink); font-family:inherit;}
+  .field input:focus,.field select:focus{outline:none; border-color:var(--leaf);}
+  .field select option{background:var(--card); color:var(--ink);}
+  .field input[type=date]{color-scheme:dark;}
   .row2{display:flex; gap:10px;} .row2 .field{flex:1;}
-  .prev{background:#EDEFEA; border-radius:9px; padding:10px 12px; font-size:15px; font-weight:700; margin-bottom:12px;}
-  .prev small{font-weight:400; color:#54614F; font-size:12px; display:block;}
+  .prev{background:var(--card2); border:1px solid var(--line); border-radius:9px; padding:10px 12px; font-size:15px; font-weight:700; margin-bottom:12px;}
+  .prev small{font-weight:400; color:var(--mut); font-size:12px; display:block;}
+  .prev span{color:var(--lime);}
   .sheet-actions{display:flex; gap:10px; margin-top:14px;}
-  .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600; cursor:pointer;}
-  .btn-cancel{background:#EDEFEA; color:var(--ink);}
-  .btn-save{background:var(--leaf); color:#fff;}
-  .prod-del{width:100%; padding:10px; border:1px solid var(--danger); border-radius:9px; background:transparent; color:var(--danger); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer;}
-  .loading{text-align:center; color:#8A968A; font-size:13px; margin-top:20px;}
-  .imp-status{font-size:12.5px; color:#54614F; margin:4px 0 8px; white-space:pre-line;}
-  .imp-item{font-size:12.5px; padding:8px 0; border-bottom:1px dashed var(--line);}
-  .imp-item small{display:block; color:#8A968A;}
+  .sheet-actions button{flex:1; padding:12px; border-radius:9px; border:none; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;}
+  .btn-cancel{background:var(--card2); color:var(--ink); border:1px solid var(--line)!important;}
+  .btn-save{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .prod-del{width:100%; padding:10px; border:1px solid var(--red); border-radius:9px; background:transparent;
+    color:var(--red); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer; font-family:inherit;}
+
+  @media (max-width:600px){
+    .page{padding:24px 14px 80px;}
+    .hdr h1{font-size:22px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .row2{flex-direction:column;}
+    .filters{flex-direction:column; align-items:stretch;}
+    .filters .f-group{width:100%;}
+    .filters .f-group select{flex:1;}
+    .filters select,.filters input{width:100%;}
+    .filters .f-busca{min-width:0;}
+    .v-money{grid-template-columns:1fr;}
+    .v-det-grid{grid-template-columns:1fr;}
+    .actions button{min-width:calc(50% - 4px);}
+  }
 </style>
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body data-page="vendas" class="tdark">
-<header>
-  <a href="index.html">‹ voltar</a>
-  <h1>Vendas</h1>
-  <p>Quem comprou, quantos KG/CX, preço e o que já entrou.</p>
+<div class="page">
+  <div class="hdr">
+    <h1>Vendas</h1>
+    <p>Quem comprou, quantos KG/CX, preço e o que já entrou.</p>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val" id="tTot">—</div><div class="kpi-lab">Total vendido</div></div>
+    <div class="kpi"><div class="kpi-val" id="tRec">—</div><div class="kpi-lab">Total recebido</div></div>
+    <div class="kpi"><div class="kpi-val gold" id="tPen">—</div><div class="kpi-lab">Total a receber</div></div>
+    <div class="kpi"><div class="kpi-val small" id="tSem">—</div><div class="kpi-lab">Vendido na semana</div></div>
+  </div>
+  <div class="kpi-row qty">
+    <div class="kpi"><div class="kpi-val small mut" id="qKg">—</div><div class="kpi-lab">KG vendidos</div></div>
+    <div class="kpi"><div class="kpi-val small mut" id="qCx">—</div><div class="kpi-lab">CX vendidas</div></div>
+  </div>
+
   <div class="tabs">
     <div class="tab active" data-f="todas">Todas</div>
-    <div class="tab" data-f="recebido">Recebidas</div>
-    <div class="tab" data-f="pendente">A receber</div>
   </div>
-  <div class="filters">
-    <input id="busca" type="text" placeholder="Buscar comprador ou cultura...">
-  </div>
-</header>
 
-<main>
-  <div class="res">
-    <div class="ritem ok"><span>Recebido</span><b id="tRec">—</b></div>
-    <div class="ritem no"><span>A receber</span><b id="tPen">—</b></div>
-    <div class="ritem"><span>Total geral</span><b id="tTot">—</b></div>
+  <div class="filters">
+    <div class="f-group"><label for="fComp">Comprador</label><select id="fComp"><option value="">Todos</option></select></div>
+    <div class="f-group"><label for="fCult">Cultura</label><select id="fCult"><option value="">Todas</option></select></div>
+    <div class="f-group"><label for="fStat">Status</label>
+      <select id="fStat">
+        <option value="">Todos</option>
+        <option value="recebido">Recebidas</option>
+        <option value="pendente">A receber</option>
+      </select>
+    </div>
+    <div class="f-group"><label for="fDe">De</label><input id="fDe" type="date"></div>
+    <div class="f-group"><label for="fAte">Até</label><input id="fAte" type="date"></div>
+    <input id="busca" class="f-busca" type="text" placeholder="Buscar comprador ou cultura...">
   </div>
-  <div class="res">
-    <div class="ritem"><span>KG vendidos</span><b id="qKg">—</b></div>
-    <div class="ritem"><span>CX vendidas</span><b id="qCx">—</b></div>
-    <div class="ritem no"><span>Falta receber</span><b id="qPen">—</b></div>
-  </div>
-  <div id="list"><div class="loading">Carregando…</div></div>
-</main>
+
+  <main id="list"><div class="loading">Carregando…</div></main>
+</div>
 
 <button class="fab" onclick="openVenda()">+ Nova venda</button>
-
-<!-- Importar do Excel -->
-<dialog id="dlgImp">
-  <div class="sheet">
-    <h2>Importar do Excel</h2>
-    <p class="sub">No Excel, selecione as linhas de venda, copie (Ctrl+C) e cole abaixo. Com preço = recebido, sem preço = a receber.</p>
-    <div class="field"><label>Colar aqui</label><textarea id="impTexto" rows="6" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:9px; font-size:13px;" placeholder="Cole as linhas copiadas do Excel..."></textarea></div>
-    <div class="row2">
-      <div class="field"><label>Ano das datas</label><input id="impAno" type="number" value="2026"></div>
-      <div class="field"><label>Cultura</label>
-        <select id="impCultura"><option>Tomate</option><option>Pepino</option><option>Outra</option></select>
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Unidade (nº sem KG/CX)</label>
-        <select id="impUn"><option value="KG">KG</option><option value="CX">CX</option></select>
-      </div>
-      <div class="field"><label>Comprador (linhas sem nome)</label><input id="impComp" type="text" placeholder="opcional"></div>
-    </div>
-    <div class="imp-status" id="impStatus"></div>
-    <div class="sheet-actions">
-      <button class="btn-cancel" onclick="document.getElementById('dlgImp').close()">Fechar</button>
-      <button class="btn-save" onclick="processarImp()">Ler</button>
-    </div>
-    <div id="impPreview"></div>
-    <div class="sheet-actions" id="impSaveBar" style="display:none">
-      <button class="btn-cancel" onclick="document.getElementById('dlgImp').close()">Cancelar</button>
-      <button class="btn-save" onclick="salvarImportados()">Salvar tudo</button>
-    </div>
-  </div>
-</dialog>
 
 <dialog id="dlgVenda">
   <div class="sheet">
@@ -195,6 +245,15 @@ function fmtData(v){ if(!v) return '—'; const s = String(v).match(/^(\d{4})-(\
   const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR'); }
 function hojeISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
 function isoData(v){ if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1]+'-'+m[2]+'-'+m[3] : ''; }
+function fmtQtd(q, u){ const n = Math.round(num(q)*100)/100; return n.toString().replace('.',',')+' '+(u||'KG'); }
+function dataLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function semanaAtual(){
+  const hoje = new Date();
+  const dia = hoje.getDay();
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (dia === 0 ? 6 : dia - 1));
+  const fim = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + 6);
+  return [dataLocal(ini), dataLocal(fim)];
+}
 async function apiGet(tipo){
   if (typeof buscarTipo === 'function') {
     try { return { ok: true, data: await buscarTipo(tipo) }; }
@@ -221,65 +280,102 @@ async function carregar(){
     const r = await apiGet('vendas');
     vendas = r.data || [];
     vendas.sort((a,b)=> String(b.data||'') < String(a.data||'') ? -1 : 1);
-    const comps = [...new Set(vendas.map(v=>v.comprador).filter(Boolean))].sort();
-    document.getElementById('dlComp').innerHTML = comps.map(c=>'<option value="'+esc(c)+'">').join('');
+    popularFiltros();
     render();
   }catch(e){
-    if (vendas && vendas.length) { render(); return; }
+    if (vendas && vendas.length) { popularFiltros(); render(); return; }
     document.getElementById('list').innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
+function popularFiltros(){
+  const comps = [...new Set(vendas.map(v=>v.comprador).filter(Boolean))].sort();
+  const cults = [...new Set(vendas.map(v=>v.cultura).filter(Boolean))].sort();
+  const selC = document.getElementById('fComp');
+  const selU = document.getElementById('fCult');
+  const curC = selC.value, curU = selU.value;
+  selC.innerHTML = '<option value="">Todos</option>' + comps.map(c=>'<option value="'+esc(c)+'"'+(c===curC?' selected':'')+'>'+esc(c)+'</option>').join('');
+  selU.innerHTML = '<option value="">Todas</option>' + cults.map(c=>'<option value="'+esc(c)+'"'+(c===curU?' selected':'')+'>'+esc(c)+'</option>').join('');
+  document.getElementById('dlComp').innerHTML = comps.map(c=>'<option value="'+esc(c)+'">').join('');
+}
 function totais(){
-  let rec = 0, pen = 0, kg = 0, cx = 0, kgP = 0, cxP = 0;
+  let rec = 0, pen = 0, sem = 0, kg = 0, cx = 0;
+  const [iniSem, fimSem] = semanaAtual();
   vendas.forEach(v=>{
-    if(String(v.status)==='recebido') rec += num(v.total); else pen += num(v.total);
+    const total = num(v.total);
+    if(String(v.status)==='recebido') rec += total; else pen += total;
+    const d = isoData(v.data);
+    if(d && d >= iniSem && d <= fimSem) sem += total;
     const qp = num(v.qtdPaga) > 0 ? num(v.qtdPaga) : num(v.quantidade);
-    const isCX = String(v.unidade).toUpperCase()==='CX';
-    if(isCX) cx += qp; else kg += qp;
-    if(String(v.status)!=='recebido'){ if(isCX) cxP += qp; else kgP += qp; }
+    if(String(v.unidade).toUpperCase()==='CX') cx += qp; else kg += qp;
   });
+  document.getElementById('tTot').textContent = BRL(rec+pen);
   document.getElementById('tRec').textContent = BRL(rec);
   document.getElementById('tPen').textContent = BRL(pen);
-  document.getElementById('tTot').textContent = BRL(rec+pen);
+  document.getElementById('tSem').textContent = BRL(sem);
   const fq = n => (Math.round(n*100)/100).toString().replace('.',',');
   document.getElementById('qKg').textContent = fq(kg)+' KG';
   document.getElementById('qCx').textContent = fq(cx)+' CX';
-  document.getElementById('qPen').textContent = fq(kgP)+' KG + '+fq(cxP)+' CX';
 }
 function render(){
   totais();
   const q = document.getElementById('busca').value.trim().toLowerCase();
+  const fComp = document.getElementById('fComp').value;
+  const fCult = document.getElementById('fCult').value;
+  const fStat = document.getElementById('fStat').value;
+  const fDe = document.getElementById('fDe').value;
+  const fAte = document.getElementById('fAte').value;
   const list = vendas.filter(v=>{
     if(filtro!=='todas' && String(v.status)!==filtro) return false;
+    if(fComp && String(v.comprador||'')!==fComp) return false;
+    if(fCult && String(v.cultura||'')!==fCult) return false;
+    if(fStat && String(v.status||'')!==fStat) return false;
+    const d = isoData(v.data);
+    if(fDe && (!d || d < fDe)) return false;
+    if(fAte && (!d || d > fAte)) return false;
     if(q && !(String(v.comprador||'').toLowerCase().includes(q) || String(v.cultura||'').toLowerCase().includes(q))) return false;
     return true;
   });
   if(!list.length){ document.getElementById('list').innerHTML = '<div class="empty">Nenhuma venda.</div>'; return; }
-  const tom = list.filter(v=>String(v.cultura||'').toLowerCase()!=='pepino');
-  const pep = list.filter(v=>String(v.cultura||'').toLowerCase()==='pepino');
-  const col = (t,arr)=>'<div><div class="colh"><span>'+t+'</span><span>'+arr.length+' vendas</span></div>'+
-    (arr.length ? arr.map(cardV).join('') : '<div class="empty">Nada aqui.</div>')+'</div>';
-  document.getElementById('list').innerHTML = '<div class="cols">'+col('Tomate',tom)+col('Pepino',pep)+'</div>';
+  document.getElementById('list').innerHTML = list.map(cardV).join('');
 }
 function cardV(v){
-    const rec = String(v.status)==='recebido';
-    const qp = num(v.qtdPaga) > 0 ? num(v.qtdPaga) : num(v.quantidade);
-    const detalhe = num(v.qtdPaga) > 0
-      ? fmtQtd(v.quantidade, v.unidade)+' (pagos '+fmtQtd(v.qtdPaga, v.unidade)+') × '+BRL(v.preco)
-      : fmtQtd(v.quantidade, v.unidade)+' × '+BRL(v.preco);
-    return '<div class="item '+(rec?'recebido':'pendente')+'">' +
-      '<div class="item-top"><span class="cat">'+esc(v.comprador||'—')+'</span>' +
-      '<span class="alert '+(rec?'ok':'zero')+'">'+(rec?'Recebido':'A receber')+'</span></div>' +
-      '<div class="l1"><span>'+esc(detalhe)+'</span><b>'+BRL(v.total)+'</b></div>' +
-      '<div class="meta">'+fmtData(v.data)+' · '+esc(v.cultura||'')+(v.obs?' · '+esc(v.obs):'')+'</div>' +
-      '<div class="actions">' +
-        (rec
-          ? '<button class="btn-out" onclick="alternarStatus(\''+v.id+'\')">Voltar p/ a receber</button>'
-          : '<button class="btn-in" onclick="alternarStatus(\''+v.id+'\')">Marcar recebido</button>') +
-        '<button class="btn-edit" onclick="openVenda(\''+v.id+'\')">✎</button>' +
-      '</div></div>';
+  const rec = String(v.status)==='recebido';
+  const qp = num(v.qtdPaga) > 0 ? num(v.qtdPaga) : num(v.quantidade);
+  const total = num(v.total);
+  const recebido = rec ? total : 0;
+  const saldo = rec ? 0 : total;
+  const qtdInfo = num(v.qtdPaga) > 0 && num(v.qtdPaga) !== num(v.quantidade)
+    ? fmtQtd(v.quantidade, v.unidade)+' <span style="color:var(--dim)">(pago: '+fmtQtd(v.qtdPaga, v.unidade)+')</span>'
+    : fmtQtd(v.quantidade, v.unidade);
+  return '<div class="item '+(rec?'recebido':'aguard')+'">' +
+    '<i class="v-bar"></i>' +
+    '<div class="item-top"><span class="cat">'+esc(v.comprador||'—')+'</span>' +
+    '<span class="alert '+(rec?'ok':'low')+'">'+(rec?'Recebido':'A receber')+'</span></div>' +
+    '<div class="v-line1"><span class="v-meta" style="margin-top:0">'+fmtData(v.data)+' · '+esc(v.cultura||'')+'</span>' +
+    '<b class="v-total">'+BRL(total)+'</b></div>' +
+    '<div class="v-calc">'+qtdInfo+' × <b>'+BRL(v.preco)+'</b></div>' +
+    '<div class="v-money">' +
+      '<div class="vm"><span>Valor recebido</span><b class="'+(recebido>0?'ok':'zero')+'">'+BRL(recebido)+'</b></div>' +
+      '<div class="vm"><span>Saldo pendente</span><b class="'+(saldo>0?'wait':'zero')+'">'+BRL(saldo)+'</b></div>' +
+    '</div>' +
+    '<details class="v-det"><summary>Detalhes</summary>' +
+      '<div class="v-det-grid">' +
+        '<div class="dg"><span>Comprador</span><b>'+esc(v.comprador||'—')+'</b></div>' +
+        '<div class="dg"><span>Data da venda</span><b>'+fmtData(v.data)+'</b></div>' +
+        '<div class="dg"><span>Cultura</span><b>'+esc(v.cultura||'—')+'</b></div>' +
+        '<div class="dg"><span>Quantidade</span><b>'+fmtQtd(v.quantidade, v.unidade)+'</b></div>' +
+        '<div class="dg"><span>Preço unitário</span><b>'+BRL(v.preco)+'</b></div>' +
+        '<div class="dg"><span>Qtd. paga</span><b>'+fmtQtd(qp, v.unidade)+'</b></div>' +
+      '</div>' +
+      (v.obs ? '<div class="v-obs">Obs: '+esc(v.obs)+'</div>' : '') +
+    '</details>' +
+    '<div class="actions">' +
+      (rec
+        ? '<button class="btn-out" onclick="alternarStatus(\''+v.id+'\')">Voltar p/ a receber</button>'
+        : '<button class="btn-in" onclick="alternarStatus(\''+v.id+'\')">Marcar recebido</button>') +
+      '<button class="btn-edit" onclick="openVenda(\''+v.id+'\')">✎</button>' +
+    '</div></div>';
 }
-function fmtQtd(q, u){ const n = Math.round(num(q)*100)/100; return n.toString().replace('.',',')+' '+(u||'KG'); }
 
 function openVenda(id){
   editId = id || null;
@@ -344,113 +440,11 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active'); filtro = t.dataset.f; render();
 });
-document.getElementById('busca').addEventListener('input', render);
+['busca','fComp','fCult','fStat','fDe','fAte'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', render);
+  document.getElementById(id).addEventListener('change', render);
+});
 
-// ---- Importar do Excel ----
-let impVendas = [];
-const MESES_V = {jan:'01',fev:'02',fev2:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12'};
-function parseNumBR(s){
-  s = String(s||'').replace(/R\$\s?/g,'').trim();
-  if(!s || s==='-') return 0;
-  s = s.replace(/[^\d.,-]/g,'');
-  if(!s) return 0;
-  if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
-  const n = parseFloat(s); return isNaN(n)?0:n;
-}
-function parseQtdV(cell, unPadrao){
-  const m = String(cell||'').match(/([\d.,]+)\s*(kg|cx)/i);
-  if(m) return {qtd:parseNumBR(m[1]), un:m[2].toUpperCase()==='CX'?'CX':'KG'};
-  const n = parseNumBR(cell);
-  return n > 0 ? {qtd:n, un:unPadrao} : null;
-}
-function parseDataV(cell, ano){
-  const c = String(cell||'').trim().toLowerCase();
-  let m = c.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
-  if(m){ const a = m[3] ? (m[3].length===2?'20'+m[3]:m[3]) : ano;
-    return a+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); }
-  m = c.match(/^(\d{1,2})\/([a-zç]{3})/);
-  if(m){ const mm = MESES_V[m[2].slice(0,3)]; if(!mm) return '';
-    return ano+'-'+mm+'-'+m[1].padStart(2,'0'); }
-  return '';
-}
-function chaveVenda(data, comp, qtd, preco){
-  return [isoData(data), String(comp||'').trim().toLowerCase(), Math.round(num(qtd)*100), Math.round(num(preco)*100)].join('|');
-}
-function parseVendasExcel(texto, ano, cultura, unPadrao, compPadrao){
-  const chaves = new Set(vendas.map(v=>chaveVenda(v.data, v.comprador, v.quantidade, v.preco)));
-  const out = [];
-  String(texto||'').split('\n').forEach(lin=>{
-    if(!lin.trim()) return;
-    const cells = lin.includes('\t') ? lin.split('\t') : lin.split(';');
-    let di = -1, data = '';
-    for(let i=0;i<cells.length;i++){ const d = parseDataV(cells[i], ano); if(d){ di = i; data = d; break; } }
-    if(!data) return;
-    const nome = di > 0 ? cells.slice(0,di).join(' ').trim() : (compPadrao||'');
-    const after = cells.slice(di+1);
-    const qtds = [];
-    after.forEach(c=>{ if(/R\$/.test(c)) return; const q = parseQtdV(c, unPadrao); if(q) qtds.push(q); });
-    if(!qtds.length) return;
-    let preco = 0;
-    for(const c of after){ if(/R\$/.test(c)){ preco = parseNumBR(c); break; } }
-    const qtd = qtds[0];
-    const qp = qtds.length > 1 ? qtds[1].qtd : qtd.qtd;
-    const total = Math.round(qp*preco*100)/100;
-    const item = {data, comprador:nome, cultura, quantidade:qtd.qtd, unidade:qtd.un,
-      qtdPaga:qp, preco, total, status:preco>0?'recebido':'pendente', obs:'Importado do Excel'};
-    item.dupe = chaves.has(chaveVenda(data, nome, qtd.qtd, preco));
-    if(!item.dupe) chaves.add(chaveVenda(data, nome, qtd.qtd, preco));
-    out.push(item);
-  });
-  return out;
-}
-function openImp(){
-  document.getElementById('impTexto').value='';
-  document.getElementById('impStatus').textContent='';
-  document.getElementById('impPreview').innerHTML='';
-  document.getElementById('impSaveBar').style.display='none';
-  impVendas=[];
-  document.getElementById('dlgImp').showModal();
-}
-function processarImp(){
-  const ano = document.getElementById('impAno').value || new Date().getFullYear();
-  impVendas = parseVendasExcel(
-    document.getElementById('impTexto').value, String(ano),
-    document.getElementById('impCultura').value, document.getElementById('impUn').value,
-    document.getElementById('impComp').value.trim());
-  const st = document.getElementById('impStatus');
-  const novos = impVendas.filter(v=>!v.dupe);
-  if(!impVendas.length){ st.textContent = 'Nada reconhecido. Confira o que colou.'; return; }
-  const rec = novos.filter(v=>v.status==='recebido').reduce((a,v)=>a+v.total,0);
-  const pen = novos.filter(v=>v.status==='pendente').length;
-  const dup = impVendas.length - novos.length;
-  st.textContent = impVendas.length+' linhas lidas · '+novos.length+' novas (recebido '+BRL(rec)+' + '+pen+' a receber)' +
-    (dup ? '\n'+dup+' já existem e serão ignoradas.' : '');
-  document.getElementById('impPreview').innerHTML = novos.slice(0,12).map(v=>
-    '<div class="imp-item"><b>'+esc(v.comprador||'—')+'</b> — '+fmtData(v.data)+' · '+fmtQtd(v.quantidade,v.unidade)+' × '+BRL(v.preco)+' = <b>'+BRL(v.total)+'</b> ('+(v.status==='recebido'?'recebido':'a receber')+')' +
-    '<small>'+esc(v.cultura)+'</small></div>').join('') +
-    (novos.length > 12 ? '<div class="imp-item">…e mais '+(novos.length-12)+'.</div>' : '');
-  document.getElementById('impSaveBar').style.display = novos.length ? 'flex' : 'none';
-}
-async function salvarImportados(){
-  const novos = impVendas.filter(v=>!v.dupe);
-  if(!novos.length) return;
-  const btn = document.querySelector('#impSaveBar .btn-save');
-  btn.disabled = true; btn.textContent = 'Salvando...';
-  let n = 0;
-  for(const v of novos){
-    try{
-      const r = await apiPost({tipo:'vendas', action:'add', data:{
-        data:v.data, comprador:v.comprador, cultura:v.cultura, quantidade:v.quantidade,
-        unidade:v.unidade, qtdPaga:v.qtdPaga, preco:v.preco, total:v.total, status:v.status, obs:v.obs}});
-      if(r.ok) n++;
-      document.getElementById('impStatus').textContent = 'Salvando... '+n+' de '+novos.length+'.';
-    }catch(e){}
-  }
-  btn.disabled = false; btn.textContent = 'Salvar tudo';
-  document.getElementById('impStatus').textContent = 'Pronto! '+n+' vendas importadas.';
-  document.getElementById('dlgImp').close();
-  carregar();
-}
 carregar();
 </script>
 <script src="sidebar.js"></script>

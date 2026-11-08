@@ -34,7 +34,7 @@ var SHEETS = {
   },
   colheitas: {
     name: 'Colheitas',
-    headers: ['id', 'dataCriacao', 'cicloId', 'estufa', 'data', 'quantidade', 'unidade', 'obs']
+    headers: ['id', 'dataCriacao', 'cicloId', 'estufa', 'data', 'quantidade', 'unidade', 'obs', 'fechamento']
   },
   vendas: {
     name: 'Vendas',

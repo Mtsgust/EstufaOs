@@ -150,6 +150,10 @@
   .field input:focus,.field select:focus,.field textarea:focus{outline:none; border-color:var(--leaf);}
   .field select option{background:var(--card); color:var(--ink);}
   .field input[type=date]{color-scheme:dark;}
+  /* Popup nativa dos selects em tema escuro: o theme.css força option color #111
+     (para selects claros) e o Chrome ignora o color nas options da popup. */
+  select{color-scheme:dark;}
+  body.tdark .field select option, body.tdark .filters select option{background:var(--card) !important; color:#fff !important;}
   .row2{display:flex; gap:10px;} .row2 .field{flex:1;}
   .prev{background:var(--card2); border:1px solid var(--line); border-radius:9px; padding:10px 12px; font-size:15px; font-weight:700; margin-bottom:12px;}
   .prev small{font-weight:400; color:var(--mut); font-size:12px; display:block;}

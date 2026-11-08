@@ -151,8 +151,11 @@
   .prod-del{width:100%; padding:10px; border:1px solid var(--red); border-radius:9px; background:transparent;
     color:var(--red); font-size:13.5px; font-weight:600; margin-top:10px; cursor:pointer; font-family:inherit;}
 
+  @media (min-width:861px){ #cultTabs{display:none;} }
   @media (max-width:860px){
     .cols{grid-template-columns:1fr;}
+    body.c-tom .block.pep{display:none;}
+    body.c-pep .block.tom{display:none;}
   }
   @media (max-width:600px){
     .page{padding:24px 14px 80px;}
@@ -171,7 +174,7 @@
 <link rel="stylesheet" href="sidebar.css">
 <link rel="stylesheet" href="theme.css">
 </head>
-<body data-page="vendas" class="tdark">
+<body data-page="vendas" class="tdark c-tom">
 <div class="page">
   <div class="hdr">
     <h1>Vendas</h1>
@@ -189,8 +192,9 @@
     <div class="kpi"><div class="kpi-val small mut" id="qCx">—</div><div class="kpi-lab">CX vendidas</div></div>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-f="todas">Todas</div>
+  <div class="tabs" id="cultTabs">
+    <div class="tab active" data-c="tom">Tomate grape</div>
+    <div class="tab" data-c="pep">Pepino japonês</div>
   </div>
 
   <div class="filters">
@@ -355,11 +359,11 @@ function render(){
   const pep = list.filter(v=>String(v.cultura||'').toLowerCase().includes('pepino'));
   const tom = list.filter(v=>!String(v.cultura||'').toLowerCase().includes('pepino'));
   document.getElementById('list').innerHTML = '<div class="cols">' +
-    blocoV('Tomate grape', tom, 'KG') +
-    blocoV('Pepino japonês', pep, 'CX') +
+    blocoV('Tomate grape', tom, 'KG', 'tom') +
+    blocoV('Pepino japonês', pep, 'CX', 'pep') +
     '</div>';
 }
-function blocoV(nome, arr, un){
+function blocoV(nome, arr, un, cls){
   let qtd = 0, valor = 0;
   arr.forEach(v=>{
     valor += num(v.total);
@@ -370,7 +374,7 @@ function blocoV(nome, arr, un){
   });
   const fq = n => (Math.round(n*100)/100).toString().replace('.',',');
   const corpo = arr.length ? arr.map(cardV).join('') : '<div class="block-empty">Nenhuma venda aqui.</div>';
-  return '<section class="block">' +
+  return '<section class="block '+cls+'">' +
     '<div class="block-hd"><span class="block-name">'+nome+'</span>' +
     '<span class="block-stats"><span class="bs">'+fq(qtd)+' '+un+'</span>' +
     '<span class="bs money">'+BRL(valor)+'</span></span></div>' +
@@ -474,9 +478,23 @@ async function excluirVenda(){
   if(r.ok){ document.getElementById('dlgVenda').close(); carregar(); }
   else alert('Erro: '+(r.error||'falha'));
 }
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active'); filtro = t.dataset.f; render();
+function ativarCult(c){
+  document.querySelectorAll('#cultTabs .tab').forEach(x=>x.classList.toggle('active', x.dataset.c===c));
+  document.body.classList.remove('c-tom','c-pep');
+  document.body.classList.add(c==='pep' ? 'c-pep' : 'c-tom');
+}
+document.querySelectorAll('#cultTabs .tab').forEach(t=>t.onclick=()=>{
+  const c = t.dataset.c==='pep' ? 'pep' : 'tom';
+  const sel = document.getElementById('fCult');
+  const alvo = c==='pep' ? 'pepino' : 'tomate';
+  if(sel && sel.value && !String(sel.value).toLowerCase().includes(alvo)) sel.value = '';
+  ativarCult(c);
+  render();
+});
+document.getElementById('fCult').addEventListener('change', ()=>{
+  const v = String(document.getElementById('fCult').value).toLowerCase();
+  if(v.includes('pepino')) ativarCult('pep');
+  else if(v.includes('tomate')) ativarCult('tom');
 });
 ['busca','fComp','fCult','fStat','fDe','fAte'].forEach(id=>{
   document.getElementById(id).addEventListener('input', render);

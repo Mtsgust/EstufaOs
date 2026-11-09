@@ -76,11 +76,41 @@
   .filters #busca{padding:13px 16px; font-size:14.5px; border-radius:12px; background:var(--bg2); min-width:220px;}
   .filters #busca::placeholder{color:var(--dim);}
 
-  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
-  .chip{padding:7px 13px; border-radius:20px; font-size:12px; font-weight:600; background:var(--card);
-    border:1px solid var(--line); cursor:pointer; color:var(--mut); white-space:nowrap; transition:.15s;}
-  .chip:hover{color:var(--ink); border-color:var(--leaf);}
-  .chip.active{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
+  /* Status documental */
+  .status-doc{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card2);
+    border:1px solid var(--line); border-radius:10px; padding:8px 11px; margin:8px 0; font-size:12.5px;}
+  .status-doc .lbl{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
+  .status-doc .val{font-weight:600;}
+  .status-doc .val.ok{color:var(--lime);}
+  .status-doc .val.warn{color:var(--gold);}
+  .status-doc .val.bad{color:var(--red);}
+  .status-doc .val.mut{color:var(--mut);}
+  .igrid b.sem{color:var(--dim); font-weight:500; font-style:italic;}
+
+  /* Bula dentro da área expandida */
+  .bula-inline{border-top:1px solid var(--line); margin-top:12px; padding-top:12px;}
+  .bula-inline .bula-box{margin-bottom:8px;}
+  .bula-tools{display:flex; gap:8px; flex-wrap:wrap;}
+  .bula-tools button{flex:1 1 auto; min-width:130px; border-radius:10px; padding:9px 10px; font-size:12px;
+    font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--line); background:var(--card);
+    color:var(--ink); transition:.15s;}
+  .bula-tools button:hover{border-color:var(--leaf);}
+  .bula-tools .gold{color:var(--gold); border-color:rgba(217,164,65,.45)!important;}
+  .bula-stat{font-size:11.5px; color:var(--gold); margin-top:8px; line-height:1.5;}
+
+  /* Pesquisa assistida */
+  .q-aviso{font-size:11.5px; color:var(--mut); background:var(--bg2); border:1px dashed var(--line);
+    border-radius:9px; padding:9px 11px; line-height:1.55; margin-bottom:12px;}
+  .q-aviso b{color:var(--gold);}
+  .q-fonte{font-size:11.5px; color:var(--dim); margin-top:6px; word-break:break-all;}
+  .q-fonte a{color:var(--blue);}
+  .q-conf{display:flex; gap:8px; align-items:flex-start; background:rgba(217,164,65,.08);
+    border:1px solid rgba(217,164,65,.4); border-radius:9px; padding:10px 11px; margin-top:8px;
+    font-size:12.5px; color:#F0D9A8; line-height:1.5;}
+  .q-conf input{margin-top:2px; width:15px; height:15px; accent-color:var(--lime); flex-shrink:0;}
+  .q-semel{background:rgba(74,155,217,.08); border:1px solid rgba(74,155,217,.35); border-radius:9px;
+    padding:9px 11px; margin-top:8px; font-size:12px; color:#A9D2F0; line-height:1.55;}
+  .q-semel b{color:#D9ECFA;}
 
   .fill-status{font-size:12.5px; color:var(--mut); white-space:pre-line;}
 
@@ -264,7 +294,7 @@
     <div class="hdr-top">
       <div>
         <h1>Bulário</h1>
-        <p>Consulta técnica de produtos com busca, filtros e documentação.</p>
+        <p>Consulta técnica de produtos com busca automática e status documental.</p>
       </div>
       <div class="hdr-actions" id="hdrActions">
         <button class="btn-admin" id="btnAdmin" onclick="toggleAdmin()">Ações</button>
@@ -295,22 +325,7 @@
   <section id="secProd">
     <div id="subLista">
       <div class="filters">
-        <input id="busca" class="f-busca" type="text" placeholder="Buscar por nome, ingrediente, composição, praga, doença ou categoria...">
-      </div>
-      <div class="chips" id="chipsCat">
-        <div class="chip active" data-c="todos">Todos</div>
-        <div class="chip" data-c="Fungicida">Fungicida</div>
-        <div class="chip" data-c="Inseticida">Inseticida</div>
-        <div class="chip" data-c="Acaricida">Acaricida</div>
-        <div class="chip" data-c="Herbicida">Herbicida</div>
-        <div class="chip" data-c="Bactericida">Bactericida</div>
-        <div class="chip" data-c="Nematicida">Nematicida</div>
-        <div class="chip" data-c="Fertilizante">Fertilizante</div>
-        <div class="chip" data-c="Adjuvante">Adjuvante</div>
-        <div class="chip" data-c="Bioestimulante">Bioestimulante</div>
-        <div class="chip" data-c="Inoculante">Inoculante</div>
-        <div class="chip" data-c="Outros">Outros</div>
-        <div class="chip" data-c="Inseticida/Acaricida">Legado Inset./Acar.</div>
+        <input id="busca" class="f-busca" type="text" placeholder="Buscar por nome, ingrediente, composição, fabricante, praga, doença ou categoria...">
       </div>
       <div id="list"><div class="loading">Carregando…</div></div>
     </div>
@@ -447,6 +462,17 @@
       <div class="hint">Misturas confirmadas como seguras. Citando todos os produtos selecionados, a análise marca como DOCUMENTADA.</div>
     </div>
     <div class="fieldset-title">Documentos e fonte</div>
+    <div class="field"><label for="pStatusDoc">Status documental</label>
+      <select id="pStatusDoc">
+        <option value="">Automático (pela fonte e documentos)</option>
+        <option value="confirmado_bula">Confirmado por bula oficial</option>
+        <option value="confirmado_ficha">Confirmado por ficha técnica do fabricante</option>
+        <option value="aguardando_conferencia">Informação extraída de embalagem, aguardando conferência</option>
+        <option value="incompleto">Informação incompleta</option>
+        <option value="sem_fonte">Sem fonte encontrada</option>
+      </select>
+      <div class="hint" id="pStatusHint">—</div>
+    </div>
     <div class="row2">
       <div class="field"><label for="pBulaLink">Link da bula</label><input id="pBulaLink" type="url" placeholder="https://..."></div>
       <div class="field"><label for="pFicha">Link da ficha</label><input id="pFicha" type="url" placeholder="https://..."></div>
@@ -480,19 +506,27 @@
   </div>
 </dialog>
 
-<!-- Pesquisa assistida (cola texto/link da bula e extrai os campos) -->
+<!-- Pesquisa assistida: tenta a fonte cadastrada automaticamente; cola texto/URL e OCR como alternativa -->
 <dialog id="dlgPesquisa">
   <div class="sheet">
     <h2>Pesquisar dados do produto</h2>
-    <p class="sub">Cole aqui o texto da bula/ficha (ou uma URL) e o app extrai dose, carência, ingrediente ativo etc. para você conferir antes de aplicar. A busca na web é assistida: você abre a busca, copia e cola — nada é enviado automaticamente.</p>
-    <div class="field"><label for="qTexto">Texto ou URL colado</label>
-      <textarea id="qTexto" rows="5" placeholder="Cole o texto da bula aqui..."></textarea>
+    <p class="sub" id="qAlvo">—</p>
+    <div class="q-aviso" id="qLimites"><b>Pesquisa automática:</b> quando o produto já tem link de bula/ficha/fonte, o app baixa e lê o documento sozinho, priorizando fontes oficiais. <b>Descoberta automática de novas fontes não está disponível nesta versão</b> (não há API oficial pública de consulta de agrotóxicos): nesses casos abra a busca na web, copie a URL e cole aqui — ou use Foto/OCR.</div>
+    <div class="sheet-actions" style="margin-top:0">
+      <button class="btn-save" id="qAuto" onclick="pesquisaAutomatica()">Pesquisar</button>
+      <button class="btn-pesq" onclick="abrirBuscaExterna()">Abrir busca na web</button>
+    </div>
+    <div class="field" style="margin-top:12px"><label for="qTexto">Alternativa: colar texto ou URL do documento</label>
+      <textarea id="qTexto" rows="4" placeholder="Cole aqui o texto da bula/ficha ou a URL do documento..."></textarea>
     </div>
     <div class="sheet-actions" style="margin-top:0">
-      <button class="btn-pesq" onclick="abrirBuscaExterna()">Abrir busca na web</button>
-      <button class="btn-anal" onclick="extrairPesquisa()">Extrair dados</button>
+      <button class="btn-anal" onclick="extrairPesquisa()">Extrair do texto colado</button>
     </div>
     <div id="qOut" style="margin-top:12px"></div>
+    <label class="q-conf" id="qConfLab" hidden>
+      <input type="checkbox" id="qConf" onchange="confConferencia()">
+      <span>Confirmei fabricante e fórmula/concentração deste produto. Há produtos com nome semelhante no cadastro ou o fabricante informado na fonte diverge do cadastrado.</span>
+    </label>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgPesquisa').close()">Cancelar</button>
       <button class="btn-save" id="qAplicar" onclick="aplicarPesquisa()" disabled>Aplicar ao produto</button>
@@ -513,6 +547,7 @@
       <button class="btn-anal" id="fLer" onclick="lerFoto()">Ler com OCR</button>
     </div>
     <div class="ocr-out" id="fTexto" style="display:none"></div>
+    <div class="q-fonte" id="fFonteInfo" hidden></div>
     <div id="fCampos" style="display:none">
       <div class="field"><label for="fIA">Ingrediente ativo</label><input id="fIA" type="text"></div>
       <div class="row2">
@@ -590,19 +625,6 @@
       <button class="btn-save" onclick="salvarTeste()">Salvar teste</button>
     </div>
     <div class="disclaimer">O teste do copo avalia a compatibilidade física da mistura no momento do preparo. Não substitui a bula nem garante eficácia, segurança agronômica ou ausência de fitotoxicidade em campo.</div>
-  </div>
-</dialog>
-
-<!-- Visualizador de bula -->
-<dialog id="dlgBula">
-  <div class="sheet">
-    <h2 id="bulaTitle">Bula</h2>
-    <p class="sub" id="bulaSub">—</p>
-    <div class="bula-box" id="bulaBox"><div class="bula-msg">Carregando…</div></div>
-    <div class="sheet-actions">
-      <button class="btn-cancel" id="bulaAbrir" style="display:none" onclick="abrirBulaExterna()">Abrir em nova aba</button>
-      <button class="btn-cancel" onclick="document.getElementById('dlgBula').close()">Fechar</button>
-    </div>
   </div>
 </dialog>
 
@@ -917,7 +939,6 @@ let estoque = [];
 let infos = [];
 let caldas = [];
 let testes = [];
-let filtroCat = 'todos';
 let busca = '';
 let editandoId = null;
 let pesquisaId = null;
@@ -965,15 +986,51 @@ function catLabel(cat){
   if(cat === 'Inseticida/Acaricida') return 'Inset./Acaricida';
   return cat || 'Outros';
 }
-function srcBadge(p){
-  const f = String(p.fonteInfo||'').trim();
-  if(f === 'documento') return '<span class="src doc">Documento</span>';
-  if(f === 'fabricante') return '<span class="src fab">Fabricante</span>';
-  if(f === 'foto') return '<span class="src foto">Foto</span>';
-  if(f === 'foto_conferida') return '<span class="src foto">Foto conferida</span>';
-  if(f === 'nao_encontrada') return '<span class="src na">Não encontrada</span>';
-  return '<span class="src none">Sem fonte</span>';
+// ---- Status documental (derivado da fonte/documentos + override manual local) ----
+// Nunca inventa: o status é calculado apenas a partir do que está declarado no cadastro.
+const STATUS_DOC = {
+  confirmado_bula: { curto:'Bula oficial', rotulo:'Confirmado por bula oficial', classe:'bula', klass:'ok' },
+  confirmado_ficha:{ curto:'Ficha técnica', rotulo:'Confirmado por ficha técnica do fabricante', classe:'fab', klass:'ok' },
+  aguardando_conferencia:{ curto:'Aguard. conferência', rotulo:'Informação extraída de embalagem, aguardando conferência', classe:'foto', klass:'warn' },
+  incompleto: { curto:'Incompleta', rotulo:'Informação incompleta', classe:'none', klass:'mut' },
+  sem_fonte:  { curto:'Sem fonte', rotulo:'Sem fonte encontrada', classe:'na', klass:'bad' }
+};
+const STATUS_KEY = 'bularioStatusDoc_v1';
+function carregarStatusOverride(){
+  try{ const o = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }
+  catch(e){ return {}; }
 }
+let statusOverride = carregarStatusOverride();
+function salvarStatusOverride(){
+  try{ localStorage.setItem(STATUS_KEY, JSON.stringify(statusOverride)); }catch(e){}
+}
+function statusAuto(p){
+  const fonte = String(p.fonteInfo || '').trim();
+  const temBula = !!(p.bulaLink || '').trim() || !!(p.bulaFileId || '').trim();
+  const temFicha = !!(p.fichaLink || '').trim() || !!(p.fonteUrl || '').trim();
+  if(fonte === 'nao_encontrada') return 'sem_fonte';
+  if(fonte === 'foto' || fonte === 'foto_conferida') return 'aguardando_conferencia';
+  if(fonte === 'fabricante') return temFicha ? 'confirmado_ficha' : 'incompleto';
+  if(fonte === 'documento') return temBula || temFicha ? 'confirmado_bula' : 'incompleto';
+  if(temBula) return 'confirmado_bula';
+  if(temFicha) return 'confirmado_ficha';
+  return 'incompleto';
+}
+function statusDoc(p){
+  const m = statusOverride[p && p.id];
+  return (m && STATUS_DOC[m]) ? m : statusAuto(p || {});
+}
+function statusRotulo(p){
+  const k = statusDoc(p);
+  if(k === 'aguardando_conferencia' && p.fonteInfo === 'foto_conferida' && p.conferidoEm)
+    return 'Informação extraída de embalagem · conferida em ' + fmtData(p.conferidoEm);
+  return STATUS_DOC[k].rotulo;
+}
+function statusBadge(p){
+  const s = STATUS_DOC[statusDoc(p)];
+  return '<span class="src ' + s.classe + '">' + escapeHtml(s.curto) + '</span>';
+}
+function statusClasse(p){ return STATUS_DOC[statusDoc(p)].klass; }
 function fonteTexto(p){
   const f = String(p.fonteInfo||'').trim();
   const mapa = { documento:'Documento oficial', fabricante:'Site do fabricante', foto:'Foto (rótulo/bula)',
@@ -987,12 +1044,6 @@ function renderKpis(){
 }
 function itensFiltrados(){
   return lista.filter(p => {
-    if(filtroCat !== 'todos'){
-      const cat = p.categoria || '';
-      if(filtroCat === 'Inseticida/Acaricida'){ if(cat !== 'Inseticida/Acaricida') return false; }
-      else if(cat !== filtroCat && !(filtroCat === 'Inseticida' && cat === 'Inseticida/Acaricida')
-              && !(filtroCat === 'Acaricida' && cat === 'Inseticida/Acaricida')) return false;
-    }
     if(busca){
       const q = busca.toLowerCase();
       const alvo = [p.nome, p.ingredienteAtivo, p.composicao, p.alvos, p.categoria, p.culturas,
@@ -1015,15 +1066,15 @@ function render(){
     const culturas = String(p.culturas||'').split(',').map(s=>s.trim()).filter(Boolean);
     const temRest = !!(p.restricoes||'').trim();
     const temCompat = !!(p.compatDocs||'').trim();
-    const temBula = !!(p.bulaLink||'').trim() || !!(p.bulaFileId||'').trim();
     const linhaIA = (p.ingredienteAtivo||'').trim() || (p.composicao||'').trim();
-    const docBadge = temBula ? '<span class="src bula">Bula</span>' : srcBadge(p);
+    const campo = v => String(v||'').trim()
+      ? '<b>'+escapeHtml(v)+'</b>' : '<b class="sem">sem informação</b>';
     return `
     <div class="item" id="prod-${id}">
       <div class="item-top" onclick="toggle('${id}')">
         <b>${escapeHtml(p.nome)}</b>
         <span class="cat ${catClass(p.categoria)}">${escapeHtml(catLabel(p.categoria))}</span>
-        ${docBadge}
+        ${statusBadge(p)}
         <span class="chev"></span>
       </div>
       <div class="item-sub" onclick="toggle('${id}')">
@@ -1033,19 +1084,23 @@ function render(){
         ${culturas.map(c=>'<span class="cult">'+escapeHtml(c)+'</span>').join('')}
       </div>
       <div class="prod-body">
+        <div class="status-doc">
+          <span class="lbl">Status documental</span>
+          <span class="val ${statusClasse(p)}">${escapeHtml(statusRotulo(p))}</span>
+        </div>
         <div class="igrid">
-          <div>Fabricante<b>${escapeHtml(p.fabricante||'—')}</b></div>
-          <div>Ingrediente ativo<b>${escapeHtml(p.ingredienteAtivo||'—')}</b></div>
-          <div>Fórmula / concentração<b>${escapeHtml([p.formula,p.concentracao].filter(Boolean).join(' · ')||'—')}</b></div>
-          <div>Composição<b>${escapeHtml(p.composicao||'—')}</b></div>
-          <div>Dose<b>${escapeHtml(p.dose||'—')}</b></div>
-          <div>Carência<b>${escapeHtml(p.carencia||'—')}</b></div>
-          <div>Classe toxicológica<b>${escapeHtml(p.classeToxicologica||'—')}</b></div>
-          <div>Garantias<b>${escapeHtml(p.garantias||'—')}</b></div>
-          <div>FRAC / IRAC<b>${escapeHtml([p.frac,p.irac].filter(Boolean).join(' · ')||'—')}</b></div>
-          <div>pH de mistura<b>${escapeHtml(p.ph||'—')}</b></div>
-          <div class="full">Pragas / doenças<b>${escapeHtml(p.alvos||'—')}</b></div>
-          <div class="full">Culturas<b>${escapeHtml(p.culturas||'—')}</b></div>
+          <div>Fabricante${campo(p.fabricante)}</div>
+          <div>Ingrediente ativo${campo(p.ingredienteAtivo)}</div>
+          <div>Fórmula / concentração${campo([p.formula,p.concentracao].filter(Boolean).join(' · '))}</div>
+          <div>Composição${campo(p.composicao)}</div>
+          <div>Dose${campo(p.dose)}</div>
+          <div>Carência${campo(p.carencia)}</div>
+          <div>Classe toxicológica${campo(p.classeToxicologica)}</div>
+          <div>Garantias${campo(p.garantias)}</div>
+          <div>FRAC / IRAC${campo([p.frac,p.irac].filter(Boolean).join(' · '))}</div>
+          <div>pH de mistura${campo(p.ph)}</div>
+          <div class="full">Pragas / doenças${campo(p.alvos)}</div>
+          <div class="full">Culturas${campo(p.culturas)}</div>
         </div>
         ${temRest ? '<div class="restr"><b>Restrições de mistura</b>'+escapeHtml(p.restricoes)+'</div>' : ''}
         ${temCompat ? '<div class="compat"><b>Compatibilidades documentadas</b>'+escapeHtml(p.compatDocs)+'</div>' : ''}
@@ -1054,6 +1109,7 @@ function render(){
           ${p.fonteUrl ? '<div class="full">URL da fonte<b><a href="'+escapeHtml(p.fonteUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+escapeHtml(p.fonteUrl)+'</a></b></div>' : ''}
         </div>
         ${(p.obs||'').trim() ? '<div class="obs-box">'+escapeHtml(p.obs)+'</div>' : ''}
+        <div class="bula-inline" id="bulaBox-${id}" hidden></div>
         <div class="actions">
           <button class="btn-edit" onclick="event.stopPropagation();abrirProduto('${id}')">Editar</button>
           <button class="btn-pesq" onclick="event.stopPropagation();abrirPesquisa('${id}')">Pesquisar</button>
@@ -1095,7 +1151,13 @@ function abrirProduto(id){
   document.getElementById('pCompat').value = p ? (p.compatDocs||'') : '';
   document.getElementById('pBulaLink').value = p ? (p.bulaLink||'') : '';
   document.getElementById('pFicha').value = p ? (p.fichaLink||'') : '';
-  document.getElementById('pBulaStat').textContent = p && p.bulaFileId ? 'Arquivo anexado no Drive.' : 'Sem arquivo anexado.';
+  document.getElementById('pBulaStat').textContent = (p && p.bulaFileId)
+    ? 'Arquivo anexado no Drive. Anexar um novo arquivo SUBSTITUI o atual.'
+    : 'Sem arquivo anexado.';
+  document.getElementById('pStatusDoc').value = p ? (statusOverride[p.id] || '') : '';
+  document.getElementById('pStatusHint').textContent = p
+    ? 'Atual: ' + statusRotulo(p) + (statusOverride[p.id] ? ' — definido manualmente.' : ' — calculado pela fonte e documentos cadastrados.')
+    : 'Será calculado automaticamente a partir da fonte e dos documentos.';
   document.getElementById('pFonte').value = p ? (p.fonteInfo||'') : '';
   document.getElementById('pFonteUrl').value = p ? (p.fonteUrl||'') : '';
   document.getElementById('pFoto').value = p ? (p.foto||'') : '';
@@ -1138,9 +1200,12 @@ function lerProdutoForm(){
 async function salvarProduto(){
   const dados = lerProdutoForm();
   if(!dados.nome){ alert('Digite o nome do produto.'); return; }
+  const escolhido = document.getElementById('pStatusDoc').value;
   if(editandoId){
     const p = produtoPorId(editandoId);
     Object.assign(p, dados);
+    if(escolhido) statusOverride[editandoId] = escolhido; else delete statusOverride[editandoId];
+    salvarStatusOverride();
     render();
     document.getElementById('dlgProduto').close();
     await apiCall('update', { id: editandoId, data: dados });
@@ -1149,6 +1214,7 @@ async function salvarProduto(){
     aplicarRef(novo);
     const res = await apiCall('add', { data: novo });
     novo.id = res.id;
+    if(escolhido){ statusOverride[novo.id] = escolhido; salvarStatusOverride(); }
     lista.push(novo);
     render();
     document.getElementById('dlgProduto').close();
@@ -1198,13 +1264,7 @@ document.getElementById('pBulaFile').addEventListener('change', async function()
   }
 });
 
-// ---- Filtros ----
-document.querySelectorAll('#chipsCat .chip').forEach(c => c.addEventListener('click', () => {
-  document.querySelectorAll('#chipsCat .chip').forEach(x => x.classList.remove('active'));
-  c.classList.add('active');
-  filtroCat = c.dataset.c;
-  render();
-}));
+// ---- Busca por texto ----
 document.getElementById('busca').addEventListener('input', (e) => {
   busca = e.target.value;
   render();
@@ -1284,13 +1344,33 @@ async function preencherDados(){
   st.textContent = 'Pronto! '+ok+' produtos atualizados. Confira abrindo cada um.';
   render();
 }
-// ---- Pesquisa assistida (cola texto/URL → extrai campos → confere → aplica) ----
+// ---- Pesquisa: automática (fonte cadastrada) + alternativa colada/OCR + conferência ----
+let pesquisaExtraida = null;
+let pesquisaFonte = '';      // URL consultada ('' = conteúdo colado manualmente)
+let pesquisaConfirma = false; // exige confirmação de fabricante/fórmula?
+
 function abrirPesquisa(id){
   pesquisaId = id;
+  pesquisaExtraida = null; pesquisaFonte = ''; pesquisaConfirma = false;
   const p = produtoPorId(id);
   document.getElementById('qTexto').value = '';
   document.getElementById('qOut').innerHTML = '';
   document.getElementById('qAplicar').disabled = true;
+  document.getElementById('qConf').checked = false;
+  document.getElementById('qConfLab').hidden = true;
+  const links = p ? [p.bulaLink, p.fichaLink, p.fonteUrl].map(x => String(x||'').trim()).filter(Boolean) : [];
+  document.getElementById('qAlvo').innerHTML = p
+    ? 'Alvo: <b>' + escapeHtml(p.nome) + '</b>' +
+      (p.fabricante ? ' · fabricante: <b>' + escapeHtml(p.fabricante) + '</b>' : '') +
+      ((p.formula || p.concentracao) ? ' · fórmula: <b>' + escapeHtml([p.formula, p.concentracao].filter(Boolean).join(' · ')) + '</b>' : '')
+    : 'Produto não encontrado.';
+  document.getElementById('qLimites').innerHTML =
+    '<b>Pesquisa automática:</b> ' +
+    (links.length
+      ? 'vou baixar e ler a fonte já cadastrada neste produto (' + escapeHtml(links.join(' · ')) + '). Priorizo bula/ficha do próprio cadastro.'
+      : 'este produto <b>não tem nenhum link</b> de bula/ficha cadastrado, então não há como consultar uma fonte automaticamente.') +
+    ' Descoberta automática de novas fontes não está disponível nesta versão (não há API oficial pública de consulta de agrotóxicos):' +
+    ' use "Abrir busca na web", copie a URL e cole aqui — ou use Foto/OCR.';
   document.getElementById('dlgPesquisa').showModal();
 }
 function abrirBuscaExterna(){
@@ -1298,47 +1378,141 @@ function abrirBuscaExterna(){
   const q = encodeURIComponent((p ? p.nome : '') + ' bula ingrediente ativo dose carência');
   window.open('https://www.google.com/search?q=' + q, '_blank', 'noopener');
 }
-let pesquisaExtraida = null;
+// Distância de edição — usada só para avisar sobre produtos de nome parecido.
+function lev(a, b){
+  a = String(a||''); b = String(b||'');
+  if(a === b) return 0;
+  const m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  let prev = [], cur = [];
+  for(let j = 0; j <= n; j++) prev[j] = j;
+  for(let i = 1; i <= m; i++){
+    cur[0] = i;
+    for(let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    const t = prev; prev = cur; cur = t;
+  }
+  return prev[n];
+}
+function produtosSemelhantes(p){
+  if(!p) return [];
+  const k = chave(p.nome);
+  if(!k) return [];
+  const out = [];
+  for(const o of lista){
+    if(!o.id || o.id === p.id) continue;
+    const ko = chave(o.nome);
+    if(!ko || ko === k) continue;
+    const contido = k.length >= 4 && ko.length >= 4 && (ko.includes(k) || k.includes(ko));
+    const parecido = Math.abs(k.length - ko.length) <= 4 && lev(k, ko) <= 3;
+    if(contido || parecido){
+      out.push({ id:o.id, nome:o.nome, fabricante:o.fabricante||'',
+        formula:[o.formula, o.concentracao].filter(Boolean).join(' · ') });
+      if(out.length >= 6) break;
+    }
+  }
+  return out;
+}
+const Q_CAMPOS = [
+  ['fabricante','Fabricante'],
+  ['ingredienteAtivo','Ingrediente ativo'],
+  ['concentracao','Concentração'],
+  ['formula','Formulação'],
+  ['composicao','Composição'],
+  ['culturas','Culturas registradas'],
+  ['alvos','Alvos (pragas/doenças)'],
+  ['dose','Dosagem'],
+  ['carencia','Intervalo de segurança (carência)'],
+  ['classeToxicologica','Classe toxicológica']
+];
+// Monta a conferência: dados encontrados + fonte + data da consulta (+ aviso de nomes semelhantes).
+function mostrarConferencia(d, fonte, semelhantes, p, semResultado){
+  const out = document.getElementById('qOut');
+  pesquisaExtraida = d || null;
+  pesquisaFonte = d ? (fonte || d.fonteUrl || '') : '';
+  let html = '';
+  if(semResultado){
+    html += '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Resultado da pesquisa</span>' +
+      escapeHtml(semResultado) + '</div>';
+  }
+  if(d){
+    const linhas = Q_CAMPOS.filter(([k]) => String(d[k]||'').trim());
+    html += '<div class="sec-title" style="margin-top:' + (semResultado ? '12px' : '0') + '">' +
+      'Dados encontrados — confira antes de aplicar</div>';
+    html += linhas.length
+      ? '<div class="igrid">' + linhas.map(([k, lab]) =>
+          '<div class="full">' + escapeHtml(lab) + '<b>' + escapeHtml(d[k]) + '</b></div>').join('') + '</div>'
+      : '<div class="empty" style="padding:10px 0">Nenhum campo reconhecido no conteúdo.</div>';
+    html += pesquisaFonte
+      ? '<div class="q-fonte">Fonte: <a href="' + escapeHtml(pesquisaFonte) + '" target="_blank" rel="noopener">' +
+        escapeHtml(pesquisaFonte) + '</a> · consulta em ' + escapeHtml(fmtData(hojeISO())) + '</div>'
+      : '<div class="q-fonte">Fonte: texto colado manualmente (sem URL) · extraído em ' +
+        escapeHtml(fmtData(hojeISO())) + '</div>';
+    if(semelhantes && semelhantes.length){
+      html += '<div class="q-semel"><b>Produtos com nome semelhante no cadastro:</b><br>' +
+        semelhantes.map(s => '· ' + escapeHtml(s.nome) +
+          (s.fabricante ? ' — ' + escapeHtml(s.fabricante) : '') +
+          (s.formula ? ' · ' + escapeHtml(s.formula) : '')).join('<br>') +
+        '<br>Confirme fabricante e fórmula do produto alvo antes de aplicar.</div>';
+    }
+    const diverge = !!(p && d.fabricante && p.fabricante && chave(d.fabricante) !== chave(p.fabricante));
+    if(diverge){
+      html += '<div class="q-semel" style="border-color:rgba(224,120,95,.45)"><b>Atenção:</b> o cadastro diz fabricante <b>' +
+        escapeHtml(p.fabricante) + '</b>, mas a fonte indica <b>' + escapeHtml(d.fabricante) + '</b>.</div>';
+    }
+    pesquisaConfirma = !!((semelhantes && semelhantes.length) || diverge);
+  }else{
+    pesquisaConfirma = false;
+  }
+  out.innerHTML = html;
+  const lab = document.getElementById('qConfLab');
+  lab.hidden = !pesquisaConfirma;
+  document.getElementById('qConf').checked = false;
+  document.getElementById('qAplicar').disabled = !d || pesquisaConfirma;
+}
+function confConferencia(){
+  const ok = document.getElementById('qConf').checked;
+  document.getElementById('qAplicar').disabled = !pesquisaExtraida || (pesquisaConfirma && !ok);
+}
 function extrairPesquisa(){
   const txt = document.getElementById('qTexto').value.trim();
   const out = document.getElementById('qOut');
-  if(!txt){ out.innerHTML = '<div class="empty" style="padding:16px 0">Cole o texto ou URL da bula primeiro.</div>'; return; }
-  const p = produtoPorId(pesquisaId);
-  const d = extrairCampos(txt, p);
-  pesquisaExtraida = d;
-  const linhas = [
-    ['Ingrediente ativo', d.ingredienteAtivo],
-    ['Dose', d.dose],
-    ['Carência', d.carencia],
-    ['Classe toxicológica', d.classeToxicologica],
-    ['Fabricante', d.fabricante],
-    ['Composição', d.composicao],
-    ['Pragas / doenças', d.alvos]
-  ].filter(x => x[1]);
-  if(!linhas.length){
-    out.innerHTML = '<div class="empty" style="padding:16px 0">Nada reconhecido no texto. Tente colar o trecho da bula com dose/carência, ou use Foto/OCR.</div>';
+  if(!txt){
+    out.innerHTML = '<div class="empty" style="padding:16px 0">Cole o texto ou a URL do documento primeiro — ou use o botão Pesquisar.</div>';
     document.getElementById('qAplicar').disabled = true;
     return;
   }
-  out.innerHTML = '<div class="sec-title" style="margin-top:0">Reconhecido (confira antes de aplicar)</div>' +
-    '<div class="igrid">' + linhas.map(x =>
-      '<div class="full">'+escapeHtml(x[0])+'<b>'+escapeHtml(x[1])+'</b></div>').join('') + '</div>';
-  document.getElementById('qAplicar').disabled = false;
+  const p = produtoPorId(pesquisaId);
+  const d = extrairCampos(txt, null); // só o que está no texto colado (nada herdado do cadastro)
+  const algum = ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante',
+    'composicao','alvos','concentracao','formula','culturas'].some(k => String(d[k]||'').trim());
+  if(!algum){
+    mostrarConferencia(null, '', produtosSemelhantes(p), p,
+      'Nada reconhecido no texto. Tente colar o trecho da bula com dose/carência, a URL do documento, ou use Foto/OCR.');
+    return;
+  }
+  mostrarConferencia(d, d.fonteUrl || '', produtosSemelhantes(p), p);
 }
-// Extrai campos técnicos de um texto livre (bula colada, OCR, etc).
+// Extrai campos técnicos de um texto livre (bula colada, OCR, PDF da fonte, etc).
 function extrairCampos(txt, p){
   const t = String(txt||'');
   const achar = (re) => { const m = t.match(re); return m ? m[1].trim().replace(/\s+/g,' ') : ''; };
   const urlM = t.match(/https?:\/\/\S+/);
   const dose = achar(/dose[:\s]+([^\n;]+)/i) ||
     achar(/(\d+[.,]?\d*\s*(?:mL|g|L|kg)\s*\/\s*(?:100\s*L|ha|L\b)[^\n;]*)/i);
-  const car = achar(/car[êe]ncia[:\s]+([^\n;]+)/i);
+  const car = achar(/car[êe]ncia[:\s]+([^\n;]+)/i) ||
+    achar(/intervalo\s+de\s+seguran[çc]a[:\s]+([^\n;]+)/i);
   const ia = achar(/ingrediente\s+ativo[:\s]+([^\n;]+)/i) ||
     achar(/composi[çc][ãa]o[:\s]+([^\n;]+)/i);
   const tox = achar(/(?:classe\s+toxicol[óo]gica|categoria\s+toxicol[óo]gica)[:\s]+([^\n;]+)/i) ||
     achar(/(categoria\s+[345]\b[^\n;]*)/i);
   const fab = achar(/fabricante[:\s]+([^\n;]+)/i) || achar(/ind[úu]stria[:\s]+([^\n;]+)/i);
   const alvos = achar(/(?:pragas?|alvos?|doen[çc]as?|controle\s+de)[:\s]+([^\n;]+)/i);
+  const conc = achar(/concentra[çc][ãa]o[:\s]+([^\n;]+)/i);
+  const form = achar(/f[óo]rmula[çc][ãa]o[:\s]+([^\n;]+)/i) || achar(/f[óo]rmula[:\s]+([^\n;]+)/i);
+  const cult = achar(/culturas?[:\s]+([^\n;]+)/i);
   const comp = achar(/composi[çc][ãa]o[:\s]+([^\n;]+)/i) && !ia ? achar(/composi[çc][ãa]o[:\s]+([^\n;]+)/i) : '';
   const url = urlM ? urlM[0] : (p && p.fonteUrl) || '';
   const vazio = v => !String(v||'').trim();
@@ -1350,6 +1524,9 @@ function extrairCampos(txt, p){
     fabricante: vazio(fab) && p ? (p.fabricante||'') : fab,
     composicao: comp,
     alvos: vazio(alvos) && p ? (p.alvos||'') : alvos,
+    concentracao: vazio(conc) && p ? (p.concentracao||'') : conc,
+    formula: vazio(form) && p ? (p.formula||'') : form,
+    culturas: vazio(cult) && p ? (p.culturas||'') : cult,
     fonteUrl: url,
     fonteInfo: 'documento'
   };
@@ -1357,18 +1534,158 @@ function extrairCampos(txt, p){
 function aplicarPesquisa(){
   const p = produtoPorId(pesquisaId);
   if(!p || !pesquisaExtraida) return;
+  if(pesquisaConfirma && !document.getElementById('qConf').checked){
+    alert('Confirme fabricante e fórmula/concentração na caixa de conferência antes de aplicar.');
+    return;
+  }
   const d = pesquisaExtraida;
   const dados = {};
-  ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante','composicao','alvos'].forEach(k => {
+  ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante','composicao','alvos',
+    'concentracao','formula','culturas'].forEach(k => {
     if(String(d[k]||'').trim()) dados[k] = d[k];
   });
-  dados.fonteInfo = 'documento';
-  if(d.fonteUrl) dados.fonteUrl = d.fonteUrl;
+  if(pesquisaFonte){
+    dados.fonteUrl = pesquisaFonte;
+    dados.fonteInfo = 'documento';
+    if(!String(p.bulaLink||'').trim() && /\.pdf(\?|#|$)/i.test(pesquisaFonte)) dados.bulaLink = pesquisaFonte;
+  }
   dados.conferidoEm = hojeISO();
   Object.assign(p, dados);
   render();
   document.getElementById('dlgPesquisa').close();
   apiCall('update', { id: p.id, data: dados });
+}
+
+// ---- Pesquisa automática: baixa e lê a fonte já cadastrada do produto ----
+// Cadeia de acesso: direto → proxy público (contorna CORS) → backend (só se tiver a ação fetchUrl).
+async function baixarDocumento(url){
+  const erros = [];
+  try{
+    const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(url) : await fetch(url);
+    if(r.ok) return await bytesOuTexto(r);
+    erros.push('HTTP ' + r.status);
+  }catch(e){ erros.push(String(e.message || e)); }
+  try{
+    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
+    if(r.ok) return await bytesOuTexto(r);
+    erros.push('proxy: HTTP ' + r.status);
+  }catch(e){ erros.push('proxy: ' + String(e.message || e)); }
+  try{
+    const j = await apiPost({ tipo:'bulario', action:'fetchUrl', url });
+    if(j && j.ok && (j.b64 || j.texto)){
+      if(j.b64){
+        const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0)).buffer;
+        return bytesOuTextoDeBytes(bytes);
+      }
+      return { pdf:false, texto:String(j.texto) };
+    }
+    erros.push('backend sem ação fetchUrl (não configurada)');
+  }catch(e){ erros.push('backend: ' + String(e.message || e)); }
+  throw new Error(erros.join(' · '));
+}
+function bytesOuTextoDeBytes(buf){
+  const u8 = new Uint8Array(buf);
+  const ehPdf = u8.length > 4 && u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46;
+  return ehPdf
+    ? { pdf:true, bytes:buf }
+    : { pdf:false, texto:new TextDecoder('utf-8').decode(u8) };
+}
+async function bytesOuTexto(resp){ return bytesOuTextoDeBytes(await resp.arrayBuffer()); }
+function bytesParaB64(buf){
+  const u8 = new Uint8Array(buf);
+  let s = '';
+  const passo = 0x8000;
+  for(let i = 0; i < u8.length; i += passo){
+    s += String.fromCharCode.apply(null, u8.subarray(i, i + passo));
+  }
+  return btoa(s);
+}
+function textoDePdf(buf){
+  return loadPdfJs().then(() =>
+    window.pdfjsLib.getDocument({ data: buf }).promise.then(doc => {
+      let saida = '';
+      const etapa = i => {
+        if(i > doc.numPages) return saida;
+        return doc.getPage(i).then(pg => pg.getTextContent()).then(tc => {
+          saida += tc.items.map(it => it.str).join('\n') + '\n';
+          return etapa(i + 1);
+        });
+      };
+      return etapa(1);
+    }));
+}
+function loadPdfJs(){
+  return new Promise((res, rej) => {
+    if(window.pdfjsLib) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload = () => {
+      try{
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        res();
+      }catch(e){ rej(new Error('leitor de PDF indisponível')); }
+    };
+    s.onerror = () => rej(new Error('não consegui baixar o leitor de PDF'));
+    document.head.appendChild(s);
+  });
+}
+async function pesquisaAutomatica(){
+  const p = produtoPorId(pesquisaId);
+  const out = document.getElementById('qOut');
+  if(!p){ return; }
+  const semelhantes = produtosSemelhantes(p);
+  const fontes = [p.bulaLink, p.fichaLink, p.fonteUrl].map(x => String(x||'').trim()).filter(Boolean);
+  const unicas = [...new Set(fontes)];
+  if(!unicas.length){
+    mostrarConferencia(null, '', semelhantes, p,
+      'Nenhuma fonte automática disponível: este produto não tem link de bula/ficha/fonte cadastrado. ' +
+      'A descoberta de novas fontes não está implementada nesta versão — abra a busca na web, cole a URL aqui (alternativa) ou use Foto/OCR.');
+    return;
+  }
+  const btn = document.getElementById('qAuto');
+  btn.disabled = true;
+  btn.textContent = 'Pesquisando…';
+  out.innerHTML = '<div class="loading">Consultando ' + unicas.length + ' fonte(s) do produto…</div>';
+  try{
+    const tentativas = [];
+    for(const url of unicas){
+      try{
+        const r = await baixarDocumento(url);
+        let texto = '';
+        if(r.pdf){
+          try{
+            texto = await textoDePdf(r.bytes);
+          }catch(e){
+            mostrarConferencia(null, url, semelhantes, p,
+              'Bula/PDF oficial localizado, mas não consegui ler o texto automaticamente (' + e.message + '). ' +
+              'Abra em nova aba, use "Salvar PDF no Drive" (botão Bula) ou cole o texto aqui.');
+            return;
+          }
+        }else{
+          texto = (r.texto || '').replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n');
+        }
+        const d = extrairCampos(texto, null);
+        const algum = ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante',
+          'composicao','alvos','concentracao','formula','culturas'].some(k => String(d[k]||'').trim());
+        if(algum){
+          mostrarConferencia(d, url, semelhantes, p);
+          return;
+        }
+        tentativas.push(url + ' (sem dados reconhecidos)');
+      }catch(e){
+        tentativas.push(url + ' (' + e.message + ')');
+      }
+    }
+    mostrarConferencia(null, unicas[0], semelhantes, p,
+      'Tentei a(s) fonte(s) cadastrada(s) e nenhuma devolveu dados legíveis: ' + tentativas.join(' · ') +
+      '. Confira manualmente com "Abrir busca na web" ou anexe a bula mais recente.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Pesquisar';
+  }
 }
 
 // ---- Foto + OCR com conferência ----
@@ -1377,6 +1694,7 @@ function abrirFoto(id){
   document.getElementById('fFile').value = '';
   document.getElementById('fPrev').innerHTML = '<div class="nophoto">Nenhuma foto escolhida ainda.</div>';
   document.getElementById('fTexto').style.display = 'none';
+  document.getElementById('fFonteInfo').hidden = true;
   document.getElementById('fCampos').style.display = 'none';
   document.getElementById('fSalvar').disabled = true;
   document.getElementById('fLer').disabled = false;
@@ -1421,6 +1739,10 @@ async function lerFoto(){
     document.getElementById('fTox').value = d.classeToxicologica || '';
     document.getElementById('fFab').value = d.fabricante || '';
     document.getElementById('fAlvos').value = d.alvos || '';
+    document.getElementById('fFonteInfo').hidden = false;
+    document.getElementById('fFonteInfo').innerHTML =
+      'Fonte: foto do rótulo/embalagem (OCR) · leitura em ' + escapeHtml(fmtData(hojeISO())) +
+      '. Confira campo a campo antes de salvar — foto vira <b>informação extraída de embalagem</b>.';
     document.getElementById('fCampos').style.display = '';
     document.getElementById('fSalvar').disabled = false;
     if(!texto.trim()) btn.textContent = 'Tentar de novo';
@@ -1452,19 +1774,31 @@ async function salvarFotoOCR(){
   await apiCall('update', { id: p.id, data: dados });
 }
 
-// ---- Bula: Drive (blob iframe) / link externo / sem documento ----
+// ---- Bula dentro da área expandida: Drive (iframe) / link externo / sem documento ----
+// Regra: nunca exibir visualizador vazio — se não dá para mostrar, diz claramente e oferece ação.
 let bulaBlobUrl = '';
+function bulaTools(p){
+  const temArq = !!(p.bulaFileId||'').trim();
+  const temLink = !!(p.bulaLink||'').trim();
+  const b = [];
+  if(temLink) b.push('<button class="gold" onclick="event.stopPropagation();abrirBulaExterna()">Abrir em nova aba</button>');
+  if(temLink && !temArq) b.push('<button class="gold" onclick="event.stopPropagation();importarBulaDrive(\''+p.id+'\')">Salvar PDF no Drive</button>');
+  if(!temLink && !temArq) b.push('<button class="gold" onclick="event.stopPropagation();localizarBula(\''+p.id+'\')">Localizar bula oficial</button>');
+  if(temArq || temLink) b.push('<button onclick="event.stopPropagation();substituirBula(\''+p.id+'\')">Substituir documento</button>');
+  b.push('<button onclick="event.stopPropagation();abrirProduto(\''+p.id+'\')">Editar vínculos</button>');
+  return '<div class="bula-tools">' + b.join('') + '</div><div class="bula-stat" id="bulaStat-'+p.id+'"></div>';
+}
 async function verBula(id){
   const p = produtoPorId(id);
   if(!p) return;
+  const card = document.getElementById('prod-' + id);
+  if(card && card.classList && !card.classList.contains('open')) card.classList.add('open');
+  const box = document.getElementById('bulaBox-' + id);
+  if(!box) return;
+  box.hidden = false;
   bulaAtual = { link: p.bulaLink || '', fileId: p.bulaFileId || '' };
-  const box = document.getElementById('bulaBox');
-  document.getElementById('bulaTitle').textContent = 'Bula — ' + (p.nome || '');
-  document.getElementById('bulaAbrir').style.display = 'none';
-  document.getElementById('dlgBula').showModal();
   if(bulaAtual.fileId){
-    document.getElementById('bulaSub').textContent = 'Arquivo anexado no Drive.';
-    box.innerHTML = '<div class="bula-msg">Carregando o arquivo…</div>';
+    box.innerHTML = '<div class="bula-box"><div class="bula-msg">Carregando o arquivo do Drive…</div></div>' + bulaTools(p);
     try{
       const r = await fetch(API_URL + '?anexoB64=' + encodeURIComponent(bulaAtual.fileId));
       const j = await r.json();
@@ -1473,31 +1807,70 @@ async function verBula(id){
       bulaBlobUrl = URL.createObjectURL(new Blob([Uint8Array.from(atob(j.b64), c => c.charCodeAt(0))],
         { type: j.mime || 'application/octet-stream' }));
       const pdf = /pdf/i.test(j.mime || '') || /\.pdf$/i.test(j.nome || '');
-      box.innerHTML = pdf
-        ? '<iframe src="'+bulaBlobUrl+'" title="'+escapeHtml(j.nome||'bula')+'"></iframe>'
-        : '<img src="'+bulaBlobUrl+'" alt="'+escapeHtml(j.nome||'bula')+'">';
-      document.getElementById('bulaSub').textContent = pdf
-        ? 'PDF — use "Abrir em nova aba" para tela cheia.' : 'Imagem da bula.';
-      document.getElementById('bulaAbrir').style.display = '';
+      box.innerHTML = '<div class="bula-box">' + (pdf
+        ? '<iframe src="' + bulaBlobUrl + '" title="' + escapeHtml(j.nome||'bula') + '"></iframe>'
+        : '<img src="' + bulaBlobUrl + '" alt="' + escapeHtml(j.nome||'bula') + '">') +
+        '</div>' + bulaTools(p);
     }catch(e){
-      box.innerHTML = '<div class="bula-msg">Não consegui carregar o arquivo.<br><small>'+escapeHtml(e.message)+'</small></div>';
-      if(bulaAtual.link) document.getElementById('bulaAbrir').style.display = '';
+      box.innerHTML = '<div class="bula-box"><div class="bula-msg">Não consegui carregar o arquivo do Drive.<br><small>' +
+        escapeHtml(e.message) + '</small></div></div>' + bulaTools(p);
     }
     return;
   }
   if(bulaAtual.link){
-    document.getElementById('bulaSub').textContent = 'Link externo do fabricante/documento.';
-    box.innerHTML = '<div class="bula-msg">Bula em link externo.<br>Use "Abrir em nova aba" para ver o documento.</div>';
-    document.getElementById('bulaAbrir').style.display = '';
+    box.innerHTML = '<div class="bula-box"><div class="bula-msg"><b>Bula em link externo</b><br>' +
+      escapeHtml(bulaAtual.link) + '<br>Sites oficiais podem bloquear a exibição dentro da página, então <b>não abro um visualizador vazio</b> aqui: ' +
+      'use <b>Abrir em nova aba</b> ou <b>Salvar PDF no Drive</b> (aí ela passa a ser exibida dentro da área expandida).</div></div>' +
+      bulaTools(p);
     return;
   }
-  document.getElementById('bulaSub').textContent = 'Sem documento.';
-  box.innerHTML = '<div class="bula-msg">Nenhum documento de bula anexado.<br>Anexe em <b>Editar → Anexar bula</b> ou adicione o link da bula.</div>';
+  box.innerHTML = '<div class="bula-box"><div class="bula-msg"><b>Nenhum documento de bula vinculado</b> a este produto — ' +
+    'não há o que exibir. Use <b>Localizar bula oficial</b> para buscar o PDF correto, ou anexe um arquivo já baixado em ' +
+    'Editar → Anexar bula.</div></div>' + bulaTools(p);
 }
 function abrirBulaExterna(){
-  if(bulaBlobUrl && !bulaAtual.link){ window.open(bulaBlobUrl, '_blank'); return; }
   if(bulaAtual.link){ window.open(bulaAtual.link, '_blank', 'noopener'); return; }
   if(bulaBlobUrl) window.open(bulaBlobUrl, '_blank');
+}
+// Busca real na web (Google) pelo PDF oficial do produto — resultado é conferido manualmente.
+function localizarBula(id){
+  const p = produtoPorId(id);
+  const q = encodeURIComponent((p ? p.nome : '') + ' bula oficial PDF');
+  window.open('https://www.google.com/search?q=' + q, '_blank', 'noopener');
+}
+function substituirBula(id){
+  abrirProduto(id);
+  const p = produtoPorId(id);
+  if(p && p.bulaFileId){
+    document.getElementById('pBulaStat').textContent =
+      'Há um PDF anexado no Drive. Anexar um novo arquivo SUBSTITUI o documento atual.';
+  }
+}
+// Baixa o PDF do link cadastrado e grava no Drive, vinculando ao produto (substitui se já houver arquivo).
+async function importarBulaDrive(id){
+  const p = produtoPorId(id);
+  if(!p || !p.bulaLink) return;
+  const stat = document.getElementById('bulaStat-' + id);
+  const setar = t => { if(stat) stat.textContent = t; };
+  setar('Baixando o documento da fonte…');
+  try{
+    const r = await baixarDocumento(p.bulaLink);
+    if(!r.pdf){
+      setar('Este link não é um PDF (é uma página). Abra em nova aba, baixe o PDF da bula e anexe em Editar → Anexar bula.');
+      return;
+    }
+    const b64 = bytesParaB64(r.bytes);
+    const up = await apiPost({ action:'uploadAnexo', pasta:'Bulários EstufaOS',
+      nome: (chave(p.nome) || 'bula') + '_bula.pdf', mime:'application/pdf', base64:b64 });
+    if(!up.ok) throw new Error(up.error || 'falha no envio');
+    p.bulaFileId = up.id;
+    await apiCall('update', { id: p.id, data: { bulaFileId: up.id } });
+    render(); renderKpis();
+    await verBula(id);
+  }catch(e){
+    setar('Não consegui salvar no Drive automaticamente (' + e.message + '). O site pode bloquear o download externo — ' +
+      'abra em nova aba, baixe o PDF e anexe manualmente.');
+  }
 }
 // ---- Catálogo unificado (Bulário + Estoque + InsumosInfo) sem duplicar ----
 function infoDoEstoque(est){

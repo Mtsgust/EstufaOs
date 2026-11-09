@@ -18,7 +18,21 @@ var SHEETS = {
   },
   bulario: {
     name: 'Bulario',
-    headers: ['id', 'dataCriacao', 'nome', 'categoria', 'ingredienteAtivo', 'classeToxicologica', 'dose', 'carencia', 'obs', 'bulaLink', 'foto', 'alvos', 'frac', 'culturas']
+    // 14 colunas originais preservadas + novas anexadas no fim (migração automática no 1º acesso)
+    headers: ['id', 'dataCriacao', 'nome', 'categoria', 'ingredienteAtivo', 'classeToxicologica', 'dose', 'carencia', 'obs', 'bulaLink', 'foto', 'alvos', 'frac', 'culturas',
+      'fabricante', 'formula', 'concentracao', 'composicao', 'garantias', 'irac', 'ph', 'restricoes', 'compatDocs', 'fichaLink', 'bulaFileId', 'fonteInfo', 'fonteUrl', 'conferidoEm']
+  },
+  insumosInfo: {
+    name: 'InsumosInfo',
+    headers: ['id', 'dataCriacao', 'estoqueId', 'nome', 'categoria', 'ingredienteAtivo', 'composicao', 'formula', 'concentracao', 'fabricante', 'garantias', 'frac', 'irac', 'ph', 'alvos', 'culturas', 'dose', 'carencia', 'restricoes', 'compatDocs', 'bulaLink', 'fichaLink', 'bulaFileId', 'foto', 'fonteInfo', 'fonteUrl', 'conferidoEm', 'obs']
+  },
+  caldas: {
+    name: 'Caldas',
+    headers: ['id', 'dataCriacao', 'nome', 'cultura', 'alvo', 'produtos', 'agua', 'ordem', 'estufas', 'condicoes', 'obs', 'resultado', 'sintomas', 'periodoAval', 'avaliacaoObs', 'atualizadoEm']
+  },
+  testesCopo: {
+    name: 'TestesCopo',
+    headers: ['id', 'dataCriacao', 'chave', 'produtos', 'proporcoes', 'ordem', 'agua', 'sinais', 'dataTeste', 'obs', 'resultado']
   },
   estoque: {
     name: 'Estoque',
@@ -318,6 +332,20 @@ function doPost(e) {
     if (action === 'uploadAnexo') {
       lock.waitLock(30000);
       return jsonOut_(uploadAnexo_(body));
+    }
+    // --- Bula/ficha: busca de documento oficial, download validado e diagnóstico da pasta ---
+    if (action === 'buscarBula') {
+      return jsonOut_(buscarBula_(body));
+    }
+    if (action === 'baixarBula') {
+      lock.waitLock(60000);
+      return jsonOut_(baixarBula_(body));
+    }
+    if (action === 'fetchUrl') {
+      return jsonOut_(fetchUrlAction_(body));
+    }
+    if (action === 'diagBula') {
+      return jsonOut_(diagBula_(body));
     }
     // --- Lista eventos da Agenda num período (para importar boletos que já estão lá) ---
     if (action === 'listarEventos') {
@@ -793,8 +821,10 @@ function boletoExcluir_(id) {
 }
 function uploadAnexo_(body) {
   if (!body.base64 || !body.nome) return { ok: false, error: 'arquivo inválido' };
-  var it = DriveApp.getFoldersByName('Boletos EstufaOS');
-  var folder = it.hasNext() ? it.next() : DriveApp.createFolder('Boletos EstufaOS');
+  // body.pasta opcional (ex.: 'Bulários EstufaOS'); sem pasta, mantém a pasta dos boletos (compat).
+  var pasta = body.pasta || 'Boletos EstufaOS';
+  var it = DriveApp.getFoldersByName(pasta);
+  var folder = it.hasNext() ? it.next() : DriveApp.createFolder(pasta);
   var blob = Utilities.newBlob(Utilities.base64Decode(body.base64), body.mime || 'application/octet-stream', body.nome);
   var f = folder.createFile(blob);
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
@@ -852,4 +882,255 @@ function trocarLancamentos_(body) {
       somaDiasISO_(inicio, gi * 7), Math.round(q * 100) / 100, un, 'Semana corrigida']);
   });
   return { ok: true, semanas: vals.length, total: Math.round(total * 100) / 100, inicio: inicio };
+}
+
+/* ================ Bula / ficha técnica: busca e guarda no Drive ================
+ * Regras do fluxo (nada é inventado e nada é duplicado):
+ *  1. buscarBula_ só devolve URLs que uma fonte de busca real retornou; nada é deduzido;
+ *  2. host oficial (fabricante ou órgão público) pontua mais; agregador/outro país perde;
+ *  3. baixarBula_ valida o conteúdo (%PDF, até 12 MB) ANTES de gravar qualquer coisa;
+ *  4. se a pasta já tem o mesmo conteúdo (mesmo nome, mesmo tamanho e mesmo SHA-256),
+ *     o arquivo é reutilizado — nenhum PDF igual é salvo duas vezes;
+ *  5. se já existe documento para o produto e substituir !== true, nada é trocado:
+ *     responde conflito:true e a decisão fica com quem opera (nunca auto-substitui);
+ *  6. falha de busca vira { ok:true, encontrados:[], nenhum:true, motivo:... } — nunca
+ *     resultado simulado.
+ * Estas ações passam a valer depois do deploy deste Code.gs (o usuário autoriza);
+ * até lá o frontend detecta "ação inválida" e informa, sem simular busca/download.
+ */
+var BULA_PASTA_ = 'Bulários EstufaOS';
+var BULA_MAX_BYTES_ = 12 * 1024 * 1024;
+var BULA_HOSTS_OFICIAIS_ = [
+  'syngenta.com.br', 'syngenta.com', 'basf.com.br', 'basf.com', 'bayer.com', 'bayer.com.br',
+  'upl.com.br', 'adama.com.br', 'ourofino.com.br', 'nortox.com.br', 'iosa.com.br',
+  'scoop.com.br', 'fmc.com', 'fmcagro.com.br', 'sempreagro.com.br', 'embrapa.br',
+  'agrofit.agricultura.gov.br', 'gov.br'
+];
+var BULA_HOSTS_FORA_ = [
+  'agrolink.com.br', 'revistacultivar.com.br', 'agrofy.com.br', 'solsan.com.br',
+  'compreagro.com.br', 'syngenta.co.in'
+];
+
+function prop_(nome) {
+  try { return String(PropertiesService.getScriptProperties().getProperty(nome) || ''); }
+  catch (e) { return ''; }
+}
+function httpFetch_(url, opts) {
+  opts = opts || {};
+  try {
+    var resp = UrlFetchApp.fetch(url, {
+      method: opts.method || 'get',
+      followRedirects: true,
+      muteHttpExceptions: true,
+      headers: opts.headers || {}
+    });
+    var st = resp.getResponseCode();
+    var blob = resp.getBlob();
+    return { ok: st >= 200 && st < 300, status: st, blob: blob, mime: blob.getContentType() || '' };
+  } catch (e) {
+    return { ok: false, status: 0, erro: String((e && e.message) || e) };
+  }
+}
+function ehPdf_(bytes) {
+  return !!(bytes && bytes.length > 4 &&
+    bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70); // %PDF
+}
+function hex_(digest) {
+  return digest.map(function (b) { return ('0' + (((b % 256) + 256) % 256).toString(16)).slice(-2); }).join('');
+}
+function limparNome_(s) {
+  return String(s || '').replace(/[^A-Za-z0-9À-ÿ _.-]/g, '').replace(/\s+/g, '_')
+    .replace(/\.+$/g, '').substring(0, 80);
+}
+function agora_() { return new Date().toISOString(); }
+function pastaBula_() {
+  var it = DriveApp.getFoldersByName(BULA_PASTA_);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(BULA_PASTA_);
+}
+function baixarBytes_(url) {
+  var r = httpFetch_(url);
+  if (!r.ok) return { ok: false, error: 'HTTP ' + (r.status || ('falha: ' + (r.erro || 'desconhecida'))) };
+  var bytes = r.blob.getBytes();
+  if (bytes.length > BULA_MAX_BYTES_) {
+    return { ok: false, error: 'arquivo maior que ' + Math.round(BULA_MAX_BYTES_ / 1048576) + ' MB' };
+  }
+  return { ok: true, bytes: bytes, mime: r.mime, blob: r.blob };
+}
+// GET/POST genérico usado pelo frontend para baixar a fonte sem depender de proxy de navegador.
+function fetchUrlAction_(body) {
+  var url = String(body.url || '').trim();
+  if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'URL inválida' };
+  var r = baixarBytes_(url);
+  if (!r.ok) return r;
+  if (ehPdf_(r.bytes)) {
+    return { ok: true, pdf: true, mime: 'application/pdf', b64: Utilities.base64Encode(r.bytes),
+      bytes: r.bytes.length, url: url };
+  }
+  var texto = '';
+  try { texto = r.blob.getDataAsString('UTF-8'); } catch (e) { texto = ''; }
+  return { ok: true, pdf: false, texto: String(texto).substring(0, 400000), url: url };
+}
+function extrairLinks_(texto) {
+  var out = [], vistos = {};
+  function add(u) {
+    if (!u) return;
+    u = String(u).replace(/[),.;]+$/, '');
+    if (!/^https?:\/\//i.test(u) || vistos[u]) return;
+    if (/duckduckgo\.com|jina\.ai|google\.com\/url|gstatic|w3\.org|schema\.org|favicon/i.test(u)) return;
+    vistos[u] = 1;
+    out.push(u);
+  }
+  var m;
+  var reUddg = /uddg=([^&\s"'<>]+)/g;
+  while ((m = reUddg.exec(texto))) { try { add(decodeURIComponent(m[1])); } catch (e) {} }
+  var reMd = /\[[^\]]{0,300}\]\((https?:\/\/[^)\s]+)\)/g;
+  while ((m = reMd.exec(texto))) add(m[1]);
+  var reBare = /https?:\/\/[^\s)\]"'<>\\]+/g;
+  while ((m = reBare.exec(texto))) add(m[0]);
+  return out;
+}
+function buscarJinaDdg_(consulta) {
+  var fonte = 'DuckDuckGo via r.jina.ai';
+  var r = httpFetch_('https://r.jina.ai/https://html.duckduckgo.com/html/?q=' + encodeURIComponent(consulta));
+  if (!r.ok) return { ok: false, fonte: fonte, erro: 'HTTP ' + (r.status || (r.erro || '')) };
+  var texto = '';
+  try { texto = r.blob.getDataAsString('UTF-8'); } catch (e) { texto = ''; }
+  if (texto.length < 200 || (/<title>\s*just a moment/i.test(texto) && texto.length < 3000)) {
+    return { ok: false, fonte: fonte, erro: 'a fonte exigiu verificação anti-robô' };
+  }
+  return { ok: true, fonte: fonte, links: extrairLinks_(texto) };
+}
+function buscarBrave_(consulta) {
+  var fonte = 'Brave Search API';
+  var key = prop_('BRAVE_API_KEY');
+  if (!key) return { ok: false, fonte: fonte, erro: 'BRAVE_API_KEY não configurada' };
+  var r = httpFetch_('https://api.search.brave.com/res/v1/web/search?count=20&q=' + encodeURIComponent(consulta),
+    { headers: { 'X-Subscription-Token': key, Accept: 'application/json' } });
+  if (!r.ok) return { ok: false, fonte: fonte, erro: 'HTTP ' + (r.status || (r.erro || '')) };
+  var links = [];
+  try {
+    var j = JSON.parse(r.blob.getDataAsString('UTF-8'));
+    var res = (j.web && j.web.results) || [];
+    for (var i = 0; i < res.length; i++) if (res[i] && res[i].url) links.push(res[i].url);
+  } catch (e) { return { ok: false, fonte: fonte, erro: 'resposta ilegível da API' }; }
+  return { ok: true, fonte: fonte, links: links };
+}
+function buscarNaWeb_(consulta) {
+  var provedor = prop_('SEARCH_PROVIDER') || 'jina_ddg';
+  return provedor === 'brave' ? buscarBrave_(consulta) : buscarJinaDdg_(consulta);
+}
+function pontuarCandidato_(url, nome, fabricante) {
+  var hostM = String(url).match(/^https?:\/\/([^\/?#]+)/i);
+  var host = (hostM ? hostM[1] : '').toLowerCase().replace(/^www\./, '');
+  var alvo = norm_(url).replace(/[^a-z0-9]/g, '');
+  var n = norm_(nome).replace(/[^a-z0-9]/g, '');
+  var f = norm_(fabricante).replace(/[^a-z0-9]/g, '');
+  var score = 0, motivos = [];
+  if (/\.pdf(\?|#|$)/i.test(url)) { score += 2; motivos.push('é PDF'); }
+  else if (/bula|ficha|manual|tecnic|documento/i.test(url)) { score += 1; motivos.push('página de documento'); }
+  if (n.length >= 4 && alvo.indexOf(n) > -1) { score += 3; motivos.push('nome do produto na URL'); }
+  if (f.length >= 3 && alvo.indexOf(f) > -1) { score += 1; motivos.push('fabricante na URL'); }
+  var oficial = BULA_HOSTS_OFICIAIS_.some(function (d) {
+    return host === d || host.slice(-(d.length + 1)) === '.' + d;
+  });
+  if (oficial) { score += 3; motivos.push('host oficial'); }
+  var fora = BULA_HOSTS_FORA_.some(function (d) {
+    return host === d || host.slice(-(d.length + 1)) === '.' + d || host.indexOf(d) > -1;
+  });
+  if (fora) { score -= 2; motivos.push('agregador ou outro país'); }
+  if (!oficial && !fora) motivos.push('host não listado como oficial (confira na conferência)');
+  return { url: url, host: host, oficial: oficial, score: score, motivo: motivos.join(', ') };
+}
+function buscarBula_(body) {
+  var nome = String(body.nome || '').trim();
+  var fabricante = String(body.fabricante || '').trim();
+  var categoria = String(body.categoria || '').trim();
+  if (!nome) return { ok: false, error: 'produto não informado' };
+  var ehFertilizante = /fertiliz|adjuvante|umectante|nutrit|foliar|silicat|ph\b/i.test(categoria + ' ' + nome);
+  var consulta = nome + (fabricante ? ' ' + fabricante : '') + (ehFertilizante ? ' ficha técnica' : ' bula') + ' PDF';
+  var quando = agora_();
+  var busca = buscarNaWeb_(consulta);
+  if (!busca.ok) {
+    return { ok: true, encontrados: [], nenhum: true, consulta: consulta, quando: quando,
+      fonteBusca: busca.fonte || '',
+      motivo: 'A fonte de busca não respondeu (' + (busca.erro || 'sem resposta') + '). ' +
+        'Nenhum documento foi encontrado — nada foi simulado.' };
+  }
+  var vistos = {}, cands = [];
+  var links = busca.links || [];
+  for (var i = 0; i < links.length; i++) {
+    if (vistos[links[i]]) continue;
+    vistos[links[i]] = 1;
+    var c = pontuarCandidato_(links[i], nome, fabricante);
+    if (c.score > 0) cands.push(c);
+  }
+  cands.sort(function (a, b) { return b.score - a.score; });
+  cands = cands.slice(0, 8);
+  return { ok: true, encontrados: cands, nenhum: !cands.length, consulta: consulta,
+    quando: quando, fonteBusca: busca.fonte || '',
+    motivo: cands.length ? '' : 'Nenhum documento candidato para "' + consulta + '".' };
+}
+function mesmaPrefixo_(nome, prefixo) {
+  return String(nome || '').toLowerCase().indexOf(String(prefixo || '').toLowerCase()) === 0;
+}
+function primeiroPrefixo_(pasta, prefixo) {
+  var it = pasta.getFiles(), n = 0;
+  while (it.hasNext() && n < 500) {
+    var f = it.next(); n++;
+    if (mesmaPrefixo_(f.getName(), prefixo)) return f;
+  }
+  return null;
+}
+function acharMesmoConteudo_(pasta, prefixo, tamanho, sha) {
+  var it = pasta.getFiles(), n = 0;
+  while (it.hasNext() && n < 500) {
+    var f = it.next(); n++;
+    if (!mesmaPrefixo_(f.getName(), prefixo) || f.getSize() !== tamanho) continue;
+    try {
+      if (hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, f.getBytes())) === sha) return f;
+    } catch (e) {}
+  }
+  return null;
+}
+function baixarBula_(body) {
+  var url = String(body.url || '').trim();
+  if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'URL inválida' };
+  var prefixo = limparNome_(String(body.chave || body.nomeArquivo || '').trim());
+  if (!prefixo) return { ok: false, error: 'chave/nome do arquivo não informado' };
+  var r = baixarBytes_(url);
+  if (!r.ok) return r;
+  if (!ehPdf_(r.bytes)) return { ok: false, error: 'o endereço não devolveu um PDF válido (não é %PDF). Nada foi salvo.' };
+  var sha = hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, r.bytes));
+  var pasta = pastaBula_();
+  var igual = acharMesmoConteudo_(pasta, prefixo, r.bytes.length, sha);
+  if (igual) {
+    return { ok: true, reutilizado: true, id: igual.getId(), url: igual.getUrl(), nome: igual.getName(),
+      bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: url };
+  }
+  if (body.substituir !== true) {
+    var atual = primeiroPrefixo_(pasta, prefixo);
+    if (atual) {
+      return { ok: true, conflito: true, id: atual.getId(), url: atual.getUrl(), nome: atual.getName(),
+        bytes: atual.getSize(), sha256: sha,
+        motivo: 'Já existe documento salvo para este produto (' + atual.getName() + '). Nada foi ' +
+          'substituído: confirme que o novo é mais recente e peça substituição explicitamente.' };
+    }
+  }
+  var nome = prefixo + '_' + agora_().replace(/[-:TZ]/g, '').slice(0, 15) + '.pdf';
+  var f = pasta.createFile(Utilities.newBlob(r.bytes, 'application/pdf', nome));
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+  return { ok: true, reutilizado: false, id: f.getId(), url: f.getUrl(), nome: nome,
+    bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: url };
+}
+// Diagnóstico: mostra o que está na pasta (para conferir deduplicação pós-deploy).
+function diagBula_() {
+  var it = DriveApp.getFoldersByName(BULA_PASTA_);
+  if (!it.hasNext()) return { ok: true, pasta: BULA_PASTA_, existe: false, arquivos: [] };
+  var folder = it.next(), arqs = [], itf = folder.getFiles(), n = 0;
+  while (itf.hasNext() && n < 100) {
+    var f = itf.next(); n++;
+    arqs.push({ id: f.getId(), nome: f.getName(), bytes: f.getSize(),
+      atualizado: String(f.getLastUpdated()) });
+  }
+  return { ok: true, pasta: BULA_PASTA_, existe: true, folderId: folder.getId(), arquivos: arqs };
 }

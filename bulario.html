@@ -108,6 +108,7 @@
     border:1px solid rgba(217,164,65,.4); border-radius:9px; padding:10px 11px; margin-top:8px;
     font-size:12.5px; color:#F0D9A8; line-height:1.5;}
   .q-conf input{margin-top:2px; width:15px; height:15px; accent-color:var(--lime); flex-shrink:0;}
+  .q-conf[hidden]{display:none;}
   .q-semel{background:rgba(74,155,217,.08); border:1px solid rgba(74,155,217,.35); border-radius:9px;
     padding:9px 11px; margin-top:8px; font-size:12px; color:#A9D2F0; line-height:1.55;}
   .q-semel b{color:#D9ECFA;}
@@ -511,7 +512,7 @@
   <div class="sheet">
     <h2>Pesquisar dados do produto</h2>
     <p class="sub" id="qAlvo">—</p>
-    <div class="q-aviso" id="qLimites"><b>Pesquisa automática:</b> quando o produto já tem link de bula/ficha/fonte, o app baixa e lê o documento sozinho, priorizando fontes oficiais. <b>Descoberta automática de novas fontes não está disponível nesta versão</b> (não há API oficial pública de consulta de agrotóxicos): nesses casos abra a busca na web, copie a URL e cole aqui — ou use Foto/OCR.</div>
+    <div class="q-aviso" id="qLimites"><b>Pesquisa automática:</b> quando o produto já tem link de bula/ficha/fonte, o app baixa e lê o documento sozinho, priorizando fontes oficiais. <b>Descoberta automática de novas fontes:</b> o app procura documentos oficiais na web pelo backend (Code.gs), mostra cada candidato com host/pontuação e só grava o PDF depois da sua conferência de produto, fabricante e fórmula — <b>nada é simulado</b>. Se essa atualização do backend não estiver implantada, o app avisa e mantém as alternativas manuais (abrir busca na web, colar URL, Foto/OCR).</div>
     <div class="sheet-actions" style="margin-top:0">
       <button class="btn-save" id="qAuto" onclick="pesquisaAutomatica()">Pesquisar</button>
       <button class="btn-pesq" onclick="abrirBuscaExterna()">Abrir busca na web</button>
@@ -1352,6 +1353,7 @@ let pesquisaConfirma = false; // exige confirmação de fabricante/fórmula?
 function abrirPesquisa(id){
   pesquisaId = id;
   pesquisaExtraida = null; pesquisaFonte = ''; pesquisaConfirma = false;
+  pesquisaArquivoId = ''; pesquisaArquivoUrl = ''; pesquisaSomenteVinculo = false;
   const p = produtoPorId(id);
   document.getElementById('qTexto').value = '';
   document.getElementById('qOut').innerHTML = '';
@@ -1368,9 +1370,11 @@ function abrirPesquisa(id){
     '<b>Pesquisa automática:</b> ' +
     (links.length
       ? 'vou baixar e ler a fonte já cadastrada neste produto (' + escapeHtml(links.join(' · ')) + '). Priorizo bula/ficha do próprio cadastro.'
-      : 'este produto <b>não tem nenhum link</b> de bula/ficha cadastrado, então não há como consultar uma fonte automaticamente.') +
-    ' Descoberta automática de novas fontes não está disponível nesta versão (não há API oficial pública de consulta de agrotóxicos):' +
-    ' use "Abrir busca na web", copie a URL e cole aqui — ou use Foto/OCR.';
+      : 'este produto <b>não tem nenhum link</b> de bula/ficha cadastrado, então vou procurar documentos oficiais na web.') +
+    (p && p.bulaFileId ? ' Já há PDF salvo no Drive: extraio os dados do próprio arquivo, sem nova busca duplicada.' : '') +
+    ' A descoberta automática de novas fontes roda pelo backend Code.gs e devolve apenas resultados reais ' +
+    '(nada é simulado); se essa atualização não estiver implantada, o app avisa e você continua com ' +
+    '"Abrir busca na web", colar URL ou Foto/OCR.';
   document.getElementById('dlgPesquisa').showModal();
 }
 function abrirBuscaExterna(){
@@ -1533,27 +1537,246 @@ function extrairCampos(txt, p){
 }
 function aplicarPesquisa(){
   const p = produtoPorId(pesquisaId);
-  if(!p || !pesquisaExtraida) return;
+  if(!p || (!pesquisaExtraida && !pesquisaSomenteVinculo)) return;
   if(pesquisaConfirma && !document.getElementById('qConf').checked){
     alert('Confirme fabricante e fórmula/concentração na caixa de conferência antes de aplicar.');
     return;
   }
-  const d = pesquisaExtraida;
   const dados = {};
-  ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante','composicao','alvos',
-    'concentracao','formula','culturas'].forEach(k => {
-    if(String(d[k]||'').trim()) dados[k] = d[k];
-  });
+  if(pesquisaExtraida){
+    const d = pesquisaExtraida;
+    ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante','composicao','alvos',
+      'concentracao','formula','culturas'].forEach(k => {
+      if(String(d[k]||'').trim()) dados[k] = d[k];
+    });
+  }
   if(pesquisaFonte){
     dados.fonteUrl = pesquisaFonte;
     dados.fonteInfo = 'documento';
     if(!String(p.bulaLink||'').trim() && /\.pdf(\?|#|$)/i.test(pesquisaFonte)) dados.bulaLink = pesquisaFonte;
   }
+  // PDF já salvo no Drive durante a conferência: vincula o MESMO arquivo (sem nova busca).
+  if(pesquisaArquivoId) dados.bulaFileId = pesquisaArquivoId;
   dados.conferidoEm = hojeISO();
   Object.assign(p, dados);
+  pesquisaArquivoId = ''; pesquisaArquivoUrl = ''; pesquisaSomenteVinculo = false;
   render();
   document.getElementById('dlgPesquisa').close();
   apiCall('update', { id: p.id, data: dados });
+}
+
+// ---- Descoberta automática de bula/ficha (backend Code.gs) ----
+// Honestidade operacional: se o backend ainda não tiver as ações buscarBula/baixarBula,
+// o app diz que a atualização não está implantada e mantém os caminhos manuais.
+// Nada de resultado fictício: busca, download e vínculo só acontecem com rede real.
+const AVISO_BULA_SEM_BACKEND =
+  'A busca automática de bula depende da atualização do backend (Code.gs) e esta atualização ' +
+  'ainda não está implantada nesta instalação. Nada é simulado aqui: use "Abrir busca na web", ' +
+  'cole a URL do PDF em Editar vínculos, ou anexe o arquivo já baixado (Foto/OCR também serve).';
+let pesquisaArquivoId = '';        // PDF salvo no Drive durante a conferência (pendente de aplicar)
+let pesquisaArquivoUrl = '';       // URL da fonte do documento escolhido
+let pesquisaSomenteVinculo = false;// leitura do PDF falhou: vincular sem extrair dados
+let ultimosCandidatos = [];        // candidatos da última busca real (evita montar JS com URL crua)
+
+function ehAcaoInvalida(j){
+  return !j || (j.ok === false && /a[çc][ãa]o inv[áa]lida/i.test(String(j.error || '')));
+}
+async function buscarCandidatos(p){
+  try{
+    const j = await apiPost({ tipo:'bulario', action:'buscarBula', nome:p.nome,
+      fabricante:p.fabricante || '', categoria:p.categoria || '' });
+    if(ehAcaoInvalida(j)) return { indisponivel:true, motivo:AVISO_BULA_SEM_BACKEND };
+    if(!j || !j.ok) return { indisponivel:true,
+      motivo:'A busca falhou: ' + String((j && j.error) || 'sem resposta') + '.' };
+    return Object.assign({ indisponivel:false }, j);
+  }catch(e){
+    return { indisponivel:true, motivo:'A busca falhou: ' + e.message + '.' };
+  }
+}
+function htmlAlternativasBula(){
+  return '<div class="sheet-actions" style="margin-top:10px">' +
+    '<button class="btn-pesq" onclick="abrirBuscaExterna()">Abrir busca na web</button>' +
+    '<button class="btn-anal" onclick="document.getElementById(\'dlgPesquisa\').close();abrirFoto(\'' +
+      pesquisaId + '\')">Foto/OCR</button></div>';
+}
+function exigirConfirmacaoBaixado(){
+  // Regra: nunca aplicar documento baixado automaticamente sem confirmação explícita.
+  pesquisaConfirma = true;
+  document.getElementById('qConfLab').hidden = false;
+  document.getElementById('qConf').checked = false;
+  document.getElementById('qAplicar').disabled = true;
+}
+function anotarArquivoNaConferencia(arq, via){
+  const out = document.getElementById('qOut');
+  if(!out || !arq) return;
+  out.innerHTML += '<div class="q-fonte">Arquivo no Drive: ' +
+    escapeHtml(arq.url || arq.id || '') +
+    (arq.reutilizado ? ' (reutilizado — mesmo PDF não é salvo duas vezes)' : ' (salvo agora)') +
+    (arq.sha256 ? ' · SHA-256 ' + escapeHtml(String(arq.sha256).substring(0, 16)) + '…' : '') +
+    (via ? ' · obtido via ' + escapeHtml(via) : '') + '</div>';
+}
+async function lerTextoDoArquivo(fileId){
+  const r = await fetch(API_URL + '?anexoB64=' + encodeURIComponent(fileId));
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.error || 'não consegui abrir o arquivo do Drive');
+  const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0)).buffer;
+  return await textoDePdf(bytes);
+}
+async function descobrirAutomaticamente(){
+  const p = produtoPorId(pesquisaId);
+  const out = document.getElementById('qOut');
+  const btn = document.getElementById('qAuto');
+  if(!p || !out) return;
+  btn.disabled = true; btn.textContent = 'Buscando…';
+  out.innerHTML = '<div class="loading">Procurando documentos oficiais de ' + escapeHtml(p.nome) + '…</div>';
+  try{
+    const r = await buscarCandidatos(p);
+    if(r.indisponivel){
+      out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Busca automática</span>' +
+        escapeHtml(r.motivo) + '</div>' + htmlAlternativasBula();
+      return;
+    }
+    if(r.nenhum || !r.encontrados || !r.encontrados.length){
+      out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Resultado</span>' +
+        '<b>Documento não encontrado</b> para ' + escapeHtml(p.nome) +
+        (r.motivo ? ' — ' + escapeHtml(r.motivo) : '') +
+        '<br><small>Consulta real: ' + escapeHtml(r.consulta || '') +
+        (r.fonteBusca ? ' · fonte: ' + escapeHtml(r.fonteBusca) : '') +
+        (r.quando ? ' · em ' + escapeHtml(fmtData(String(r.quando).slice(0, 10))) : '') +
+        '</small></div>' +
+        '<div class="sheet-actions" style="margin-top:10px">' +
+        '<button class="btn-cancel" onclick="marcarNaoEncontrado()">' +
+        'Marcar como "Documento não encontrado"</button></div>' + htmlAlternativasBula();
+      return;
+    }
+    ultimosCandidatos = r.encontrados;
+    out.innerHTML = '<div class="sec-title">Documentos encontrados — escolha um para conferir</div>' +
+      r.encontrados.map((c, i) =>
+        '<div class="res-box" style="margin-top:8px">' +
+          '<b>' + escapeHtml(c.host || 'host desconhecido') + '</b> ' +
+          (c.oficial ? '<span class="src bula">oficial</span>' : '<span class="src na">não oficial</span>') +
+          (c.score != null ? ' <small>pontuação ' + c.score + '</small>' : '') +
+          '<div class="q-fonte" style="word-break:break-all">' + escapeHtml(c.url) + '</div>' +
+          (c.motivo ? '<div><small>' + escapeHtml(c.motivo) + '</small></div>' : '') +
+          '<button class="gold" style="margin-top:6px" onclick="usarCandidato(' + i + ')">Usar este documento</button>' +
+        '</div>').join('') +
+      '<div class="q-fonte">Busca real via ' + escapeHtml(r.fonteBusca || 'busca web') +
+      ' em ' + escapeHtml(fmtData(String(r.quando || hojeISO()).slice(0, 10))) +
+      ' · nada é aplicado sem sua conferência.</div>';
+  }finally{
+    btn.disabled = false; btn.textContent = 'Pesquisar';
+  }
+}
+async function descobrirBula(id){
+  abrirPesquisa(id);
+  await descobrirAutomaticamente();
+}
+function marcarNaoEncontrado(){
+  const p = produtoPorId(pesquisaId);
+  if(!p) return;
+  if(!confirm('Marcar "' + p.nome + '" como "Documento não encontrado" nesta data? O cadastro é ' +
+    'preservado — apenas a fonte/documento é marcado como não encontrado.')) return;
+  const dados = { fonteInfo:'nao_encontrada', conferidoEm: hojeISO() };
+  Object.assign(p, dados);
+  statusOverride[p.id] = 'sem_fonte';
+  salvarStatusOverride();
+  render();
+  apiCall('update', { id:p.id, data: dados });
+  document.getElementById('qOut').innerHTML =
+    '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Marcado</span>' +
+    'Documento não registrado como encontrado para ' + escapeHtml(p.nome) +
+    ' (consulta de ' + escapeHtml(fmtData(hojeISO())) + ').</div>';
+}
+async function usarCandidato(i){
+  const c = ultimosCandidatos[i];
+  if(!c || !c.url) return;
+  await baixarEConferir(c.url, false);
+}
+// Baixa o candidato escolhido, lê o MESMO PDF e monta a conferência (produto/fabricante/fórmula).
+async function baixarEConferir(url, forcar){
+  const p = produtoPorId(pesquisaId);
+  const out = document.getElementById('qOut');
+  if(!p || !out) return;
+  pesquisaArquivoId = ''; pesquisaArquivoUrl = url; pesquisaSomenteVinculo = false;
+  if(p.bulaFileId && forcar !== true && !confirm(
+    'Este produto já tem um PDF no Drive (' + (p.conferidoEm ? 'conferido em ' + fmtData(p.conferidoEm) :
+    'sem data de conferência') + ').\n\nSó troque se você tiver certeza de que o documento novo é ' +
+    'MAIS RECENTE. Continuar?')){
+    return;
+  }
+  out.innerHTML = '<div class="loading">Baixando e validando o PDF…</div>';
+  let arq = null, via = 'backend';
+  const chaveArq = (chave(p.nome) || 'bula') + '_bula';
+  try{
+    const j = await apiPost({ tipo:'bulario', action:'baixarBula', url: url, chave: chaveArq,
+      substituir: !!p.bulaFileId || forcar === true });
+    if(ehAcaoInvalida(j)){
+      out.innerHTML = '<div class="loading">Backend sem a busca de bula — tentando baixar direto pelo navegador…</div>';
+      arq = await baixarEPraDriveNoNavegador(p, url, chaveArq);
+      via = 'navegador';
+    }else if(j && j.ok && j.id){
+      if(j.conflito){
+        out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Conflito</span>' +
+          escapeHtml(j.motivo || 'Já existe documento para este produto.') +
+          '</div><button class="gold" style="margin-top:8px" onclick="usarCandidatoForce()">Substituir mesmo assim</button>';
+        return;
+      }
+      arq = j;
+    }else{
+      throw new Error(String((j && j.error) || 'falha no download'));
+    }
+  }catch(e){
+    out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
+      escapeHtml('Não consegui baixar o documento: ' + e.message + '. Nada foi salvo nem alterado.') +
+      '</div>' + htmlAlternativasBula();
+    return;
+  }
+  if(!arq || !arq.id){
+    out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
+      'O download não devolveu um arquivo salvo. Nada foi alterado no cadastro.</div>' + htmlAlternativasBula();
+    return;
+  }
+  pesquisaArquivoId = arq.id;
+  out.innerHTML = '<div class="loading">Lendo o PDF salvo para conferência…</div>';
+  let texto = '', falhaLeitura = '';
+  try{ texto = await lerTextoDoArquivo(arq.id); }
+  catch(e){ falhaLeitura = e.message; }
+  const campos = ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante',
+    'composicao','alvos','concentracao','formula','culturas'];
+  if(texto){
+    const d = extrairCampos(texto, null);
+    if(campos.some(k => String(d[k]||'').trim())){
+      mostrarConferencia(d, url, produtosSemelhantes(p), p);
+      exigirConfirmacaoBaixado();
+      anotarArquivoNaConferencia(arq, via);
+      return;
+    }
+    falhaLeitura = 'o texto do PDF não tem campos reconhecíveis (dose, ingrediente ativo etc.)';
+  }
+  // Encontrou mas não extraiu: mantém o PDF salvo e permite preencher manualmente.
+  pesquisaSomenteVinculo = true;
+  mostrarConferencia(null, url, produtosSemelhantes(p), p,
+    'O documento foi salvo no Drive (' + escapeHtml(arq.nome || 'PDF') +
+    (arq.reutilizado ? ', já existia' : '') + '), mas não consegui extrair os dados dele (' +
+    escapeHtml(falhaLeitura || 'sem texto legível') + '). Confirme que este é o documento de ' +
+    escapeHtml(p.nome) + ' (produto, fabricante e formulação) para vincular; depois preencha os ' +
+    'campos manualmente em Editar produto.');
+  exigirConfirmacaoBaixado();
+  anotarArquivoNaConferencia(arq, via);
+}
+function usarCandidatoForce(){
+  const url = pesquisaArquivoUrl;
+  if(url) baixarEConferir(url, true);
+}
+// Caminho sem backend: baixa pelo navegador (direto/proxy) e usa a ação uploadAnexo já implantada.
+async function baixarEPraDriveNoNavegador(p, url, chaveArq){
+  const r = await baixarDocumento(url);
+  if(!r.pdf) throw new Error('o endereço não devolveu um PDF (é uma página)');
+  const up = await apiPost({ action:'uploadAnexo', pasta:'Bulários EstufaOS',
+    nome: chaveArq + '_' + hojeISO().replace(/-/g, '') + '.pdf', mime:'application/pdf',
+    base64: bytesParaB64(r.bytes) });
+  if(!up || !up.ok) throw new Error(String((up && up.error) || 'falha no envio para o Drive'));
+  return { id: up.id, url: up.url, nome: up.nome, reutilizado:false };
 }
 
 // ---- Pesquisa automática: baixa e lê a fonte já cadastrada do produto ----
@@ -1637,17 +1860,33 @@ async function pesquisaAutomatica(){
   const semelhantes = produtosSemelhantes(p);
   const fontes = [p.bulaLink, p.fichaLink, p.fonteUrl].map(x => String(x||'').trim()).filter(Boolean);
   const unicas = [...new Set(fontes)];
-  if(!unicas.length){
-    mostrarConferencia(null, '', semelhantes, p,
-      'Nenhuma fonte automática disponível: este produto não tem link de bula/ficha/fonte cadastrado. ' +
-      'A descoberta de novas fontes não está implementada nesta versão — abra a busca na web, cole a URL aqui (alternativa) ou use Foto/OCR.');
-    return;
-  }
   const btn = document.getElementById('qAuto');
   btn.disabled = true;
   btn.textContent = 'Pesquisando…';
-  out.innerHTML = '<div class="loading">Consultando ' + unicas.length + ' fonte(s) do produto…</div>';
   try{
+    // (1) Já tem PDF no Drive: lê o MESMO arquivo (sem fazer uma nova busca duplicada).
+    if(String(p.bulaFileId||'').trim()){
+      out.innerHTML = '<div class="loading">Lendo o PDF já salvo no Drive…</div>';
+      try{
+        const textoDrive = await lerTextoDoArquivo(p.bulaFileId);
+        const dDrive = extrairCampos(textoDrive, null);
+        const campos = ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante',
+          'composicao','alvos','concentracao','formula','culturas'];
+        if(campos.some(k => String(dDrive[k]||'').trim())){
+          mostrarConferencia(dDrive, p.fonteUrl || p.bulaLink || '', semelhantes, p);
+          pesquisaArquivoId = p.bulaFileId;
+          exigirConfirmacaoBaixado();
+          anotarArquivoNaConferencia({ id:p.bulaFileId, reutilizado:true }, 'Drive');
+          return;
+        }
+      }catch(e){ /* sem leitura: segue pelas fontes cadastradas abaixo */ }
+    }
+    // (2) Sem nenhuma fonte cadastrada: descobre documentos oficiais na web (backend Code.gs).
+    if(!unicas.length){
+      await descobrirAutomaticamente();
+      return;
+    }
+    out.innerHTML = '<div class="loading">Consultando ' + unicas.length + ' fonte(s) do produto…</div>';
     const tentativas = [];
     for(const url of unicas){
       try{
@@ -1783,6 +2022,7 @@ function bulaTools(p){
   const b = [];
   if(temLink) b.push('<button class="gold" onclick="event.stopPropagation();abrirBulaExterna()">Abrir em nova aba</button>');
   if(temLink && !temArq) b.push('<button class="gold" onclick="event.stopPropagation();importarBulaDrive(\''+p.id+'\')">Salvar PDF no Drive</button>');
+  if(!temArq) b.push('<button class="gold" onclick="event.stopPropagation();descobrirBula(\''+p.id+'\')">Buscar bula automaticamente</button>');
   if(!temLink && !temArq) b.push('<button class="gold" onclick="event.stopPropagation();localizarBula(\''+p.id+'\')">Localizar bula oficial</button>');
   if(temArq || temLink) b.push('<button onclick="event.stopPropagation();substituirBula(\''+p.id+'\')">Substituir documento</button>');
   b.push('<button onclick="event.stopPropagation();abrirProduto(\''+p.id+'\')">Editar vínculos</button>');
@@ -1825,8 +2065,8 @@ async function verBula(id){
     return;
   }
   box.innerHTML = '<div class="bula-box"><div class="bula-msg"><b>Nenhum documento de bula vinculado</b> a este produto — ' +
-    'não há o que exibir. Use <b>Localizar bula oficial</b> para buscar o PDF correto, ou anexe um arquivo já baixado em ' +
-    'Editar → Anexar bula.</div></div>' + bulaTools(p);
+    'não há o que exibir. Use <b>Buscar bula automaticamente</b> para localizar o PDF oficial e conferi-lo, ' +
+    'ou anexe um arquivo já baixado em Editar → Anexar bula.</div></div>' + bulaTools(p);
 }
 function abrirBulaExterna(){
   if(bulaAtual.link){ window.open(bulaAtual.link, '_blank', 'noopener'); return; }

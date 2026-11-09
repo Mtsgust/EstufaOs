@@ -1708,20 +1708,24 @@ async function baixarEConferir(url, forcar){
   let arq = null, via = 'backend';
   const chaveArq = (chave(p.nome) || 'bula') + '_bula';
   try{
-    const j = await apiPost({ tipo:'bulario', action:'baixarBula', url: url, chave: chaveArq,
+    // O backend tenta os candidatos em ordem até achar um PDF válido (alguns hosts
+    // bloqueiam o IP do Apps Script); o escolhido vem de volta em j.fonte.
+    const urls = [url].concat((ultimosCandidatos||[]).map(c=>c&&c.url)
+      .filter(u=>u && u!==url)).slice(0,6);
+    const j = await apiPost({ tipo:'bulario', action:'baixarBula', url: url, urls: urls, chave: chaveArq,
       substituir: !!p.bulaFileId || forcar === true });
     if(ehAcaoInvalida(j)){
       out.innerHTML = '<div class="loading">Backend sem a busca de bula — tentando baixar direto pelo navegador…</div>';
       arq = await baixarEPraDriveNoNavegador(p, url, chaveArq);
       via = 'navegador';
     }else if(j && j.ok && j.id){
+      if(j.fonte){ arq = j; pesquisaArquivoUrl = j.fonte; }else{ arq = j; }
       if(j.conflito){
         out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Conflito</span>' +
           escapeHtml(j.motivo || 'Já existe documento para este produto.') +
           '</div><button class="gold" style="margin-top:8px" onclick="usarCandidatoForce()">Substituir mesmo assim</button>';
         return;
       }
-      arq = j;
     }else{
       throw new Error(String((j && j.error) || 'falha no download'));
     }
@@ -1737,6 +1741,7 @@ async function baixarEConferir(url, forcar){
     return;
   }
   pesquisaArquivoId = arq.id;
+  const urlFonte = arq.fonte || url;
   out.innerHTML = '<div class="loading">Lendo o PDF salvo para conferência…</div>';
   let texto = '', falhaLeitura = '';
   try{ texto = await lerTextoDoArquivo(arq.id); }
@@ -1746,7 +1751,7 @@ async function baixarEConferir(url, forcar){
   if(texto){
     const d = extrairCampos(texto, null);
     if(campos.some(k => String(d[k]||'').trim())){
-      mostrarConferencia(d, url, produtosSemelhantes(p), p);
+      mostrarConferencia(d, urlFonte, produtosSemelhantes(p), p);
       exigirConfirmacaoBaixado();
       anotarArquivoNaConferencia(arq, via);
       return;
@@ -1755,7 +1760,7 @@ async function baixarEConferir(url, forcar){
   }
   // Encontrou mas não extraiu: mantém o PDF salvo e permite preencher manualmente.
   pesquisaSomenteVinculo = true;
-  mostrarConferencia(null, url, produtosSemelhantes(p), p,
+  mostrarConferencia(null, urlFonte, produtosSemelhantes(p), p,
     'O documento foi salvo no Drive (' + escapeHtml(arq.nome || 'PDF') +
     (arq.reutilizado ? ', já existia' : '') + '), mas não consegui extrair os dados dele (' +
     escapeHtml(falhaLeitura || 'sem texto legível') + '). Confirme que este é o documento de ' +

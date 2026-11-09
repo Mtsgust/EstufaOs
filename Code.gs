@@ -903,7 +903,7 @@ var BULA_MAX_BYTES_ = 12 * 1024 * 1024;
 var BULA_HOSTS_OFICIAIS_ = [
   'syngenta.com.br', 'syngenta.com', 'basf.com.br', 'basf.com', 'bayer.com', 'bayer.com.br',
   'upl.com.br', 'adama.com.br', 'ourofino.com.br', 'nortox.com.br', 'iosa.com.br',
-  'scoop.com.br', 'fmc.com', 'fmcagro.com.br', 'sempreagro.com.br', 'embrapa.br',
+  'scoop.com.br', 'fmc.com', 'fmcagro.com.br', 'fmcagricola.com.br', 'sempreagro.com.br', 'embrapa.br',
   'agrofit.agricultura.gov.br', 'gov.br'
 ];
 var BULA_HOSTS_FORA_ = [
@@ -917,12 +917,19 @@ function prop_(nome) {
 }
 function httpFetch_(url, opts) {
   opts = opts || {};
+  var cabecalhos = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+  };
+  var extra = opts.headers || {};
+  for (var k in extra) cabecalhos[k] = extra[k];
   try {
     var resp = UrlFetchApp.fetch(url, {
       method: opts.method || 'get',
       followRedirects: true,
       muteHttpExceptions: true,
-      headers: opts.headers || {}
+      headers: cabecalhos
     });
     var st = resp.getResponseCode();
     var blob = resp.getBlob();
@@ -976,7 +983,7 @@ function extrairLinks_(texto) {
     if (!u) return;
     u = String(u).replace(/[),.;]+$/, '');
     if (!/^https?:\/\//i.test(u) || vistos[u]) return;
-    if (/duckduckgo\.com|jina\.ai|google\.com\/url|gstatic|w3\.org|schema\.org|favicon/i.test(u)) return;
+    if (/duckduckgo\.com|jina\.ai|google\.com\/url|bing\.com\/(?:ck|search)|gstatic|w3\.org|schema\.org|favicon/i.test(u)) return;
     vistos[u] = 1;
     out.push(u);
   }
@@ -990,15 +997,31 @@ function extrairLinks_(texto) {
   return out;
 }
 function buscarJinaDdg_(consulta) {
-  var fonte = 'DuckDuckGo via r.jina.ai';
-  var r = httpFetch_('https://r.jina.ai/https://html.duckduckgo.com/html/?q=' + encodeURIComponent(consulta));
-  if (!r.ok) return { ok: false, fonte: fonte, erro: 'HTTP ' + (r.status || (r.erro || '')) };
-  var texto = '';
-  try { texto = r.blob.getDataAsString('UTF-8'); } catch (e) { texto = ''; }
-  if (texto.length < 200 || (/<title>\s*just a moment/i.test(texto) && texto.length < 3000)) {
-    return { ok: false, fonte: fonte, erro: 'a fonte exigiu verificação anti-robô' };
+  // Fontes em cadeia: se uma bloquear/errar, tenta a próxima. Nada é simulado.
+  var q = encodeURIComponent(consulta);
+  var fontes = [
+    { fonte: 'DuckDuckGo (html)', url: 'https://html.duckduckgo.com/html/?q=' + q },
+    { fonte: 'DuckDuckGo (lite)', url: 'https://lite.duckduckgo.com/lite/?q=' + q },
+    { fonte: 'Bing', url: 'https://www.bing.com/search?q=' + q }
+  ];
+  var erros = [];
+  for (var i = 0; i < fontes.length; i++) {
+    var f = fontes[i];
+    var r = httpFetch_(f.url);
+    if (!r.ok) { erros.push(f.fonte + ': HTTP ' + (r.status || r.erro || '?')); continue; }
+    var texto = '';
+    try { texto = r.blob.getDataAsString('UTF-8'); } catch (e) { texto = ''; }
+    var inicio = texto.slice(0, 4000);
+    if (texto.length < 500 ||
+        /just a moment|anomaly|captcha|are you a robot|enable javascript and cookies/i.test(inicio)) {
+      erros.push(f.fonte + ': exigiu verificação anti-robô ou veio vazia');
+      continue;
+    }
+    var links = extrairLinks_(texto);
+    if (links.length < 3) { erros.push(f.fonte + ': resposta sem links úteis'); continue; }
+    return { ok: true, fonte: f.fonte, links: links };
   }
-  return { ok: true, fonte: fonte, links: extrairLinks_(texto) };
+  return { ok: false, fonte: 'busca web', erro: erros.join(' | ') || 'sem resposta' };
 }
 function buscarBrave_(consulta) {
   var fonte = 'Brave Search API';
@@ -1093,25 +1116,36 @@ function acharMesmoConteudo_(pasta, prefixo, tamanho, sha) {
   return null;
 }
 function baixarBula_(body) {
-  var url = String(body.url || '').trim();
-  if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'URL inválida' };
+  var urls = Array.isArray(body.urls) && body.urls.length ? body.urls : [body.url];
   var prefixo = limparNome_(String(body.chave || body.nomeArquivo || '').trim());
   if (!prefixo) return { ok: false, error: 'chave/nome do arquivo não informado' };
-  var r = baixarBytes_(url);
-  if (!r.ok) return r;
-  if (!ehPdf_(r.bytes)) return { ok: false, error: 'o endereço não devolveu um PDF válido (não é %PDF). Nada foi salvo.' };
+  // Tenta os candidatos em ordem até achar um PDF válido (alguns hosts bloqueiam
+  // os IPs do Apps Script com 403; o próximo candidato oficial pode funcionar).
+  var r = null, urlUsada = '', falhas = [];
+  for (var i = 0; i < urls.length && !r; i++) {
+    var u = String(urls[i] || '').trim();
+    if (!/^https?:\/\//i.test(u)) { falhas.push('URL inválida'); continue; }
+    var rr = baixarBytes_(u);
+    if (!rr.ok) { falhas.push(u + ' → ' + rr.error); continue; }
+    if (!ehPdf_(rr.bytes)) { falhas.push(u + ' → o endereço não devolveu um PDF válido (não é %PDF)'); continue; }
+    r = rr; urlUsada = u;
+  }
+  if (!r) {
+    return { ok: false, error: 'Nenhum dos ' + urls.length + ' endereços devolveu um PDF válido (' +
+      (falhas.join(' | ') || 'sem endereços') + '). Nada foi salvo.' };
+  }
   var sha = hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, r.bytes));
   var pasta = pastaBula_();
   var igual = acharMesmoConteudo_(pasta, prefixo, r.bytes.length, sha);
   if (igual) {
     return { ok: true, reutilizado: true, id: igual.getId(), url: igual.getUrl(), nome: igual.getName(),
-      bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: url };
+      bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: urlUsada };
   }
   if (body.substituir !== true) {
     var atual = primeiroPrefixo_(pasta, prefixo);
     if (atual) {
       return { ok: true, conflito: true, id: atual.getId(), url: atual.getUrl(), nome: atual.getName(),
-        bytes: atual.getSize(), sha256: sha,
+        bytes: atual.getSize(), sha256: sha, fonte: urlUsada,
         motivo: 'Já existe documento salvo para este produto (' + atual.getName() + '). Nada foi ' +
           'substituído: confirme que o novo é mais recente e peça substituição explicitamente.' };
     }
@@ -1120,7 +1154,7 @@ function baixarBula_(body) {
   var f = pasta.createFile(Utilities.newBlob(r.bytes, 'application/pdf', nome));
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
   return { ok: true, reutilizado: false, id: f.getId(), url: f.getUrl(), nome: nome,
-    bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: url };
+    bytes: r.bytes.length, sha256: sha, quando: agora_(), fonte: urlUsada, tentativas: urls.length };
 }
 // Diagnóstico: mostra o que está na pasta (para conferir deduplicação pós-deploy).
 function diagBula_() {

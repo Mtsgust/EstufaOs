@@ -76,7 +76,7 @@
   .filters #busca{padding:13px 16px; font-size:14.5px; border-radius:12px; background:var(--bg2); min-width:220px;}
   .filters #busca::placeholder{color:var(--dim);}
 
-  /* Status documental */
+  /* Indicadores simples do card: cadastro e documento */
   .status-doc{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card2);
     border:1px solid var(--line); border-radius:10px; padding:8px 11px; margin:8px 0; font-size:12.5px;}
   .status-doc .lbl{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
@@ -85,17 +85,7 @@
   .status-doc .val.warn{color:var(--gold);}
   .status-doc .val.bad{color:var(--red);}
   .status-doc .val.mut{color:var(--mut);}
-
-  /* Completude técnica (essenciais por categoria) */
-  .comp-doc{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card2);
-    border:1px solid var(--line); border-radius:10px; padding:8px 11px; margin:0 0 8px; font-size:12.5px;}
-  .comp-doc .lbl{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
-  .comp-doc .val{font-weight:700;}
-  .comp-doc .val.ok{color:var(--lime);}
-  .comp-doc .val.warn{color:var(--gold);}
-  .comp-doc .val.bad{color:var(--red);}
-  .comp-doc .faltam{color:var(--dim); font-size:11.5px;}
-  .comp-doc .pend{color:var(--gold); font-size:11.5px; font-weight:700;}
+  .status-doc .faltam{color:var(--dim); font-size:11.5px;}
 
   /* Conferência campo a campo */
   .cf-doc{font-size:11.5px; color:var(--dim); word-break:break-all; background:var(--card2);
@@ -513,17 +503,6 @@
       <div class="hint">Misturas confirmadas como seguras. Citando todos os produtos selecionados, a análise marca como DOCUMENTADA.</div>
     </div>
     <div class="fieldset-title">Documentos e fonte</div>
-    <div class="field"><label for="pStatusDoc">Status documental</label>
-      <select id="pStatusDoc">
-        <option value="">Automático (pela fonte e documentos)</option>
-        <option value="confirmado_bula">Confirmado por bula oficial</option>
-        <option value="confirmado_ficha">Confirmado por ficha técnica do fabricante</option>
-        <option value="aguardando_conferencia">Informação extraída de embalagem, aguardando conferência</option>
-        <option value="incompleto">Informação incompleta</option>
-        <option value="sem_fonte">Sem fonte encontrada</option>
-      </select>
-      <div class="hint" id="pStatusHint">—</div>
-    </div>
     <div class="row2">
       <div class="field"><label for="pBulaLink">Link da bula</label><input id="pBulaLink" type="url" placeholder="https://..."></div>
       <div class="field"><label for="pFicha">Link da ficha</label><input id="pFicha" type="url" placeholder="https://..."></div>
@@ -1065,25 +1044,13 @@ function catLabel(cat){
   if(cat === 'Inseticida/Acaricida') return 'Inset./Acaricida';
   return cat || 'Outros';
 }
-// ---- Status documental (derivado da fonte/documentos + override manual local) ----
-// Nunca inventa: o status é calculado apenas a partir do que está declarado no cadastro.
-// "Confirmado" exige fonte declarada + data de conferência; link sozinho só LOCALIZA o documento.
-const STATUS_DOC = {
-  confirmado_bula: { curto:'Bula oficial', rotulo:'Confirmado por bula oficial', classe:'bula', klass:'ok' },
-  confirmado_ficha:{ curto:'Ficha técnica', rotulo:'Confirmado por ficha técnica do fabricante', classe:'fab', klass:'ok' },
-  aguardando_conferencia:{ curto:'Aguard. conferência', rotulo:'Informação extraída de embalagem, aguardando conferência', classe:'foto', klass:'warn' },
-  oficial_localizado:{ curto:'Oficial localizado', rotulo:'Documento oficial localizado — ainda sem conferência', classe:'doc', klass:'warn' },
-  externo_localizado:{ curto:'Externo localizado', rotulo:'Documento em link externo (não oficial) — sem conferência', classe:'none', klass:'mut' },
-  baixado_drive:{ curto:'No Drive', rotulo:'PDF salvo no Drive — aguardando conferência', classe:'fab', klass:'warn' },
-  incompleto: { curto:'Incompleta', rotulo:'Informação incompleta', classe:'none', klass:'mut' },
-  sem_fonte:  { curto:'Sem fonte', rotulo:'Sem fonte encontrada', classe:'na', klass:'bad' }
-};
+// ---- Fonte da informação (rotulagem honesta no card; sem status automático) ----
+// Os indicadores do card são só: cadastro preenchido/incompleto e documento disponível/pendente.
+// "Documento disponível" = houve vínculo real (link ou PDF no Drive) — nunca afirma conferência.
 // Espelho das listas do backend (Code.gs) — usado só para rotular a fonte com honestidade.
 const HOSTS_OFICIAIS_BULA = ['syngenta.com.br','syngenta.com','basf.com.br','basf.com','bayer.com','bayer.com.br',
   'upl.com.br','adama.com.br','ourofino.com.br','nortox.com.br','iosa.com.br','scoop.com.br','fmc.com',
   'fmcagro.com.br','fmcagricola.com.br','sempreagro.com.br','embrapa.br','agrofit.agricultura.gov.br','gov.br'];
-const HOSTS_FORA_BULA = ['agrolink.com.br','revistacultivar.com.br','agrofy.com.br','solsan.com.br',
-  'compreagro.com.br','syngenta.co.in'];
 function hostDe(url){
   try{ return new URL(String(url)).hostname.toLowerCase().replace(/^www\./, ''); }
   catch(e){ return ''; }
@@ -1092,51 +1059,6 @@ function ehHostOficial(url){
   const h = hostDe(url); if(!h) return false;
   return HOSTS_OFICIAIS_BULA.some(d => h === d || h.slice(-(d.length + 1)) === '.' + d);
 }
-function ehHostFora(url){
-  const h = hostDe(url); if(!h) return false;
-  return HOSTS_FORA_BULA.some(d => h === d || h.slice(-(d.length + 1)) === '.' + d || h.indexOf(d) > -1);
-}
-const STATUS_KEY = 'bularioStatusDoc_v1';
-function carregarStatusOverride(){
-  try{ const o = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }
-  catch(e){ return {}; }
-}
-let statusOverride = carregarStatusOverride();
-function salvarStatusOverride(){
-  try{ localStorage.setItem(STATUS_KEY, JSON.stringify(statusOverride)); }catch(e){}
-}
-function statusAuto(p){
-  const fonte = String(p.fonteInfo || '').trim();
-  const temArq = !!(p.bulaFileId || '').trim();
-  const conferido = !!(p.conferidoEm || '').trim();
-  const urls = [p.fonteUrl, p.bulaLink, p.fichaLink].map(x => String(x || '').trim()).filter(Boolean);
-  const urlDoc = urls[0] || '';
-  if(fonte === 'nao_encontrada') return 'sem_fonte';
-  if(fonte === 'foto' || fonte === 'foto_conferida') return 'aguardando_conferencia';
-  // Confirmado só com fonte declarada + data de conferência (link sozinho nunca confirma).
-  if((fonte === 'documento' || fonte === 'fabricante') && conferido && (temArq || urls.length)){
-    return fonte === 'fabricante' ? 'confirmado_ficha' : 'confirmado_bula';
-  }
-  if(temArq) return 'baixado_drive';
-  if(urlDoc && ehHostOficial(urlDoc)) return 'oficial_localizado';
-  if(urlDoc) return 'externo_localizado';
-  return 'incompleto';
-}
-function statusDoc(p){
-  const m = statusOverride[p && p.id];
-  return (m && STATUS_DOC[m]) ? m : statusAuto(p || {});
-}
-function statusRotulo(p){
-  const k = statusDoc(p);
-  if(k === 'aguardando_conferencia' && p.fonteInfo === 'foto_conferida' && p.conferidoEm)
-    return 'Informação extraída de embalagem · conferida em ' + fmtData(p.conferidoEm);
-  return STATUS_DOC[k].rotulo;
-}
-function statusBadge(p){
-  const s = STATUS_DOC[statusDoc(p)];
-  return '<span class="src ' + s.classe + '">' + escapeHtml(s.curto) + '</span>';
-}
-function statusClasse(p){ return STATUS_DOC[statusDoc(p)].klass; }
 function fonteTexto(p){
   const f = String(p.fonteInfo||'').trim();
   const mapa = { documento:'Documento oficial', fabricante:'Site do fabricante', foto:'Foto (rótulo/bula)',
@@ -1181,11 +1103,9 @@ const CAMPOS_ROTULO = {
 // Campos com entrada no formulário do cadastro e com potencial de virem da prévia.
 const CAMPOS_CONFERIVEIS = ['ingredienteAtivo','fabricante','formula','concentracao','composicao',
   'classeToxicologica','garantias','dose','carencia','frac','irac','ph','culturas','alvos'];
-const COMP_STATUS = {
-  completo:{ rotulo:'Completo', classe:'ok' },
-  incompleto:{ rotulo:'Incompleto', classe:'warn' },
-  precisa_documentacao:{ rotulo:'Precisa documentação', classe:'bad' },
-  revisar:{ rotulo:'Revisar', classe:'warn' }
+const CADASTRO_STATUS = {
+  preenchido:{ rotulo:'Cadastro preenchido', classe:'ok' },
+  incompleto:{ rotulo:'Cadastro incompleto', classe:'warn' }
 };
 function campoRotulo(k){ return CAMPOS_ROTULO[k] || k; }
 
@@ -1207,41 +1127,31 @@ function camposEssenciais(p){
 function previaProduto(id){ return (window.PREVIA_TECNICA && PREVIA_TECNICA.produtos) ? PREVIA_TECNICA.produtos[id] : null; }
 function temDocumento(p){
   return !!String(p.bulaLink||'').trim() || !!String(p.fichaLink||'').trim()
-      || !!String(p.bulaFileId||'').trim() || !!(previaProduto(p.id)||{}).documento;
+      || !!String(p.bulaFileId||'').trim() || !!String(p.fichaFileId||'').trim();
 }
-function statusCompletude(p){
-  const ess = camposEssenciais(p);
-  const faltam = ess.filter(k => !String(p[k]||'').trim());
-  const temFonte = !!String(p.fonteInfo||'').trim() && !!String(p.conferidoEm||'').trim();
-  if(!faltam.length && temFonte) return 'completo';
-  if(!faltam.length) return 'incompleto';
-  if(!temDocumento(p)) return 'precisa_documentacao';
-  if(camposExtraidos(p).length) return 'revisar';
-  return 'incompleto';
+// Indicadores simples (os únicos 4 estados exibidos no card):
+// cadastro preenchido/incompleto + documento disponível/pendente.
+function indicadorCadastro(p){
+  const faltam = camposEssenciais(p).filter(k => !String(p[k]||'').trim());
+  const st = faltam.length ? 'incompleto' : 'preenchido';
+  return { status:st, faltam, rotulo:CADASTRO_STATUS[st].rotulo, classe:CADASTRO_STATUS[st].classe };
 }
-function camposExtraidos(p){
-  const v = previaProduto(p.id);
-  if(!v) return [];
-  return camposEssenciais(p).filter(k =>
-    v.campos[k] && String(v.campos[k].valor||'').trim() && !String(p[k]||'').trim());
+function indicadorDocumento(p){
+  const disp = temDocumento(p);
+  return { status: disp ? 'disponivel' : 'pendente',
+    rotulo: disp ? 'Documento disponível' : 'Documento pendente',
+    classe: disp ? 'ok' : 'warn' };
 }
-function completudeInfo(p){
-  const ess = camposEssenciais(p);
-  const faltam = ess.filter(k => !String(p[k]||'').trim());
-  const extraidos = camposExtraidos(p);
-  const status = statusCompletude(p);
-  const st = COMP_STATUS[status] || COMP_STATUS.incompleto;
-  const nota = (!faltam.length && status === 'incompleto') ? 'sem fonte/conferência registrada' : '';
-  return { status, faltam, extraidos, rotulo: st.rotulo, classe: st.classe, nota };
+function badgeDocumento(p){
+  const d = indicadorDocumento(p);
+  return '<span class="src ' + (d.status === 'disponivel' ? 'doc' : 'na') + '">' + escapeHtml(d.rotulo) + '</span>';
 }
-function completudeLinha(p){
-  const c = completudeInfo(p);
-  return `<div class="comp-doc">
-    <span class="lbl">Completude</span>
+function linhaCadastro(p){
+  const c = indicadorCadastro(p);
+  return `<div class="status-doc">
+    <span class="lbl">Cadastro</span>
     <span class="val ${c.classe}">${c.rotulo}</span>
     ${c.faltam.length ? '<span class="faltam">faltam: '+escapeHtml(c.faltam.map(campoRotulo).join(', '))+'</span>' : ''}
-    ${c.nota ? '<span class="faltam">'+escapeHtml(c.nota)+'</span>' : ''}
-    ${c.extraidos.length ? '<span class="pend">'+c.extraidos.length+' campo(s) extraídos aguardando conferência</span>' : ''}
   </div>`;
 }
 function btnConferir(p){
@@ -1391,7 +1301,7 @@ function render(){
       <div class="item-top" onclick="toggle('${id}')">
         <b>${escapeHtml(p.nome)}</b>
         <span class="cat ${catClass(p.categoria)}">${escapeHtml(catLabel(p.categoria))}</span>
-        ${statusBadge(p)}
+        ${badgeDocumento(p)}
         <span class="chev"></span>
       </div>
       <div class="item-sub" onclick="toggle('${id}')">
@@ -1401,11 +1311,7 @@ function render(){
         ${culturas.map(c=>'<span class="cult">'+escapeHtml(c)+'</span>').join('')}
       </div>
       <div class="prod-body">
-        <div class="status-doc">
-          <span class="lbl">Status documental</span>
-          <span class="val ${statusClasse(p)}">${escapeHtml(statusRotulo(p))}</span>
-        </div>
-        ${completudeLinha(p)}
+        ${linhaCadastro(p)}
         <div class="igrid">
           <div>Fabricante${campo(p.fabricante)}</div>
           <div>Ingrediente ativo${campo(p.ingredienteAtivo)}</div>
@@ -1473,10 +1379,6 @@ function abrirProduto(id){
   document.getElementById('pBulaStat').textContent = (p && p.bulaFileId)
     ? 'Arquivo anexado no Drive. Anexar um novo arquivo SUBSTITUI o atual.'
     : 'Sem arquivo anexado.';
-  document.getElementById('pStatusDoc').value = p ? (statusOverride[p.id] || '') : '';
-  document.getElementById('pStatusHint').textContent = p
-    ? 'Atual: ' + statusRotulo(p) + (statusOverride[p.id] ? ' — definido manualmente.' : ' — calculado pela fonte e documentos cadastrados.')
-    : 'Será calculado automaticamente a partir da fonte e dos documentos.';
   document.getElementById('pFonte').value = p ? (p.fonteInfo||'') : '';
   document.getElementById('pFonteUrl').value = p ? (p.fonteUrl||'') : '';
   document.getElementById('pFoto').value = p ? (p.foto||'') : '';
@@ -1519,12 +1421,9 @@ function lerProdutoForm(){
 async function salvarProduto(){
   const dados = lerProdutoForm();
   if(!dados.nome){ alert('Digite o nome do produto.'); return; }
-  const escolhido = document.getElementById('pStatusDoc').value;
   if(editandoId){
     const p = produtoPorId(editandoId);
     Object.assign(p, dados);
-    if(escolhido) statusOverride[editandoId] = escolhido; else delete statusOverride[editandoId];
-    salvarStatusOverride();
     render();
     document.getElementById('dlgProduto').close();
     await apiCall('update', { id: editandoId, data: dados });
@@ -1533,7 +1432,6 @@ async function salvarProduto(){
     aplicarRef(novo);
     const res = await apiCall('add', { data: novo });
     novo.id = res.id;
-    if(escolhido){ statusOverride[novo.id] = escolhido; salvarStatusOverride(); }
     lista.push(novo);
     render();
     document.getElementById('dlgProduto').close();
@@ -2003,8 +1901,6 @@ function marcarNaoEncontrado(){
     'preservado — apenas a fonte/documento é marcado como não encontrado.')) return;
   const dados = { fonteInfo:'nao_encontrada', conferidoEm: hojeISO() };
   Object.assign(p, dados);
-  statusOverride[p.id] = 'sem_fonte';
-  salvarStatusOverride();
   render();
   apiCall('update', { id:p.id, data: dados });
   document.getElementById('qOut').innerHTML =

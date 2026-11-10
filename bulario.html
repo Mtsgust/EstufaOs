@@ -266,10 +266,32 @@
     background:var(--bg2); border:1px solid var(--line); border-radius:9px; padding:9px 10px; cursor:pointer; font-weight:500;}
   .sinais input{accent-color:var(--red); width:15px; height:15px;}
   .bula-box{background:var(--bg2); border:1px solid var(--line); border-radius:12px; min-height:180px;
-    display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:10px;}
-  .bula-box iframe{width:100%; height:56vh; border:none; background:#fff;}
+    display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; margin-bottom:10px;}
   .bula-box img{max-width:100%; max-height:56vh; object-fit:contain;}
   .bula-msg{font-size:13px; color:var(--mut); text-align:center; padding:26px 18px; line-height:1.6;}
+  /* Leitor de PDF embutido (PDF.js): toolbar compacta + rolagem vertical única */
+  .pv{width:100%; height:60vh; min-height:300px; display:flex; flex-direction:column; background:#10170f;}
+  .pv-bar{display:flex; align-items:center; gap:6px; padding:6px 8px; flex-wrap:wrap;
+    background:linear-gradient(180deg,#162C20,#132619); border-bottom:1px solid var(--line);}
+  .pv-btn{border:1px solid var(--line); background:var(--bg2); color:var(--ink); border-radius:8px;
+    padding:5px 9px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap;}
+  .pv-btn:hover{border-color:var(--leaf);}
+  .pv-cur{font-size:11.5px; color:var(--mut); min-width:58px; text-align:center; font-variant-numeric:tabular-nums;}
+  .pv-spacer{flex:1;}
+  .pv-scroll{flex:1; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+    touch-action:pan-y; padding:10px 0 16px; background:#0e1510;}
+  .pv-pages{display:flex; flex-direction:column; align-items:center; gap:10px; min-height:100%;}
+  .pv-p{position:relative; background:#fff; box-shadow:0 4px 18px rgba(0,0,0,.5); overflow:hidden;}
+  .pv-p canvas{display:block; width:100%; height:100%;}
+  .pv-ph{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#777; font-size:12px; font-family:inherit;}
+  .pv-loading{color:var(--dim); font-size:12.5px; padding:30px 14px; text-align:center;}
+  @media (max-width:600px){
+    .pv{height:72vh; min-height:260px;}
+    .pv-bar{gap:4px; padding:5px 6px;}
+    .pv-btn{padding:6px 8px; font-size:11px;}
+    .pv-cur{min-width:46px; font-size:11px;}
+  }
 
   @media (max-width:600px){
     .page{padding:24px 14px 48px;}
@@ -715,6 +737,19 @@ async function apiPost(body){
     : await fetch(API_URL, {method:'POST', body:JSON.stringify(body)});
   return r.json();
 }
+// POST com timeout próprio (downloads grandes passam de 20s) + 1 retry.
+async function apiPostMs(body, ms){
+  let ultimo = null;
+  for(let t = 0; t < 2; t++){
+    try{
+      const r = (typeof fetchComTimeout === 'function')
+        ? await fetchComTimeout(API_URL, { method:'POST', body:JSON.stringify(body) }, ms || 60000)
+        : await fetch(API_URL, { method:'POST', body:JSON.stringify(body) });
+      return await r.json();
+    }catch(e){ ultimo = e; }
+  }
+  throw ultimo || new Error('falha de rede');
+}
 async function apiCall(action, extra){
   return apiPost(Object.assign({tipo:'bulario', action}, extra||{}));
 }
@@ -989,13 +1024,35 @@ function catLabel(cat){
 }
 // ---- Status documental (derivado da fonte/documentos + override manual local) ----
 // Nunca inventa: o status é calculado apenas a partir do que está declarado no cadastro.
+// "Confirmado" exige fonte declarada + data de conferência; link sozinho só LOCALIZA o documento.
 const STATUS_DOC = {
   confirmado_bula: { curto:'Bula oficial', rotulo:'Confirmado por bula oficial', classe:'bula', klass:'ok' },
   confirmado_ficha:{ curto:'Ficha técnica', rotulo:'Confirmado por ficha técnica do fabricante', classe:'fab', klass:'ok' },
   aguardando_conferencia:{ curto:'Aguard. conferência', rotulo:'Informação extraída de embalagem, aguardando conferência', classe:'foto', klass:'warn' },
+  oficial_localizado:{ curto:'Oficial localizado', rotulo:'Documento oficial localizado — ainda sem conferência', classe:'doc', klass:'warn' },
+  externo_localizado:{ curto:'Externo localizado', rotulo:'Documento em link externo (não oficial) — sem conferência', classe:'none', klass:'mut' },
+  baixado_drive:{ curto:'No Drive', rotulo:'PDF salvo no Drive — aguardando conferência', classe:'fab', klass:'warn' },
   incompleto: { curto:'Incompleta', rotulo:'Informação incompleta', classe:'none', klass:'mut' },
   sem_fonte:  { curto:'Sem fonte', rotulo:'Sem fonte encontrada', classe:'na', klass:'bad' }
 };
+// Espelho das listas do backend (Code.gs) — usado só para rotular a fonte com honestidade.
+const HOSTS_OFICIAIS_BULA = ['syngenta.com.br','syngenta.com','basf.com.br','basf.com','bayer.com','bayer.com.br',
+  'upl.com.br','adama.com.br','ourofino.com.br','nortox.com.br','iosa.com.br','scoop.com.br','fmc.com',
+  'fmcagro.com.br','fmcagricola.com.br','sempreagro.com.br','embrapa.br','agrofit.agricultura.gov.br','gov.br'];
+const HOSTS_FORA_BULA = ['agrolink.com.br','revistacultivar.com.br','agrofy.com.br','solsan.com.br',
+  'compreagro.com.br','syngenta.co.in'];
+function hostDe(url){
+  try{ return new URL(String(url)).hostname.toLowerCase().replace(/^www\./, ''); }
+  catch(e){ return ''; }
+}
+function ehHostOficial(url){
+  const h = hostDe(url); if(!h) return false;
+  return HOSTS_OFICIAIS_BULA.some(d => h === d || h.slice(-(d.length + 1)) === '.' + d);
+}
+function ehHostFora(url){
+  const h = hostDe(url); if(!h) return false;
+  return HOSTS_FORA_BULA.some(d => h === d || h.slice(-(d.length + 1)) === '.' + d || h.indexOf(d) > -1);
+}
 const STATUS_KEY = 'bularioStatusDoc_v1';
 function carregarStatusOverride(){
   try{ const o = JSON.parse(localStorage.getItem(STATUS_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }
@@ -1007,14 +1064,19 @@ function salvarStatusOverride(){
 }
 function statusAuto(p){
   const fonte = String(p.fonteInfo || '').trim();
-  const temBula = !!(p.bulaLink || '').trim() || !!(p.bulaFileId || '').trim();
-  const temFicha = !!(p.fichaLink || '').trim() || !!(p.fonteUrl || '').trim();
+  const temArq = !!(p.bulaFileId || '').trim();
+  const conferido = !!(p.conferidoEm || '').trim();
+  const urls = [p.fonteUrl, p.bulaLink, p.fichaLink].map(x => String(x || '').trim()).filter(Boolean);
+  const urlDoc = urls[0] || '';
   if(fonte === 'nao_encontrada') return 'sem_fonte';
   if(fonte === 'foto' || fonte === 'foto_conferida') return 'aguardando_conferencia';
-  if(fonte === 'fabricante') return temFicha ? 'confirmado_ficha' : 'incompleto';
-  if(fonte === 'documento') return temBula || temFicha ? 'confirmado_bula' : 'incompleto';
-  if(temBula) return 'confirmado_bula';
-  if(temFicha) return 'confirmado_ficha';
+  // Confirmado só com fonte declarada + data de conferência (link sozinho nunca confirma).
+  if((fonte === 'documento' || fonte === 'fabricante') && conferido && (temArq || urls.length)){
+    return fonte === 'fabricante' ? 'confirmado_ficha' : 'confirmado_bula';
+  }
+  if(temArq) return 'baixado_drive';
+  if(urlDoc && ehHostOficial(urlDoc)) return 'oficial_localizado';
+  if(urlDoc) return 'externo_localizado';
   return 'incompleto';
 }
 function statusDoc(p){
@@ -1036,7 +1098,14 @@ function fonteTexto(p){
   const f = String(p.fonteInfo||'').trim();
   const mapa = { documento:'Documento oficial', fabricante:'Site do fabricante', foto:'Foto (rótulo/bula)',
     foto_conferida:'Foto conferida', nao_encontrada:'Não encontrada' };
-  return mapa[f] || 'Sem fonte registrada';
+  if(mapa[f]) return mapa[f];
+  // Sem fonte formal declarada: mostra a origem real do link em vez de dizer "Sem fonte registrada".
+  const url = [p.fonteUrl, p.bulaLink, p.fichaLink].map(x => String(x||'').trim()).filter(Boolean)[0];
+  if(url){
+    const h = hostDe(url) || url;
+    return h + (ehHostOficial(url) ? ' (site oficial)' : ' (link externo)') + ' · sem registro de fonte';
+  }
+  return 'Sem fonte registrada';
 }
 function renderKpis(){
   document.getElementById('kProd').textContent = lista.length;
@@ -1379,7 +1448,7 @@ function abrirPesquisa(id){
 }
 function abrirBuscaExterna(){
   const p = produtoPorId(pesquisaId);
-  const q = encodeURIComponent((p ? p.nome : '') + ' bula ingrediente ativo dose carência');
+  const q = encodeURIComponent(nomeBusca(p) + ' bula ingrediente ativo dose carência');
   window.open('https://www.google.com/search?q=' + q, '_blank', 'noopener');
 }
 // Distância de edição — usada só para avisar sobre produtos de nome parecido.
@@ -1581,9 +1650,16 @@ let ultimosCandidatos = [];        // candidatos da última busca real (evita mo
 function ehAcaoInvalida(j){
   return !j || (j.ok === false && /a[çc][ãa]o inv[áa]lida/i.test(String(j.error || '')));
 }
+// Nome comercial que a busca precisa enxergar (o cadastro guarda o nome genérico/técnico).
+const ALIAS_BUSCA = { 'abamectina': 'Abamectin Prentiss' };
+function nomeBusca(p){
+  const nome = String((p && p.nome) || '');
+  const alias = ALIAS_BUSCA[chave(nome)] || '';
+  return nome + (alias ? ' ' + alias : '');
+}
 async function buscarCandidatos(p){
   try{
-    const j = await apiPost({ tipo:'bulario', action:'buscarBula', nome:p.nome,
+    const j = await apiPost({ tipo:'bulario', action:'buscarBula', nome:nomeBusca(p),
       fabricante:p.fabricante || '', categoria:p.categoria || '' });
     if(ehAcaoInvalida(j)) return { indisponivel:true, motivo:AVISO_BULA_SEM_BACKEND };
     if(!j || !j.ok) return { indisponivel:true,
@@ -1692,17 +1768,23 @@ async function usarCandidato(i){
   if(!c || !c.url) return;
   await baixarEConferir(c.url, false);
 }
-// Baixa o candidato escolhido, lê o MESMO PDF e monta a conferência (produto/fabricante/fórmula).
-async function baixarEConferir(url, forcar){
+// Baixa o documento(s) escolhido(s), lê o MESMO PDF e monta a conferência (produto/fabricante/fórmula).
+// `alvo` pode ser uma URL ou uma lista (o backend tenta em ordem até achar um PDF válido).
+// Sempre devolve { ok } para o chamador dizer ao operador o que aconteceu.
+async function baixarEConferir(alvo, forcar){
   const p = produtoPorId(pesquisaId);
   const out = document.getElementById('qOut');
-  if(!p || !out) return;
+  if(!p || !out) return { ok:false, erro:'diálogo de pesquisa indisponível' };
+  const listaUrls = (Array.isArray(alvo) ? alvo : [alvo])
+    .filter(u => typeof u === 'string' && u.trim()).map(u => u.trim());
+  const url = listaUrls[0] || '';
+  if(!url) return { ok:false, erro:'nenhum endereço para baixar' };
   pesquisaArquivoId = ''; pesquisaArquivoUrl = url; pesquisaSomenteVinculo = false;
   if(p.bulaFileId && forcar !== true && !confirm(
     'Este produto já tem um PDF no Drive (' + (p.conferidoEm ? 'conferido em ' + fmtData(p.conferidoEm) :
     'sem data de conferência') + ').\n\nSó troque se você tiver certeza de que o documento novo é ' +
     'MAIS RECENTE. Continuar?')){
-    return;
+    return { ok:false, cancelado:true };
   }
   out.innerHTML = '<div class="loading">Baixando e validando o PDF…</div>';
   let arq = null, via = 'backend';
@@ -1710,10 +1792,10 @@ async function baixarEConferir(url, forcar){
   try{
     // O backend tenta os candidatos em ordem até achar um PDF válido (alguns hosts
     // bloqueiam o IP do Apps Script); o escolhido vem de volta em j.fonte.
-    const urls = [url].concat((ultimosCandidatos||[]).map(c=>c&&c.url)
-      .filter(u=>u && u!==url)).slice(0,6);
-    const j = await apiPost({ tipo:'bulario', action:'baixarBula', url: url, urls: urls, chave: chaveArq,
-      substituir: !!p.bulaFileId || forcar === true });
+    const urls = listaUrls.concat((ultimosCandidatos||[]).map(c=>c&&c.url)
+      .filter(u=>u && listaUrls.indexOf(u) < 0)).slice(0,8);
+    const j = await apiPostMs({ tipo:'bulario', action:'baixarBula', url: url, urls: urls, chave: chaveArq,
+      substituir: !!p.bulaFileId || forcar === true }, 90000);
     if(ehAcaoInvalida(j)){
       out.innerHTML = '<div class="loading">Backend sem a busca de bula — tentando baixar direto pelo navegador…</div>';
       arq = await baixarEPraDriveNoNavegador(p, url, chaveArq);
@@ -1724,7 +1806,7 @@ async function baixarEConferir(url, forcar){
         out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Conflito</span>' +
           escapeHtml(j.motivo || 'Já existe documento para este produto.') +
           '</div><button class="gold" style="margin-top:8px" onclick="usarCandidatoForce()">Substituir mesmo assim</button>';
-        return;
+        return { ok:false, conflito:true, erro: String(j.motivo || 'já existe documento para este produto') };
       }
     }else{
       throw new Error(String((j && j.error) || 'falha no download'));
@@ -1733,12 +1815,12 @@ async function baixarEConferir(url, forcar){
     out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
       escapeHtml('Não consegui baixar o documento: ' + e.message + '. Nada foi salvo nem alterado.') +
       '</div>' + htmlAlternativasBula();
-    return;
+    return { ok:false, erro:String(e.message || e) };
   }
   if(!arq || !arq.id){
     out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
       'O download não devolveu um arquivo salvo. Nada foi alterado no cadastro.</div>' + htmlAlternativasBula();
-    return;
+    return { ok:false, erro:'o download não devolveu um arquivo salvo' };
   }
   pesquisaArquivoId = arq.id;
   const urlFonte = arq.fonte || url;
@@ -1754,7 +1836,7 @@ async function baixarEConferir(url, forcar){
       mostrarConferencia(d, urlFonte, produtosSemelhantes(p), p);
       exigirConfirmacaoBaixado();
       anotarArquivoNaConferencia(arq, via);
-      return;
+      return { ok:true, arq:arq };
     }
     falhaLeitura = 'o texto do PDF não tem campos reconhecíveis (dose, ingrediente ativo etc.)';
   }
@@ -1768,6 +1850,7 @@ async function baixarEConferir(url, forcar){
     'campos manualmente em Editar produto.');
   exigirConfirmacaoBaixado();
   anotarArquivoNaConferencia(arq, via);
+  return { ok:true, arq:arq, semExtracao:true };
 }
 function usarCandidatoForce(){
   const url = pesquisaArquivoUrl;
@@ -1785,9 +1868,27 @@ async function baixarEPraDriveNoNavegador(p, url, chaveArq){
 }
 
 // ---- Pesquisa automática: baixa e lê a fonte já cadastrada do produto ----
-// Cadeia de acesso: direto → proxy público (contorna CORS) → backend (só se tiver a ação fetchUrl).
+// Cadeia de acesso: backend (Apps Script faz o download sem CORS) → direto → proxy público.
+// Erros são ditos com o motivo real (HTTP 404, timeout, backend desatualizado) — nunca genérico.
 async function baixarDocumento(url){
   const erros = [];
+  try{
+    const j = await apiPostMs({ tipo:'bulario', action:'fetchUrl', url }, 60000);
+    if(j && j.ok && j.b64){
+      const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0)).buffer;
+      return bytesOuTextoDeBytes(bytes);
+    }
+    if(j && j.ok && j.texto && !/\.pdf(\?|#|$)/i.test(url)){
+      return { pdf:false, texto:String(j.texto) };
+    }
+    if(ehAcaoInvalida(j)){
+      erros.push('backend sem ação fetchUrl (Code.gs desatualizado nesta instalação)');
+    }else if(j && j.ok){
+      erros.push('backend devolveu página em vez do PDF');
+    }else{
+      erros.push('backend: ' + String((j && j.error) || 'falha'));
+    }
+  }catch(e){ erros.push('backend: ' + String(e.message || e)); }
   try{
     const r = (typeof fetchComTimeout === 'function') ? await fetchComTimeout(url) : await fetch(url);
     if(r.ok) return await bytesOuTexto(r);
@@ -1798,17 +1899,6 @@ async function baixarDocumento(url){
     if(r.ok) return await bytesOuTexto(r);
     erros.push('proxy: HTTP ' + r.status);
   }catch(e){ erros.push('proxy: ' + String(e.message || e)); }
-  try{
-    const j = await apiPost({ tipo:'bulario', action:'fetchUrl', url });
-    if(j && j.ok && (j.b64 || j.texto)){
-      if(j.b64){
-        const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0)).buffer;
-        return bytesOuTextoDeBytes(bytes);
-      }
-      return { pdf:false, texto:String(j.texto) };
-    }
-    erros.push('backend sem ação fetchUrl (não configurada)');
-  }catch(e){ erros.push('backend: ' + String(e.message || e)); }
   throw new Error(erros.join(' · '));
 }
 function bytesOuTextoDeBytes(buf){
@@ -1845,16 +1935,21 @@ function textoDePdf(buf){
 function loadPdfJs(){
   return new Promise((res, rej) => {
     if(window.pdfjsLib) return res();
+    let fim = false;
+    const falhar = msg => { if(fim) return; fim = true; clearTimeout(t); rej(new Error(msg)); };
+    const t = setTimeout(() => falhar('tempo esgotado ao baixar o leitor de PDF'), 15000);
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
     s.onload = () => {
+      if(fim) return;
+      fim = true; clearTimeout(t);
       try{
         window.pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
         res();
       }catch(e){ rej(new Error('leitor de PDF indisponível')); }
     };
-    s.onerror = () => rej(new Error('não consegui baixar o leitor de PDF'));
+    s.onerror = () => falhar('não consegui baixar o leitor de PDF');
     document.head.appendChild(s);
   });
 }
@@ -2049,13 +2144,19 @@ async function verBula(id){
       const j = await r.json();
       if(!j.ok) throw new Error(j.error || 'falha ao carregar');
       if(bulaBlobUrl){ try{ URL.revokeObjectURL(bulaBlobUrl); }catch(e){} bulaBlobUrl = ''; }
-      bulaBlobUrl = URL.createObjectURL(new Blob([Uint8Array.from(atob(j.b64), c => c.charCodeAt(0))],
+      const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0));
+      bulaBlobUrl = URL.createObjectURL(new Blob([bytes],
         { type: j.mime || 'application/octet-stream' }));
       const pdf = /pdf/i.test(j.mime || '') || /\.pdf$/i.test(j.nome || '');
-      box.innerHTML = '<div class="bula-box">' + (pdf
-        ? '<iframe src="' + bulaBlobUrl + '" title="' + escapeHtml(j.nome||'bula') + '"></iframe>'
-        : '<img src="' + bulaBlobUrl + '" alt="' + escapeHtml(j.nome||'bula') + '">') +
-        '</div>' + bulaTools(p);
+      if(pdf){
+        // Leitor embutido (PDF.js): rolagem única, toolbar compacta — sem visualizador nativo.
+        box.innerHTML = '<div class="bula-box"><div class="pv" id="pv-' + id + '"></div></div>' + bulaTools(p);
+        const root = document.getElementById('pv-' + id);
+        pvAbrir(root, bytes, { nome: j.nome || 'bula.pdf', blobUrl: bulaBlobUrl }).catch(function(){});
+      }else{
+        box.innerHTML = '<div class="bula-box"><img src="' + bulaBlobUrl + '" alt="' +
+          escapeHtml(j.nome||'bula') + '"></div>' + bulaTools(p);
+      }
     }catch(e){
       box.innerHTML = '<div class="bula-box"><div class="bula-msg">Não consegui carregar o arquivo do Drive.<br><small>' +
         escapeHtml(e.message) + '</small></div></div>' + bulaTools(p);
@@ -2077,10 +2178,210 @@ function abrirBulaExterna(){
   if(bulaAtual.link){ window.open(bulaAtual.link, '_blank', 'noopener'); return; }
   if(bulaBlobUrl) window.open(bulaBlobUrl, '_blank');
 }
+// ---- Leitor de PDF embutido (PDF.js) ----
+// Toolbar compacta (zoom, ajustar, página X/Y, abrir, baixar) + rolagem vertical única
+// com páginas em sequência e render progressivo — sem sidebar/miniaturas do visualizador nativo.
+function pvHtml(){
+  return '<div class="pv-bar">' +
+    '<button type="button" class="pv-btn" data-pv="menos" title="Diminuir zoom">−</button>' +
+    '<button type="button" class="pv-btn" data-pv="mais" title="Aumentar zoom">+</button>' +
+    '<button type="button" class="pv-btn" data-pv="ajustar" title="Ajustar à largura">Ajustar</button>' +
+    '<span class="pv-cur" data-pv="cur">– / –</span>' +
+    '<span class="pv-spacer"></span>' +
+    '<button type="button" class="pv-btn" data-pv="abrir">Abrir em nova aba</button>' +
+    '<button type="button" class="pv-btn" data-pv="baixar">Baixar</button>' +
+    '</div>' +
+    '<div class="pv-scroll"><div class="pv-pages"><div class="pv-loading">Carregando páginas…</div></div></div>';
+}
+function pvDist(t){
+  const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function pvClamp(v){ return Math.min(5, Math.max(0.2, v)); }
+async function pvAbrir(root, bytes, meta){
+  if(!root) return;
+  if(root._pv){
+    if(root._pv.io){ try{ root._pv.io.disconnect(); }catch(e){} }
+    if(root._pv.ro){ try{ root._pv.ro.disconnect(); }catch(e){} }
+  }
+  const st = { root:root, meta:meta || {}, doc:null, scale:1, fit:true, base:[], pages:[],
+    io:null, ro:null, renderando:new Set(), visiveis:new Set(), pinch:null, raf:0 };
+  root._pv = st;
+  root.innerHTML = pvHtml();
+  const q = sel => (typeof root.querySelector === 'function' ? root.querySelector(sel) : null);
+  st.scroll = q('.pv-scroll'); st.pagesEl = q('.pv-pages'); st.cur = q('.pv-cur');
+  if(!st.scroll || !st.pagesEl) return;
+  if(!root._pvBound){
+    root._pvBound = true;
+    root.addEventListener('click', function(e){
+      const alvo = root._pv;
+      if(!alvo) return;
+      const b = e && e.target && e.target.closest ? e.target.closest('[data-pv]') : null;
+      if(!b) return;
+      pvAcao(alvo, b.getAttribute('data-pv') || (b.dataset && b.dataset.pv));
+    });
+  }
+  st.scroll.addEventListener('touchstart', function(e){
+    if(e.touches && e.touches.length === 2) st.pinch = { d: pvDist(e.touches), scale: st.scale, k:1 };
+  }, { passive:true });
+  st.scroll.addEventListener('touchmove', function(e){
+    if(st.pinch && e.touches && e.touches.length === 2){
+      if(e.cancelable) e.preventDefault();
+      const k = pvDist(e.touches) / (st.pinch.d || 1);
+      st.pinch.k = k;
+      st.pagesEl.style.transformOrigin = 'top center';
+      st.pagesEl.style.transform = 'scale(' + Math.max(0.4, Math.min(3, k)) + ')';
+    }
+  }, { passive:false });
+  st.scroll.addEventListener('touchend', function(e){
+    if(!st.pinch) return;
+    if(!e.touches || e.touches.length < 2){
+      st.fit = false;
+      st.scale = pvClamp(st.pinch.scale * (st.pinch.k || 1));
+      st.pinch = null;
+      st.pagesEl.style.transform = '';
+      pvAplicarEscala(st);
+      pvAtualizarCur(st);
+    }
+  }, { passive:true });
+  st.scroll.addEventListener('scroll', function(){
+    if(st.raf) return;
+    const raf = window.requestAnimationFrame || function(f){ return setTimeout(f, 16); };
+    st.raf = raf(function(){ st.raf = 0; pvAtualizarCur(st); });
+  }, { passive:true });
+  try{
+    if(!window.pdfjsLib) await loadPdfJs();
+    const doc = await window.pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+    st.doc = doc;
+    const n = doc.numPages;
+    const bases = await Promise.all(Array.from({ length:n }, (_, i) =>
+      doc.getPage(i + 1).then(function(pg){
+        const vp = pg.getViewport({ scale:1 });
+        return { w:vp.width, h:vp.height };
+      }).catch(function(){ return null; })));
+    st.base = [{ w:0, h:0 }].concat(bases);
+    if(!st.base[1]) throw new Error('não consegui ler as páginas do PDF');
+    let html = '';
+    for(let i = 1; i <= n; i++){
+      html += '<div class="pv-p" data-n="' + i + '"><span class="pv-ph">Página ' + i + '</span></div>';
+    }
+    st.pagesEl.innerHTML = html;
+    st.pages = Array.prototype.slice.call(st.pagesEl.querySelectorAll('.pv-p'));
+    pvAplicarEscala(st);
+    if(typeof IntersectionObserver === 'function'){
+      st.io = new IntersectionObserver(function(ents){
+        ents.forEach(function(en){
+          if(en.isIntersecting){ st.visiveis.add(en.target); pvRender(st, en.target); }
+          else st.visiveis.delete(en.target);
+        });
+      }, { root: st.scroll, rootMargin: '120% 0px' });
+      st.pages.forEach(function(el){ st.io.observe(el); });
+    }else{
+      st.pages.slice(0, 8).forEach(function(el){ st.visiveis.add(el); pvRender(st, el); });
+    }
+    if(typeof ResizeObserver === 'function'){
+      st.ro = new ResizeObserver(function(){ if(st.fit) pvAplicarEscala(st); });
+      st.ro.observe(st.scroll);
+    }
+    pvAtualizarCur(st);
+  }catch(e){
+    st.pagesEl.innerHTML = '<div class="bula-msg"><b>Não consegui abrir o PDF no leitor embutido' +
+      (e && e.message ? ' (' + escapeHtml(e.message) + ')' : '') + '</b><br>' +
+      'Use <b>Abrir em nova aba</b> ou <b>Baixar</b> — os dois botões continuam funcionando.</div>';
+  }
+}
+function pvAplicarEscala(st){
+  if(!st.doc || !st.pages.length) return;
+  const b = st.base[1] || { w:800, h:1000 };
+  const larg = (st.scroll && st.scroll.clientWidth) || 800;
+  if(st.fit) st.scale = Math.max(0.2, (larg - 24) / b.w);
+  st.pages.forEach(function(el){
+    const i = Number(el.dataset.n) || 1;
+    const bb = st.base[i] || b;
+    el.style.width = Math.round(bb.w * st.scale) + 'px';
+    el.style.height = Math.round(bb.h * st.scale) + 'px';
+    if(el._rendered){
+      el.innerHTML = '<span class="pv-ph">Página ' + i + '</span>';
+      el._rendered = false;
+    }
+  });
+  st.pages.forEach(function(el){
+    if(st.visiveis.has(el)) pvRender(st, el);
+  });
+}
+async function pvRender(st, el){
+  if(!st.doc || !el || el._rendered || st.renderando.has(el)) return;
+  const n = Number(el.dataset.n) || 1;
+  st.renderando.add(el);
+  const escala = st.scale;
+  try{
+    const pg = await st.doc.getPage(n);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const vp = pg.getViewport({ scale: escala * dpr });
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.floor(vp.width));
+    cv.height = Math.max(1, Math.floor(vp.height));
+    cv.style.width = Math.round(vp.width / dpr) + 'px';
+    cv.style.height = Math.round(vp.height / dpr) + 'px';
+    const ctx = cv.getContext && cv.getContext('2d');
+    if(!ctx) throw new Error('canvas indisponível');
+    await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+    if(escala !== st.scale){
+      st.renderando.delete(el);
+      if(st.visiveis.has(el)) pvRender(st, el);
+      return;
+    }
+    el.innerHTML = '';
+    el.appendChild(cv);
+    el._rendered = true;
+  }catch(e){ /* mantém o placeholder da página */ }
+  finally{ st.renderando.delete(el); }
+}
+function pvAtualizarCur(st){
+  if(!st.cur || !st.pages.length || !st.scroll) return;
+  const sr = st.scroll.getBoundingClientRect();
+  let atual = 1;
+  for(let i = 0; i < st.pages.length; i++){
+    const r = st.pages[i].getBoundingClientRect();
+    if(r.top - sr.top <= 8) atual = i + 1; else break;
+  }
+  st.cur.textContent = atual + ' / ' + st.pages.length;
+}
+function pvAcao(st, qual){
+  if(qual === 'mais' || qual === 'menos'){
+    st.fit = false;
+    st.scale = pvClamp(st.scale * (qual === 'mais' ? 1.25 : 0.8));
+    pvAplicarEscala(st);
+    pvAtualizarCur(st);
+  }else if(qual === 'ajustar'){
+    st.fit = true;
+    pvAplicarEscala(st);
+    pvAtualizarCur(st);
+  }else if(qual === 'abrir'){
+    const url = (st.meta && st.meta.blobUrl) || bulaBlobUrl;
+    if(url) window.open(url, '_blank', 'noopener');
+    else abrirBulaExterna();
+  }else if(qual === 'baixar'){
+    pvBaixar(st);
+  }
+}
+function pvBaixar(st){
+  const url = (st.meta && st.meta.blobUrl) || bulaBlobUrl;
+  const nome = (st.meta && st.meta.nome) || 'bula.pdf';
+  if(!url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = /\.pdf$/i.test(nome) ? nome : nome + '.pdf';
+  if(typeof a.click === 'function'){
+    if(document.body && document.body.appendChild) document.body.appendChild(a);
+    a.click();
+    if(document.body && document.body.removeChild) document.body.removeChild(a);
+  }
+}
 // Busca real na web (Google) pelo PDF oficial do produto — resultado é conferido manualmente.
 function localizarBula(id){
   const p = produtoPorId(id);
-  const q = encodeURIComponent((p ? p.nome : '') + ' bula oficial PDF');
+  const q = encodeURIComponent(nomeBusca(p) + ' bula oficial PDF');
   window.open('https://www.google.com/search?q=' + q, '_blank', 'noopener');
 }
 function substituirBula(id){
@@ -2091,30 +2392,41 @@ function substituirBula(id){
       'Há um PDF anexado no Drive. Anexar um novo arquivo SUBSTITUI o documento atual.';
   }
 }
-// Baixa o PDF do link cadastrado e grava no Drive, vinculando ao produto (substitui se já houver arquivo).
+// "Salvar PDF no Drive": caminho ÚNICO já testado do app — busca fontes reais no backend,
+// baixa pelo baixarBula (tenta os candidatos em ordem) e abre a conferência.
+// Nada é vinculado ao cadastro sem a confirmação explícita do operador.
 async function importarBulaDrive(id){
   const p = produtoPorId(id);
   if(!p || !p.bulaLink) return;
   const stat = document.getElementById('bulaStat-' + id);
   const setar = t => { if(stat) stat.textContent = t; };
-  setar('Baixando o documento da fonte…');
+  abrirPesquisa(id);
+  setar('Buscando fontes deste documento…');
+  let urls = [p.bulaLink];
   try{
-    const r = await baixarDocumento(p.bulaLink);
-    if(!r.pdf){
-      setar('Este link não é um PDF (é uma página). Abra em nova aba, baixe o PDF da bula e anexe em Editar → Anexar bula.');
-      return;
+    const r = await buscarCandidatos(p);
+    if(!r.indisponivel && r.encontrados && r.encontrados.length){
+      ultimosCandidatos = r.encontrados;
+      urls = urls.concat(r.encontrados.map(c => c && c.url)
+        .filter(u => u && urls.indexOf(u) < 0)).slice(0, 8);
+      const out = document.getElementById('qOut');
+      if(out) out.innerHTML = '<div class="q-fonte">Encontrei ' + r.encontrados.length +
+        ' fonte(s) na web — vou tentar em ordem até baixar um PDF válido. ' +
+        'Nada é aplicado sem sua conferência.</div>';
     }
-    const b64 = bytesParaB64(r.bytes);
-    const up = await apiPost({ action:'uploadAnexo', pasta:'Bulários EstufaOS',
-      nome: (chave(p.nome) || 'bula') + '_bula.pdf', mime:'application/pdf', base64:b64 });
-    if(!up.ok) throw new Error(up.error || 'falha no envio');
-    p.bulaFileId = up.id;
-    await apiCall('update', { id: p.id, data: { bulaFileId: up.id } });
-    render(); renderKpis();
-    await verBula(id);
-  }catch(e){
-    setar('Não consegui salvar no Drive automaticamente (' + e.message + '). O site pode bloquear o download externo — ' +
-      'abra em nova aba, baixe o PDF e anexe manualmente.');
+  }catch(e){ /* sem busca: tenta só o link cadastrado */ }
+  setar('Baixando o documento da fonte…');
+  const res = await baixarEConferir(urls, false);
+  if(res && res.ok){
+    setar('PDF salvo no Drive — confira os dados na janela aberta e clique em Aplicar para vincular.');
+  }else if(res && res.cancelado){
+    setar('Importação cancelada — nada foi alterado.');
+  }else if(res && res.conflito){
+    setar('Já existe um documento para este produto — escolha no diálogo o que fazer.');
+  }else{
+    setar('Não consegui salvar no Drive automaticamente (' +
+      String((res && res.erro) || 'falha desconhecida') + '). ' +
+      'Abra em nova aba, baixe o PDF e anexe em Editar → Anexar bula.');
   }
 }
 // ---- Catálogo unificado (Bulário + Estoque + InsumosInfo) sem duplicar ----

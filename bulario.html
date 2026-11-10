@@ -85,6 +85,34 @@
   .status-doc .val.warn{color:var(--gold);}
   .status-doc .val.bad{color:var(--red);}
   .status-doc .val.mut{color:var(--mut);}
+
+  /* Completude técnica (essenciais por categoria) */
+  .comp-doc{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card2);
+    border:1px solid var(--line); border-radius:10px; padding:8px 11px; margin:0 0 8px; font-size:12.5px;}
+  .comp-doc .lbl{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
+  .comp-doc .val{font-weight:700;}
+  .comp-doc .val.ok{color:var(--lime);}
+  .comp-doc .val.warn{color:var(--gold);}
+  .comp-doc .val.bad{color:var(--red);}
+  .comp-doc .faltam{color:var(--dim); font-size:11.5px;}
+  .comp-doc .pend{color:var(--gold); font-size:11.5px; font-weight:700;}
+
+  /* Conferência campo a campo */
+  .cf-doc{font-size:11.5px; color:var(--dim); word-break:break-all; background:var(--card2);
+    border:1px solid var(--line); border-radius:12px; padding:10px 12px; line-height:1.55;}
+  .cf-row{display:flex; gap:10px; border:1px solid var(--line); border-radius:12px; padding:9px 11px;
+    margin-bottom:8px; background:var(--card);}
+  .cf-row.div{border-color:rgba(217,164,65,.55); background:rgba(217,164,65,.07);}
+  .cf-row input[type=checkbox]{width:17px; height:17px; margin-top:2px; accent-color:#3D7A5C; cursor:pointer;}
+  .cf-body{flex:1; min-width:0;}
+  .cf-campo{font-size:12.5px; font-weight:700;}
+  .cf-sit{font-weight:600; font-size:11px; color:var(--dim);}
+  .cf-row.div .cf-sit{color:var(--gold);}
+  .cf-valores{margin-top:4px; font-size:12px; display:grid; gap:3px;}
+  .cf-valores > div{word-break:break-word; white-space:pre-wrap;}
+  .cf-valores span{color:var(--dim); font-weight:700;}
+  .cf-nada{color:var(--mut); font-style:italic;}
+  .cf-fonte{margin-top:4px; font-size:11px; color:var(--dim); word-break:break-all;}
   .igrid b.sem{color:var(--dim); font-weight:500; font-style:italic;}
 
   /* Bula dentro da área expandida */
@@ -553,6 +581,21 @@
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgPesquisa').close()">Cancelar</button>
       <button class="btn-save" id="qAplicar" onclick="aplicarPesquisa()" disabled>Aplicar ao produto</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Conferência técnica campo a campo (dados vêm da prévia em previa-tecnica.js) -->
+<dialog id="dlgConferencia">
+  <div class="sheet">
+    <h2>Conferir dados técnicos</h2>
+    <p class="sub" id="cfAlvo">—</p>
+    <div class="cf-doc" id="cfDoc">—</div>
+    <p class="sub" style="margin-top:10px">Marque somente os campos que você confere na fonte. Campos já preenchidos que divergem ficam <b>desmarcados</b> e não são substituídos sem a sua marcação. <b>Nada é aplicado automaticamente.</b></p>
+    <div id="cfCampos" style="margin-top:10px"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgConferencia').close()">Cancelar</button>
+      <button class="btn-save" id="cfAplicar" onclick="aplicarConferencia()" disabled>Aplicar selecionados</button>
     </div>
   </div>
 </dialog>
@@ -1123,6 +1166,210 @@ function itensFiltrados(){
     return true;
   }).sort((a,b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR'));
 }
+// ==== Completude e conferência técnica campo a campo ====
+// Prévia técnica vem de previa-tecnica.js (gerado pela pesquisa automática dos 42
+// produtos). Aqui só apresentamos: nada é aplicado sem marcação explícita do usuário.
+const CAMPOS_ROTULO = {
+  nome:'Nome', categoria:'Categoria', fabricante:'Fabricante', ingredienteAtivo:'Ingrediente ativo',
+  formula:'Fórmula', concentracao:'Concentração', composicao:'Composição',
+  classeToxicologica:'Classe toxicológica', garantias:'Garantias', dose:'Dose', carencia:'Carência',
+  frac:'FRAC', irac:'IRAC', ph:'pH de mistura', culturas:'Culturas', alvos:'Pragas/doenças',
+  restricoes:'Restrições de mistura', compatDocs:'Compatibilidades', bulaLink:'Link da bula',
+  fichaLink:'Link da ficha', registroMAPA:'Registro MAPA', grupoQuimico:'Grupo químico',
+  dataDocumento:'Data do documento', fonteInfo:'Fonte da informação', fonteUrl:'URL da fonte'
+};
+// Campos com entrada no formulário do cadastro e com potencial de virem da prévia.
+const CAMPOS_CONFERIVEIS = ['ingredienteAtivo','fabricante','formula','concentracao','composicao',
+  'classeToxicologica','garantias','dose','carencia','frac','irac','ph','culturas','alvos'];
+const COMP_STATUS = {
+  completo:{ rotulo:'Completo', classe:'ok' },
+  incompleto:{ rotulo:'Incompleto', classe:'warn' },
+  precisa_documentacao:{ rotulo:'Precisa documentação', classe:'bad' },
+  revisar:{ rotulo:'Revisar', classe:'warn' }
+};
+function campoRotulo(k){ return CAMPOS_ROTULO[k] || k; }
+
+function tipoProduto(p){
+  const v = previaProduto(p.id);
+  if(v && v.tipo) return v.tipo;
+  const t = ((p.categoria||'') + ' ' + (p.nome||'')).toLowerCase();
+  if(/adjuvante|umectante/.test(t)) return 'adjuvante';
+  if(/fertilizante|nutritivo|foliar|silic|amino|extrato/.test(t)) return 'fertilizante';
+  return 'defensivo';
+}
+function camposEssenciais(p){
+  const tipo = tipoProduto(p);
+  if(tipo === 'fertilizante') return ['composicao','concentracao','dose','culturas','fabricante'];
+  if(tipo === 'adjuvante') return ['composicao','concentracao','dose','fabricante'];
+  return ['ingredienteAtivo','fabricante','formula','concentracao','dose','carencia',
+          'classeToxicologica','alvos','culturas'];
+}
+function previaProduto(id){ return (window.PREVIA_TECNICA && PREVIA_TECNICA.produtos) ? PREVIA_TECNICA.produtos[id] : null; }
+function temDocumento(p){
+  return !!String(p.bulaLink||'').trim() || !!String(p.fichaLink||'').trim()
+      || !!String(p.bulaFileId||'').trim() || !!(previaProduto(p.id)||{}).documento;
+}
+function statusCompletude(p){
+  const ess = camposEssenciais(p);
+  const faltam = ess.filter(k => !String(p[k]||'').trim());
+  const temFonte = !!String(p.fonteInfo||'').trim() && !!String(p.conferidoEm||'').trim();
+  if(!faltam.length && temFonte) return 'completo';
+  if(!faltam.length) return 'incompleto';
+  if(!temDocumento(p)) return 'precisa_documentacao';
+  if(camposExtraidos(p).length) return 'revisar';
+  return 'incompleto';
+}
+function camposExtraidos(p){
+  const v = previaProduto(p.id);
+  if(!v) return [];
+  return camposEssenciais(p).filter(k =>
+    v.campos[k] && String(v.campos[k].valor||'').trim() && !String(p[k]||'').trim());
+}
+function completudeInfo(p){
+  const ess = camposEssenciais(p);
+  const faltam = ess.filter(k => !String(p[k]||'').trim());
+  const extraidos = camposExtraidos(p);
+  const status = statusCompletude(p);
+  const st = COMP_STATUS[status] || COMP_STATUS.incompleto;
+  const nota = (!faltam.length && status === 'incompleto') ? 'sem fonte/conferência registrada' : '';
+  return { status, faltam, extraidos, rotulo: st.rotulo, classe: st.classe, nota };
+}
+function completudeLinha(p){
+  const c = completudeInfo(p);
+  return `<div class="comp-doc">
+    <span class="lbl">Completude</span>
+    <span class="val ${c.classe}">${c.rotulo}</span>
+    ${c.faltam.length ? '<span class="faltam">faltam: '+escapeHtml(c.faltam.map(campoRotulo).join(', '))+'</span>' : ''}
+    ${c.nota ? '<span class="faltam">'+escapeHtml(c.nota)+'</span>' : ''}
+    ${c.extraidos.length ? '<span class="pend">'+c.extraidos.length+' campo(s) extraídos aguardando conferência</span>' : ''}
+  </div>`;
+}
+function btnConferir(p){
+  const v = previaProduto(p.id);
+  const temDado = !!(v && v.documento && Object.keys(v.campos||{}).length);
+  if(!temDado) return '';
+  return `<button class="btn-pesq" onclick="event.stopPropagation();abrirConferencia('${escapeHtml(p.id||'')}')">Conferir dados</button>`;
+}
+
+let previaTentada = false;
+function carregarPrevia(){
+  if(window.PREVIA_TECNICA) return Promise.resolve(true);
+  if(previaTentada) return Promise.resolve(false);
+  previaTentada = true;
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'previa-tecnica.js';
+    s.onload = () => resolve(!!window.PREVIA_TECNICA);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+function normCf(s){
+  return String(s).toLowerCase().replace(/\s+/g,' ').replace(/[.,;:·\-–—/]/g,'').trim();
+}
+function camposParaConferencia(p, previa){
+  const campos = previa.campos || {};
+  const tipo = previa.tipo || tipoProduto(p);
+  return CAMPOS_CONFERIVEIS
+    .filter(k => !(k === 'composicao' && tipo !== 'fertilizante' && tipo !== 'adjuvante'))
+    .filter(k => campos[k] && String(campos[k].valor||'').trim())
+    .map(k => {
+      const atual = String(p[k]||'').trim();
+      const novo = String(campos[k].valor||'').trim();
+      const igual = !!(atual && novo && normCf(atual) === normCf(novo));
+      const divergente = !!(atual && novo && !igual);
+      let marcado = false, situacao = '';
+      if(!atual){ marcado = true; situacao = 'vazio — pode preencher'; }
+      else if(igual){ situacao = 'já preenchido igual na fonte'; }
+      else { situacao = 'DIVERGE do cadastro — só aplica se você marcar'; }
+      return { campo:k, rotulo:campoRotulo(k), atual, novo, pagina: campos[k].pagina || null,
+               escopo: campos[k].escopo || '', marcado, divergente, igual, situacao };
+    });
+}
+function renderCampoConferencia(c, i){
+  return `<div class="cf-row${c.divergente?' div':''}">
+    <label><input type="checkbox" id="cfk-${i}"${c.marcado?' checked':''} onchange="atualizarCfAplicar()"></label>
+    <div class="cf-body">
+      <div class="cf-campo">${escapeHtml(c.rotulo)} <span class="cf-sit">${escapeHtml(c.situacao)}</span></div>
+      <div class="cf-valores">
+        <div><span>Cadastro:</span> ${c.atual ? escapeHtml(c.atual) : '<i class="cf-nada">vazio</i>'}</div>
+        <div><span>Encontrado na fonte:</span> ${c.novo ? escapeHtml(c.novo) : '<i class="cf-nada">não encontrado</i>'}</div>
+      </div>
+      ${c.pagina ? '<div class="cf-fonte">página '+escapeHtml(String(c.pagina))+(c.escopo?' · '+escapeHtml(c.escopo):'')+'</div>' : ''}
+    </div>
+  </div>`;
+}
+let conferenciaId = null, conferenciaLista = [];
+function abrirConferencia(id){
+  const p = produtoPorId(id);
+  if(!p) return;
+  carregarPrevia().then(ok => {
+    const previa = ok ? previaProduto(id) : null;
+    if(!previa){ alert('Não há prévia técnica disponível para "'+p.nome+'".'); return; }
+    const listaCf = camposParaConferencia(p, previa);
+    if(!listaCf.length){ alert('A prévia não trouxe campos comparáveis para "'+p.nome+'".'); return; }
+    conferenciaId = id;
+    conferenciaLista = listaCf;
+    const doc = previa.documento || {};
+    document.getElementById('cfAlvo').textContent = p.nome + ' · ' + (previa.categoriaCadastro || p.categoria || '');
+    const extras = ['registroMAPA','grupoQuimico','dataDocumento']
+      .map(k => (previa.campos[k] && previa.campos[k].valor)
+        ? campoRotulo(k)+': '+String(previa.campos[k].valor).slice(0,90).trim() : '')
+      .filter(Boolean);
+    const avisos = [];
+    if(doc.oficial === false) avisos.push('não oficial');
+    if(doc.nomeOk === false) avisos.push('nome divergente');
+    if(doc.iaOk === false) avisos.push('IA divergente');
+    const confRotulo = { alta:'alta', media:'média', baixa:'baixa' };
+    document.getElementById('cfDoc').innerHTML =
+      'Fonte: <b>' + escapeHtml(doc.host || 'desconhecido') + '</b>'
+      + (doc.oficial ? ' (oficial)' : '')
+      + ' · ' + (doc.paginas ? escapeHtml(String(doc.paginas))+' páginas' : 'páginas não informadas')
+      + ' · confiança <b>' + escapeHtml(confRotulo[doc.confianca] || doc.confianca || '—') + '</b>'
+      + (avisos.length ? ' · <b>'+escapeHtml(avisos.join(', '))+'</b>' : '')
+      + (extras.length ? '<br>' + escapeHtml(extras.join(' · ')) : '')
+      + (doc.url ? '<br>' + escapeHtml(doc.url) : '');
+    document.getElementById('cfCampos').innerHTML = listaCf.map(renderCampoConferencia).join('');
+    atualizarCfAplicar();
+    document.getElementById('dlgConferencia').showModal();
+  });
+}
+function atualizarCfAplicar(){
+  const n = conferenciaLista.filter((c,i) => {
+    const el = document.getElementById('cfk-'+i);
+    return !!(el && el.checked);
+  }).length;
+  const b = document.getElementById('cfAplicar');
+  b.disabled = !n;
+  b.textContent = n ? 'Aplicar '+n+' selecionado(s)' : 'Aplicar selecionados';
+}
+async function aplicarConferencia(){
+  const p = produtoPorId(conferenciaId);
+  const previa = previaProduto(conferenciaId);
+  if(!p || !previa) return;
+  const aceitos = conferenciaLista.filter((c,i) => {
+    const el = document.getElementById('cfk-'+i);
+    return !!(el && el.checked && c.novo);
+  });
+  if(!aceitos.length){ alert('Nenhum campo selecionado para aplicar.'); return; }
+  const dados = {};
+  aceitos.forEach(c => { dados[c.campo] = c.novo; });
+  const doc = previa.documento || {};
+  if(doc.url) dados.fonteUrl = doc.url;
+  dados.fonteInfo = 'documento';
+  dados.conferidoEm = hojeISO();
+  let res = null;
+  try{ res = await apiCall('update', { id: conferenciaId, data: dados }); }
+  catch(e){ res = { erro: String((e && e.message) || e) }; }
+  if(res && res.erro){ alert('Não consegui salvar no Drive: ' + res.erro); return; }
+  Object.assign(p, dados);
+  if(typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
+  render();
+  document.getElementById('dlgConferencia').close();
+  alert('Aplicados '+aceitos.length+' campo(s): '+aceitos.map(c=>c.rotulo).join(', ')+'.\n'
+    + 'Fonte: ' + (doc.host || doc.url || 'documento') + ' · conferido em ' + hojeISO() + '.');
+}
+
 function render(){
   const wrap = document.getElementById('list');
   const itens = itensFiltrados();
@@ -1158,6 +1405,7 @@ function render(){
           <span class="lbl">Status documental</span>
           <span class="val ${statusClasse(p)}">${escapeHtml(statusRotulo(p))}</span>
         </div>
+        ${completudeLinha(p)}
         <div class="igrid">
           <div>Fabricante${campo(p.fabricante)}</div>
           <div>Ingrediente ativo${campo(p.ingredienteAtivo)}</div>
@@ -1185,6 +1433,7 @@ function render(){
           <button class="btn-pesq" onclick="event.stopPropagation();abrirPesquisa('${id}')">Pesquisar</button>
           <button class="btn-foto" onclick="event.stopPropagation();abrirFoto('${id}')">Foto/OCR</button>
           <button class="btn-bula" onclick="event.stopPropagation();verBula('${id}')">Bula</button>
+          ${btnConferir(p)}
           <button class="btn-del" onclick="event.stopPropagation();excluirProduto('${id}')">Excluir</button>
         </div>
       </div>
@@ -2879,6 +3128,7 @@ renderSel();
 renderCatalogo();
 renderKpis();
 carregar();
+carregarPrevia().then(ok => { if(ok && lista && lista.length) render(); });
 </script>
 <script src="sidebar.js"></script>
 </body>

@@ -145,13 +145,16 @@
   .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:10px;
     transition:border-color .18s;}
   .item:hover{border-color:#2A4A35;}
-  .item-top{display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; flex-wrap:wrap;}
-  .item-top b{font-size:16.5px; font-weight:800; letter-spacing:-.01em; flex:1; min-width:0; word-break:break-word;}
+  .item-top{display:flex; flex-direction:column; gap:7px; cursor:pointer; align-items:stretch;}
+  .item-title{display:flex; align-items:center; gap:10px;}
+  .item-title b{flex:1; min-width:0; font-size:16.5px; font-weight:800; letter-spacing:-.01em;
+    line-height:1.3; overflow-wrap:break-word;}
   .chev{width:8px; height:8px; border-right:2px solid var(--dim); border-bottom:2px solid var(--dim);
     transform:rotate(45deg); transition:transform .18s; flex-shrink:0; margin-left:2px; margin-top:-4px;}
   .item.open .chev{transform:rotate(225deg); margin-top:4px;}
   .cat{font-size:10.5px; padding:4px 11px; border-radius:20px; font-weight:700; background:rgba(143,209,154,.14); color:var(--lime);
-    text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; max-width:44%; overflow:hidden; text-overflow:ellipsis;}
+    text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; align-self:flex-start;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis;}
   .cat.inset{background:rgba(217,164,65,.15); color:var(--gold);}
   .cat.outro{background:rgba(122,145,132,.16); color:var(--mut);}
 
@@ -163,20 +166,20 @@
   .src.none{background:rgba(122,145,132,.15); color:var(--mut);}
   .src.bula{background:rgba(217,164,65,.15); color:var(--gold);}
 
-  .item-ia{font-size:14px; font-weight:700; color:var(--ink); margin-top:5px; cursor:pointer; letter-spacing:-.01em;}
-  .item-desc{font-size:12.5px; color:var(--mut); margin-top:5px; line-height:1.5; cursor:pointer;}
-  .cult-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; cursor:pointer;}
-  .cult{font-size:11px; background:transparent; border:1px solid rgba(143,209,154,.4); color:var(--lime);
-    padding:3px 10px; border-radius:14px; font-weight:500;}
+  .item-ia{font-size:14px; font-weight:700; color:var(--ink); margin-top:6px; cursor:pointer; letter-spacing:-.01em; line-height:1.35;}
+  .item-desc{font-size:12.5px; color:var(--mut); margin-top:4px; line-height:1.5; cursor:pointer;}
+  .cult-row{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; cursor:pointer;}
+  .cult{font-size:10.5px; background:transparent; border:1px solid rgba(143,209,154,.4); color:var(--lime);
+    padding:3px 9px; border-radius:14px; font-weight:500;}
 
   .prod-body{display:none; border-top:1px solid var(--line); margin-top:12px; padding-top:12px;}
   .item.open .prod-body{display:block;}
-  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:0 26px; margin:6px 0 4px;}
-  .fcell{display:flex; gap:11px; align-items:flex-start; padding:11px 0; border-bottom:1px solid var(--line);}
+  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:0 30px; margin:6px 0 4px;}
+  .fcell{display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line);}
   .fcell .fbody{min-width:0; flex:1;}
-  .flabel{display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
+  .flabel{display:block; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--dim);}
   .flabel i{font-style:normal; text-transform:none; letter-spacing:0;}
-  .fcell b{display:block; color:var(--ink); font-weight:600; font-size:13.5px; margin-top:4px;
+  .fcell b{display:block; color:var(--ink); font-weight:650; font-size:14px; margin-top:5px;
     word-break:break-word; white-space:pre-wrap; line-height:1.5;}
   .fcell b.sem{color:var(--dim); font-weight:500; font-style:italic;}
   .fcell a{word-break:break-all;}
@@ -354,6 +357,13 @@
     .p-actions button{flex:1 1 calc(50% - 4px);}
     .sinais{grid-template-columns:1fr;}
     .selrow input.dose{width:100%; order:5;}
+    .item{padding:12px 13px;}
+    .item-title b{font-size:15.5px;}
+    .item-ia{font-size:13.5px;}
+    .fcell{padding:10px 0; gap:10px;}
+    .fcell b{font-size:13.5px;}
+    .status-doc{padding:9px 11px;}
+    .status-doc .sd-seg{padding:0 10px;}
   }
 </style>
 <link rel="stylesheet" href="sidebar.css">
@@ -1163,8 +1173,9 @@ function temDocumento(p){
   return !!String(p.bulaLink||'').trim() || !!String(p.fichaLink||'').trim()
       || !!String(p.bulaFileId||'').trim() || !!String(p.fichaFileId||'').trim();
 }
-// Indicadores simples (os únicos 4 estados exibidos no card):
-// cadastro preenchido/incompleto + documento disponível/pendente.
+// Indicadores simples: cadastro preenchido/incompleto (exibido no card) e
+// documento disponível/pendente (lógica de vínculo — o selo foi removido do
+// card; o botão Bula é o indicador visível de documento).
 function indicadorCadastro(p){
   const faltam = camposEssenciais(p).filter(k => !String(p[k]||'').trim());
   const st = faltam.length ? 'incompleto' : 'preenchido';
@@ -1393,10 +1404,11 @@ function render(){
     return `
     <div class="item" id="prod-${id}">
       <div class="item-top" onclick="toggle('${id}')">
-        <b>${escapeHtml(p.nome)}</b>
+        <div class="item-title">
+          <b>${escapeHtml(p.nome)}</b>
+          <span class="chev"></span>
+        </div>
         <span class="cat ${catClass(p.categoria)}">${escapeHtml(catLabel(p.categoria))}</span>
-        ${badgeDocumento(p)}
-        <span class="chev"></span>
       </div>
       ${ia ? `<div class="item-ia" onclick="toggle('${id}')">${escapeHtml(ia)}</div>` : ''}
       ${desc ? `<div class="item-desc" onclick="toggle('${id}')">${escapeHtml(desc)}</div>` : ''}

@@ -76,16 +76,22 @@
   .filters #busca{padding:13px 16px; font-size:14.5px; border-radius:12px; background:var(--bg2); min-width:220px;}
   .filters #busca::placeholder{color:var(--dim);}
 
-  /* Indicadores simples do card: cadastro e documento */
-  .status-doc{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card2);
-    border:1px solid var(--line); border-radius:10px; padding:8px 11px; margin:8px 0; font-size:12.5px;}
-  .status-doc .lbl{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
-  .status-doc .val{font-weight:600;}
+  /* Barra de status do card: CADASTRO | Fonte | Conferido em */
+  .status-doc{display:flex; align-items:center; gap:0; flex-wrap:wrap; background:var(--card2);
+    border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin:12px 0; font-size:13px;}
+  .status-doc .sd-seg{display:flex; align-items:center; gap:7px; padding:0 13px; border-left:1px solid var(--line);}
+  .status-doc .sd-seg:first-child{padding-left:0; border-left:none;}
+  .status-doc .lbl{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--dim);}
+  .status-doc .lbl2{font-size:12px; font-weight:600; color:var(--dim);}
+  .status-doc .val{font-weight:700;}
   .status-doc .val.ok{color:var(--lime);}
   .status-doc .val.warn{color:var(--gold);}
   .status-doc .val.bad{color:var(--red);}
   .status-doc .val.mut{color:var(--mut);}
-  .status-doc .faltam{color:var(--dim); font-size:11.5px;}
+  .status-doc .val-fonte{color:var(--ink); font-weight:500; font-size:12.5px; word-break:break-word;}
+  .status-doc .sd-ok{color:var(--lime); font-weight:800;}
+  .status-doc .faltam{color:var(--dim); font-size:11.5px; width:100%; border-top:1px dashed var(--line);
+    margin-top:8px; padding-top:7px;}
 
   /* Conferência campo a campo */
   .cf-doc{font-size:11.5px; color:var(--dim); word-break:break-all; background:var(--card2);
@@ -103,8 +109,6 @@
   .cf-valores span{color:var(--dim); font-weight:700;}
   .cf-nada{color:var(--mut); font-style:italic;}
   .cf-fonte{margin-top:4px; font-size:11px; color:var(--dim); word-break:break-all;}
-  .igrid b.sem{color:var(--dim); font-weight:500; font-style:italic;}
-
   /* Bula dentro da área expandida */
   .bula-inline{border-top:1px solid var(--line); margin-top:12px; padding-top:12px;}
   .bula-inline .bula-box{margin-bottom:8px;}
@@ -142,7 +146,7 @@
     transition:border-color .18s;}
   .item:hover{border-color:#2A4A35;}
   .item-top{display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; flex-wrap:wrap;}
-  .item-top b{font-size:15px; letter-spacing:-.01em; flex:1; min-width:0; word-break:break-word;}
+  .item-top b{font-size:16.5px; font-weight:800; letter-spacing:-.01em; flex:1; min-width:0; word-break:break-word;}
   .chev{width:8px; height:8px; border-right:2px solid var(--dim); border-bottom:2px solid var(--dim);
     transform:rotate(45deg); transition:transform .18s; flex-shrink:0; margin-left:2px; margin-top:-4px;}
   .item.open .chev{transform:rotate(225deg); margin-top:4px;}
@@ -159,24 +163,31 @@
   .src.none{background:rgba(122,145,132,.15); color:var(--mut);}
   .src.bula{background:rgba(217,164,65,.15); color:var(--gold);}
 
-  .item-sub{font-size:12px; color:var(--mut); margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
-  .item-sub .ia{color:var(--ink); font-weight:500;}
-  .item-sub .alvos{flex-basis:100%; font-size:11.5px; color:var(--dim);}
-  .cult{font-size:10.5px; background:var(--bg2); border:1px solid var(--line); color:var(--mut);
-    padding:2px 8px; border-radius:12px;}
+  .item-ia{font-size:14px; font-weight:700; color:var(--ink); margin-top:5px; cursor:pointer; letter-spacing:-.01em;}
+  .item-desc{font-size:12.5px; color:var(--mut); margin-top:5px; line-height:1.5; cursor:pointer;}
+  .cult-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; cursor:pointer;}
+  .cult{font-size:11px; background:transparent; border:1px solid rgba(143,209,154,.4); color:var(--lime);
+    padding:3px 10px; border-radius:14px; font-weight:500;}
 
   .prod-body{display:none; border-top:1px solid var(--line); margin-top:12px; padding-top:12px;}
   .item.open .prod-body{display:block;}
-  .igrid{display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; margin-bottom:10px;}
-  .igrid .full{grid-column:1/-1;}
-  .igrid div{font-size:11.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.03em; font-weight:600;}
-  .igrid b{display:block; color:var(--ink); font-weight:600; font-size:13px; margin-top:3px; word-break:break-word; text-transform:none; letter-spacing:0;}
+  .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:0 26px; margin:6px 0 4px;}
+  .fcell{display:flex; gap:11px; align-items:flex-start; padding:11px 0; border-bottom:1px solid var(--line);}
+  .fcell .fbody{min-width:0; flex:1;}
+  .flabel{display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
+  .flabel i{font-style:normal; text-transform:none; letter-spacing:0;}
+  .fcell b{display:block; color:var(--ink); font-weight:600; font-size:13.5px; margin-top:4px;
+    word-break:break-word; white-space:pre-wrap; line-height:1.5;}
+  .fcell b.sem{color:var(--dim); font-weight:500; font-style:italic;}
+  .fcell a{word-break:break-all;}
+  .fi{width:21px; height:21px; flex-shrink:0; color:var(--lime); opacity:.85; margin-top:2px;}
+  .fi.btn-ic{width:16px; height:16px; opacity:1; margin-top:0;}
+  .fgrid-fonte .fcell{border-bottom:none; padding-top:12px;}
   .restr{background:rgba(224,120,95,.09); border:1px solid rgba(224,120,95,.35); border-radius:10px;
     padding:9px 11px; font-size:12.5px; color:#F0B3A6; margin:8px 0;}
   .restr b, .compat b{display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
   .compat{background:rgba(74,155,217,.09); border:1px solid rgba(74,155,217,.3); border-radius:10px;
     padding:9px 11px; font-size:12.5px; color:#A9D2F0; margin:8px 0;}
-  .obs-box{font-size:12.5px; color:var(--mut); margin:8px 0; white-space:pre-line;}
 
   .actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
   .actions button{flex:1; border-radius:10px; padding:9px 6px; font-size:12px; font-weight:600;
@@ -187,6 +198,24 @@
   .btn-foto{background:transparent; color:var(--lime); border:1px solid var(--leaf)!important;}
   .btn-bula{background:transparent; color:var(--gold); border:1px solid rgba(217,164,65,.4)!important;}
   .btn-del{background:transparent; color:var(--red); border:1px solid rgba(224,120,95,.45)!important; flex:0 0 84px!important;}
+
+  /* Ações do card de produto (linha principal + linha secundária) */
+  .p-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .p-actions button{flex:1; border-radius:12px; padding:12px 8px; font-size:13.5px; font-weight:700;
+    cursor:pointer; font-family:inherit; border:1.5px solid var(--line); background:transparent;
+    transition:.15s; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:8px;}
+  .p-actions button:hover{transform:translateY(-1px);}
+  .p-actions .btn-edit{color:var(--lime); border-color:var(--leaf)!important;}
+  .p-actions .btn-bula{color:var(--gold); border-color:rgba(217,164,65,.55)!important;}
+  .p-actions .btn-del{color:var(--red); border-color:rgba(224,120,95,.55)!important; flex:1!important;}
+  .actions-sec{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap;}
+  .actions-sec button{border-radius:10px; padding:7px 13px; font-size:12px; font-weight:600; cursor:pointer;
+    font-family:inherit; border:1px solid var(--line); background:var(--card2); color:var(--ink);
+    transition:.15s; display:inline-flex; align-items:center; gap:7px; flex:0 1 auto;}
+  .actions-sec button:hover{border-color:var(--leaf);}
+  .actions-sec .btn-pesq{color:var(--blue); border-color:rgba(74,155,217,.4)!important; background:transparent;}
+  .actions-sec .btn-foto{color:var(--lime); border-color:var(--leaf)!important; background:transparent;}
+  .actions-sec .btn-conf{color:var(--gold); border-color:rgba(217,164,65,.45)!important; background:transparent;}
 
   /* Montar calda */
   .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px;}
@@ -320,8 +349,9 @@
     .kpi-row{grid-template-columns:repeat(2,1fr);}
     .kpi-row .kpi:last-child{grid-column:1/-1;}
     .row2{flex-direction:column;}
-    .igrid{grid-template-columns:1fr;}
+    .fgrid{grid-template-columns:1fr; gap:0;}
     .actions button{flex:1 1 calc(50% - 4px);}
+    .p-actions button{flex:1 1 calc(50% - 4px);}
     .sinais{grid-template-columns:1fr;}
     .selrow input.dose{width:100%; order:5;}
   }
@@ -1064,6 +1094,8 @@ function fonteTexto(p){
   const mapa = { documento:'Documento oficial', fabricante:'Site do fabricante', foto:'Foto (rótulo/bula)',
     foto_conferida:'Foto conferida', nao_encontrada:'Não encontrada' };
   if(mapa[f]) return mapa[f];
+  // String livre declarada (ex.: "Bula oficial – Fabricante ｜ Registro MAPA nº ..."): exibe como está.
+  if(f) return f;
   // Sem fonte formal declarada: mostra a origem real do link em vez de dizer "Sem fonte registrada".
   const url = [p.fonteUrl, p.bulaLink, p.fichaLink].map(x => String(x||'').trim()).filter(Boolean)[0];
   if(url){
@@ -1072,6 +1104,8 @@ function fonteTexto(p){
   }
   return 'Sem fonte registrada';
 }
+// Versão curta para a barra de status (corta no separador "｜" da string de fonte).
+function fonteResumo(p){ return fonteTexto(p).split(/[|｜]/)[0].trim(); }
 function renderKpis(){
   document.getElementById('kProd').textContent = lista.length;
   document.getElementById('kBula').textContent = lista.filter(p => (p.bulaLink||'').trim() || (p.bulaFileId||'').trim()).length;
@@ -1148,17 +1182,67 @@ function badgeDocumento(p){
 }
 function linhaCadastro(p){
   const c = indicadorCadastro(p);
+  const rotuloCurto = c.rotulo.replace(/^Cadastro\s+/, '');
+  const fonte = fonteResumo(p);
   return `<div class="status-doc">
-    <span class="lbl">Cadastro</span>
-    <span class="val ${c.classe}">${c.rotulo}</span>
-    ${c.faltam.length ? '<span class="faltam">faltam: '+escapeHtml(c.faltam.map(campoRotulo).join(', '))+'</span>' : ''}
+    <span class="sd-seg">
+      <span class="lbl">Cadastro</span>
+      <span class="val ${c.classe}">${escapeHtml(rotuloCurto)}${c.status === 'preenchido' ? ' <span class="sd-ok">✓</span>' : ''}</span>
+    </span>
+    <span class="sd-seg"><span class="lbl2">Fonte:</span> <span class="val-fonte">${escapeHtml(fonte)}</span></span>
+    ${p.conferidoEm ? `<span class="sd-seg"><span class="lbl2">Conferido em:</span> <span class="val-fonte">${escapeHtml(fmtData(p.conferidoEm))}</span></span>` : ''}
+    ${c.faltam.length ? `<span class="faltam">faltam: ${escapeHtml(c.faltam.map(campoRotulo).join(', '))}</span>` : ''}
   </div>`;
+}
+// Ícones do cartão (SVG em traço, cor herdada do elemento).
+const ICONES = {
+  fabricante:'<path d="M3 21h18"/><path d="M5 21V10l5 3v-3l5 3V7l4 2v12"/><path d="M9 21v-4h4v4"/>',
+  ia:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>',
+  formula:'<path d="M9 3h6"/><path d="M10 3v6.5L4.6 18.6A2 2 0 0 0 6.3 21.6h11.4a2 2 0 0 0 1.7-3L14 9.5V3"/>',
+  comp:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.6 6h.01M3.6 12h.01M3.6 18h.01"/>',
+  dose:'<path d="M5 4h14l-1.5 16a2 2 0 0 1-2 1.8h-7A2 2 0 0 1 6.5 20L5 4Z"/><path d="M6.5 10h11M7.5 15h9"/>',
+  carencia:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+  classe:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4.5M12 17.5h.01"/>',
+  garantias:'<path d="M12 22s8-4 8-10V5.5L12 2.5 4 5.5V12c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+  grupo:'<circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="17" r="2.2"/><circle cx="19" cy="17" r="2.2"/><path d="M10.6 6.9 6.4 14.9M13.4 6.9l4.2 8M7.2 17h9.6"/>',
+  ph:'<path d="M12 2.7 6.7 8a7.5 7.5 0 1 0 10.6 0L12 2.7Z"/>',
+  irac:'<path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 12.5 12 17.5l10-5"/><path d="M2 17.5 12 22.5l10-5"/>',
+  tipoFormula:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+  alvos:'<path d="M12 4a6 6 0 0 1 6 6v4a6 6 0 0 1-12 0v-4a6 6 0 0 1 6-6Z"/><path d="M3 12h3M18 12h3M5.5 6.5 8 9M18.5 6.5 16 9M5.5 18.5 8 16M18.5 18.5 16 16M12 4V2"/>',
+  culturas:'<path d="M12 21v-8"/><path d="M12 13C12 9 9 6.5 4.5 6.5c0 4.5 3 6.5 7.5 6.5Z"/><path d="M12 13c0-3.5 2.5-6 6.5-6 0 4-3 6-6.5 6Z"/>',
+  fonte:'<circle cx="12" cy="12" r="9.5"/><path d="M12 16.5V11M12 7.5h.01"/>',
+  url:'<path d="M10 13.5a4.5 4.5 0 0 0 6.8.5l2.7-2.7a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5"/><path d="M14 10.5a4.5 4.5 0 0 0-6.8-.5l-2.7 2.7a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/>',
+  pencil:'<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/>',
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+  trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.7-3.7"/>',
+  camera:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="3.5"/>',
+  check:'<circle cx="12" cy="12" r="9.5"/><path d="m8 12 3 3 5-6"/>'
+};
+function ic(nome, cls){
+  const p = ICONES[nome];
+  if(!p) return '';
+  return '<svg class="fi '+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
+}
+function culturasLista(p){
+  return String(p.culturas||'').split(',').map(s => s.trim()).filter(Boolean);
+}
+// Lista -> frase ("Algodão, batata, ... tomate e uva.") para o campo CULTURAS REGISTRADAS.
+function culturasTexto(p){
+  const l = culturasLista(p);
+  if(!l.length) return '';
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  let t;
+  if(l.length === 1) t = cap(l[0]);
+  else if(l.length === 2) t = cap(l[0]) + ' e ' + l[1];
+  else t = cap(l[0]) + ', ' + l.slice(1, -1).join(', ') + ' e ' + l[l.length - 1];
+  return t + '.';
 }
 function btnConferir(p){
   const v = previaProduto(p.id);
   const temDado = !!(v && v.documento && Object.keys(v.campos||{}).length);
   if(!temDado) return '';
-  return `<button class="btn-pesq" onclick="event.stopPropagation();abrirConferencia('${escapeHtml(p.id||'')}')">Conferir dados</button>`;
+  return `<button class="btn-pesq btn-conf" onclick="event.stopPropagation();abrirConferencia('${escapeHtml(p.id||'')}')">${ic('check','btn-ic')}Conferir dados</button>`;
 }
 
 let previaTentada = false;
@@ -1290,12 +1374,22 @@ function render(){
   }
   wrap.innerHTML = itens.map(p => {
     const id = escapeHtml(p.id||'');
-    const culturas = String(p.culturas||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const cults = culturasLista(p);
     const temRest = !!(p.restricoes||'').trim();
     const temCompat = !!(p.compatDocs||'').trim();
-    const linhaIA = (p.ingredienteAtivo||'').trim() || (p.composicao||'').trim();
-    const campo = v => String(v||'').trim()
-      ? '<b>'+escapeHtml(v)+'</b>' : '<b class="sem">sem informação</b>';
+    const ia = String(p.ingredienteAtivo||'').trim();
+    const desc = String(p.obs||'').trim();
+    const cel = (icNome, rotulo, valor) => {
+      const v = String(valor||'').trim();
+      return `<div class="fcell">${ic(icNome)}<div class="fbody">
+        <span class="flabel">${rotulo}</span>
+        <b class="${v ? '' : 'sem'}">${v ? escapeHtml(v) : 'sem informação'}</b>
+      </div></div>`;
+    };
+    const urlCel = p.fonteUrl ? `<div class="fcell">${ic('url')}<div class="fbody">
+        <span class="flabel">URL da fonte</span>
+        <b><a href="${escapeHtml(p.fonteUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(p.fonteUrl)}</a></b>
+      </div></div>` : '';
     return `
     <div class="item" id="prod-${id}">
       <div class="item-top" onclick="toggle('${id}')">
@@ -1304,43 +1398,43 @@ function render(){
         ${badgeDocumento(p)}
         <span class="chev"></span>
       </div>
-      <div class="item-sub" onclick="toggle('${id}')">
-        ${linhaIA ? '<span class="ia">'+escapeHtml(linhaIA)+'</span>' : ''}
-        ${p.alvos ? '<span class="alvos">Pragas/doenças: '+escapeHtml(p.alvos)+'</span>' : ''}
-        ${p.dose ? '<span>· '+escapeHtml(p.dose)+'</span>' : ''}
-        ${culturas.map(c=>'<span class="cult">'+escapeHtml(c)+'</span>').join('')}
-      </div>
+      ${ia ? `<div class="item-ia" onclick="toggle('${id}')">${escapeHtml(ia)}</div>` : ''}
+      ${desc ? `<div class="item-desc" onclick="toggle('${id}')">${escapeHtml(desc)}</div>` : ''}
+      ${cults.length ? `<div class="cult-row" onclick="toggle('${id}')">${cults.map(c=>'<span class="cult">'+escapeHtml(c)+'</span>').join('')}</div>` : ''}
       <div class="prod-body">
         ${linhaCadastro(p)}
-        <div class="igrid">
-          <div>Fabricante${campo(p.fabricante)}</div>
-          <div>Ingrediente ativo${campo(p.ingredienteAtivo)}</div>
-          <div>Fórmula / concentração${campo([p.formula,p.concentracao].filter(Boolean).join(' · '))}</div>
-          <div>Composição${campo(p.composicao)}</div>
-          <div>Dose${campo(p.dose)}</div>
-          <div>Carência${campo(p.carencia)}</div>
-          <div>Classe toxicológica${campo(p.classeToxicologica)}</div>
-          <div>Garantias${campo(p.garantias)}</div>
-          <div>FRAC / IRAC${campo([p.frac,p.irac].filter(Boolean).join(' · '))}</div>
-          <div>pH de mistura${campo(p.ph)}</div>
-          <div class="full">Pragas / doenças${campo(p.alvos)}</div>
-          <div class="full">Culturas${campo(p.culturas)}</div>
+        <div class="fgrid">
+          ${cel('fabricante','Fabricante',p.fabricante)}
+          ${cel('ia','Ingrediente ativo',p.ingredienteAtivo)}
+          ${cel('formula','Fórmula / concentração',p.concentracao)}
+          ${cel('comp','Composição',p.composicao)}
+          ${cel('dose','Dose <i>(conforme cultura e praga)</i>',p.dose)}
+          ${cel('carencia','Carência <i>(intervalo de segurança)</i>',p.carencia)}
+          ${cel('classe','Classe toxicológica',p.classeToxicologica)}
+          ${cel('garantias','Garantias',p.garantias)}
+          ${cel('grupo','Grupo químico',p.frac)}
+          ${cel('ph','pH de mistura',p.ph)}
+          ${cel('irac','Grupo (IRAC)',p.irac)}
+          ${cel('tipoFormula','Tipo de formulação',p.formula)}
+          ${cel('alvos','Pragas / doenças <i>(alvos)</i>',p.alvos)}
+          ${cel('culturas','Culturas registradas',culturasTexto(p))}
         </div>
         ${temRest ? '<div class="restr"><b>Restrições de mistura</b>'+escapeHtml(p.restricoes)+'</div>' : ''}
         ${temCompat ? '<div class="compat"><b>Compatibilidades documentadas</b>'+escapeHtml(p.compatDocs)+'</div>' : ''}
-        <div class="igrid" style="margin-top:4px">
-          <div class="full">Fonte da informação<b>${escapeHtml(fonteTexto(p))}${p.conferidoEm ? ' · conferido em '+escapeHtml(fmtData(p.conferidoEm)) : ''}</b></div>
-          ${p.fonteUrl ? '<div class="full">URL da fonte<b><a href="'+escapeHtml(p.fonteUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+escapeHtml(p.fonteUrl)+'</a></b></div>' : ''}
+        <div class="fgrid fgrid-fonte">
+          ${cel('fonte','Fonte da informação',fonteTexto(p))}
+          ${urlCel}
         </div>
-        ${(p.obs||'').trim() ? '<div class="obs-box">'+escapeHtml(p.obs)+'</div>' : ''}
         <div class="bula-inline" id="bulaBox-${id}" hidden></div>
-        <div class="actions">
-          <button class="btn-edit" onclick="event.stopPropagation();abrirProduto('${id}')">Editar</button>
-          <button class="btn-pesq" onclick="event.stopPropagation();abrirPesquisa('${id}')">Pesquisar</button>
-          <button class="btn-foto" onclick="event.stopPropagation();abrirFoto('${id}')">Foto/OCR</button>
-          <button class="btn-bula" onclick="event.stopPropagation();verBula('${id}')">Bula</button>
+        <div class="p-actions">
+          <button class="btn-edit" onclick="event.stopPropagation();abrirProduto('${id}')">${ic('pencil','btn-ic')}Editar</button>
+          <button class="btn-bula" onclick="event.stopPropagation();verBula('${id}')">${ic('doc','btn-ic')}Bula</button>
+          <button class="btn-del" onclick="event.stopPropagation();excluirProduto('${id}')">${ic('trash','btn-ic')}Excluir</button>
+        </div>
+        <div class="actions-sec">
+          <button class="btn-pesq" onclick="event.stopPropagation();abrirPesquisa('${id}')">${ic('search','btn-ic')}Pesquisar</button>
+          <button class="btn-foto" onclick="event.stopPropagation();abrirFoto('${id}')">${ic('camera','btn-ic')}Foto/OCR</button>
           ${btnConferir(p)}
-          <button class="btn-del" onclick="event.stopPropagation();excluirProduto('${id}')">Excluir</button>
         </div>
       </div>
     </div>`;
@@ -1379,7 +1473,16 @@ function abrirProduto(id){
   document.getElementById('pBulaStat').textContent = (p && p.bulaFileId)
     ? 'Arquivo anexado no Drive. Anexar um novo arquivo SUBSTITUI o atual.'
     : 'Sem arquivo anexado.';
-  document.getElementById('pFonte').value = p ? (p.fonteInfo||'') : '';
+  const selFonte = document.getElementById('pFonte');
+  const fonteAtual = p ? String(p.fonteInfo||'') : '';
+  if(selFonte && selFonte.options && fonteAtual
+      && !Array.prototype.some.call(selFonte.options, o => o.value === fonteAtual)){
+    const op = document.createElement('option');
+    op.value = fonteAtual;
+    op.textContent = fonteAtual;
+    selFonte.appendChild(op);
+  }
+  if(selFonte) selFonte.value = fonteAtual;
   document.getElementById('pFonteUrl').value = p ? (p.fonteUrl||'') : '';
   document.getElementById('pFoto').value = p ? (p.foto||'') : '';
   document.getElementById('pFotoFile').value = '';

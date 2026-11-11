@@ -24,7 +24,9 @@ var SHEETS = {
   },
   insumosInfo: {
     name: 'InsumosInfo',
-    headers: ['id', 'dataCriacao', 'estoqueId', 'nome', 'categoria', 'ingredienteAtivo', 'composicao', 'formula', 'concentracao', 'fabricante', 'garantias', 'frac', 'irac', 'ph', 'alvos', 'culturas', 'dose', 'carencia', 'restricoes', 'compatDocs', 'bulaLink', 'fichaLink', 'bulaFileId', 'foto', 'fonteInfo', 'fonteUrl', 'conferidoEm', 'obs']
+    // 28 colunas originais + 10 anexadas no fim (migração automática no 1º acesso após o deploy)
+    headers: ['id', 'dataCriacao', 'estoqueId', 'nome', 'categoria', 'ingredienteAtivo', 'composicao', 'formula', 'concentracao', 'fabricante', 'garantias', 'frac', 'irac', 'ph', 'alvos', 'culturas', 'dose', 'carencia', 'restricoes', 'compatDocs', 'bulaLink', 'fichaLink', 'bulaFileId', 'foto', 'fonteInfo', 'fonteUrl', 'conferidoEm', 'obs',
+      'categoriaExtra', 'grupoComercial', 'finalidade', 'tipoAplicacao', 'nutrientes', 'formasQuimicas', 'solubilidade', 'densidade', 'armazenamento', 'origemDado']
   },
   caldas: {
     name: 'Caldas',
@@ -134,9 +136,14 @@ function norm_(s) {
 var APELIDOS = {
   'b': 'Nutrilife B+',
   'nutrilifeb': 'Nutrilife B+',
+  'nutrileafb': 'Nutrilife B+',
+  'nutrileaf': 'Nutrilife B+',
   'soilvacal': 'Carbonato de cálcio',
   'soilvita': 'Carbonato de cálcio',
-  'carbonatodecalcio': 'Carbonato de cálcio'
+  'carbonatodecalcio': 'Carbonato de cálcio',
+  'thyper': 'Typher',
+  'thyper50': 'Typher',
+  'toplime': 'Oleo de laranja'
 };
 
 function aplicarApelido_(nome) {

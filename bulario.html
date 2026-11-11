@@ -61,6 +61,9 @@
     background:var(--card); border:1px solid var(--line); cursor:pointer; color:var(--mut); transition:.18s; white-space:nowrap;}
   .tab:hover{background:var(--card2); color:var(--ink);}
   .tab.active{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
+  /* Sub-abas dentro de Produtos: Defensivos | Fertilizantes e insumos */
+  .tabs.sub{margin-bottom:14px;}
+  .tabs.sub .tab{min-width:130px; padding:9px 10px; font-size:12.5px;}
 
   section[hidden]{display:none !important;}
 
@@ -401,11 +404,25 @@
 
   <!-- ===== PRODUTOS ===== -->
   <section id="secProd">
+    <div class="tabs sub" id="tipoTabs">
+      <div class="tab active" data-t="def">Defensivos</div>
+      <div class="tab" data-t="fert">Fertilizantes e insumos</div>
+    </div>
     <div id="subLista">
       <div class="filters">
         <input id="busca" class="f-busca" type="text" placeholder="Buscar por nome, ingrediente, composição, fabricante, praga, doença ou categoria...">
       </div>
       <div id="list"><div class="loading">Carregando…</div></div>
+    </div>
+
+    <div id="subFert" hidden>
+      <div class="filters">
+        <input id="buscaFert" class="f-busca" type="text" placeholder="Buscar por nome, fabricante, categoria, nutriente, composição ou culturas...">
+        <div class="f-group"><label for="fFertCat">Categoria</label>
+          <select id="fFertCat"><option value="todas">Todas</option></select>
+        </div>
+      </div>
+      <div id="listFert"><div class="loading">Carregando…</div></div>
     </div>
 
     <div id="subBiblio" hidden>
@@ -574,10 +591,99 @@
   </div>
 </dialog>
 
+<!-- Ficha técnica de fertilizante/insumo (área Fertilizantes e insumos) -->
+<dialog id="dlgFicha">
+  <div class="sheet">
+    <h2 id="dlgFichaTitle">Editar ficha</h2>
+    <p class="sub">Dados técnicos do insumo. Campos sem documento ficam <b>pendentes de conferência</b> — nada é inventado.</p>
+    <div class="hint" id="fiEstoqueInfo" hidden></div>
+    <div class="fieldset-title">Identificação</div>
+    <div class="row2">
+      <div class="field"><label for="fiNome">Nome do produto</label><input id="fiNome" type="text" placeholder="ex: Soil K"></div>
+      <div class="field"><label for="fiFab">Fabricante</label><input id="fiFab" type="text" placeholder="ex: Nutrisoil"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiCat">Categoria funcional</label><select id="fiCat"></select></div>
+      <div class="field"><label for="fiCat2">Categoria adicional</label><select id="fiCat2"></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiGrupo">Grupo comercial</label><input id="fiGrupo" type="text" placeholder="ex: Combo Biológico Fertiquímica"></div>
+      <div class="field"><label for="fiFinal">Finalidade</label><input id="fiFinal" type="text" placeholder="ex: nutrição foliar"></div>
+    </div>
+    <div class="field"><label for="fiAplic">Tipo de aplicação</label><input id="fiAplic" type="text" placeholder="ex: foliar, fertirrigação ou solo"></div>
+    <div class="fieldset-title">Composição e qualidade</div>
+    <div class="row2">
+      <div class="field"><label for="fiNutri">Nutrientes</label><input id="fiNutri" type="text" placeholder="ex: K2O, Ca, B"></div>
+      <div class="field"><label for="fiGar">Garantias</label><input id="fiGar" type="text" placeholder="ex: 60% K2O"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiConc">Concentrações</label><input id="fiConc" type="text" placeholder="ex: 500 g/L"></div>
+      <div class="field"><label for="fiFormas">Formas químicas</label><input id="fiFormas" type="text" placeholder="ex: cloreto de potássio"></div>
+    </div>
+    <div class="field"><label for="fiComp">Composição (aminoácidos, extratos ou outros componentes)</label>
+      <textarea id="fiComp" rows="2" placeholder="conforme ficha técnica"></textarea></div>
+    <div class="row2">
+      <div class="field"><label for="fiSol">Solubilidade</label><input id="fiSol" type="text" placeholder="ex: alta em água"></div>
+      <div class="field"><label for="fiDens">Densidade</label><input id="fiDens" type="text" placeholder="ex: 1,2 g/mL"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiPh">pH</label><input id="fiPh" type="text" placeholder="ex: 6,0–7,5"></div>
+      <div class="field"><label for="fiArm">Armazenamento</label><input id="fiArm" type="text" placeholder="ex: local seco e ventilado"></div>
+    </div>
+    <div class="fieldset-title">Aplicação</div>
+    <div class="row2">
+      <div class="field"><label for="fiCult">Culturas</label><input id="fiCult" type="text" placeholder="ex: Tomate, Pepino"></div>
+      <div class="field"><label for="fiDose">Dose / recomendação</label><input id="fiDose" type="text" placeholder="ex: 2 L/ha"></div>
+    </div>
+    <div class="field"><label for="fiRest">Restrições</label>
+      <textarea id="fiRest" rows="2" placeholder="ex: não misturar com cálcio"></textarea></div>
+    <div class="field"><label for="fiCompat">Compatibilidade</label>
+      <textarea id="fiCompat" rows="2" placeholder="ex: compatível com a maioria dos defensivos"></textarea></div>
+    <div class="field"><label for="fiObs">Recomendações do fabricante / observações</label><textarea id="fiObs" rows="2"></textarea></div>
+    <div class="fieldset-title">Documentação</div>
+    <div class="row2">
+      <div class="field"><label for="fiBulaLink">Link do documento (PDF)</label><input id="fiBulaLink" type="url" placeholder="https://..."></div>
+      <div class="field"><label for="fiFichaLink">Link da página de origem</label><input id="fiFichaLink" type="url" placeholder="https://..."></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiFonte">Fonte da informação</label>
+        <select id="fiFonte">
+          <option value="">Sem fonte</option>
+          <option value="documento">Documento oficial</option>
+          <option value="fabricante">Site do fabricante</option>
+          <option value="foto">Foto (rótulo/bula)</option>
+          <option value="foto_conferida">Foto conferida</option>
+          <option value="nao_encontrada">Não encontrada</option>
+        </select>
+      </div>
+      <div class="field"><label for="fiFonteUrl">URL da fonte</label><input id="fiFonteUrl" type="url" placeholder="https://..."></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fiOrigem">Origem da informação</label>
+        <select id="fiOrigem">
+          <option value="">—</option>
+          <option value="oficial">oficial</option>
+          <option value="rótulo">rótulo</option>
+          <option value="extraído">extraído</option>
+          <option value="manual">manual</option>
+          <option value="não encontrada">não encontrada</option>
+        </select>
+      </div>
+      <div class="field"><label for="fiConferido">Consulta em</label><input id="fiConferido" type="text" readonly placeholder="—"></div>
+    </div>
+    <div class="hint">O PDF fica no Drive: use <b>Documento</b> no card para buscar "ficha técnica" e vincular.</div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgFicha').close()">Cancelar</button>
+      <button class="btn-save" onclick="salvarFicha()">Salvar</button>
+    </div>
+    <button class="prod-del" id="btnExcluirFicha" style="display:none" onclick="excluirFicha()">Excluir ficha</button>
+  </div>
+</dialog>
+
 <!-- Pesquisa assistida: tenta a fonte cadastrada automaticamente; cola texto/URL e OCR como alternativa -->
 <dialog id="dlgPesquisa">
   <div class="sheet">
-    <h2>Pesquisar dados do produto</h2>
+    <h2 id="qTitle">Pesquisar dados do produto</h2>
     <p class="sub" id="qAlvo">—</p>
     <div class="q-aviso" id="qLimites"><b>Pesquisa automática:</b> quando o produto já tem link de bula/ficha/fonte, o app baixa e lê o documento sozinho, priorizando fontes oficiais. <b>Descoberta automática de novas fontes:</b> o app procura documentos oficiais na web pelo backend (Code.gs), mostra cada candidato com host/pontuação e só grava o PDF depois da sua conferência de produto, fabricante e fórmula — <b>nada é simulado</b>. Se essa atualização do backend não estiver implantada, o app avisa e mantém as alternativas manuais (abrir busca na web, colar URL, Foto/OCR).</div>
     <div class="sheet-actions" style="margin-top:0">
@@ -810,8 +916,8 @@ async function apiPostMs(body, ms){
   }
   throw ultimo || new Error('falha de rede');
 }
-async function apiCall(action, extra){
-  return apiPost(Object.assign({tipo:'bulario', action}, extra||{}));
+async function apiCall(action, extra, tipo){
+  return apiPost(Object.assign({tipo: tipo || 'bulario', action}, extra||{}));
 }
 function arquivoBase64(file){
   return new Promise((res,rej)=>{ const r = new FileReader();
@@ -1042,6 +1148,17 @@ let fotoId = null;
 let avaliandoId = null;
 let bulaAtual = { link:'', fileId:'' };
 let analise = null;
+// ---- Área Fertilizantes e insumos (fichas técnicas na InsumosInfo) ----
+let tipoAba = 'def';           // 'def' (Defensivos) | 'fert' (Fertilizantes e insumos)
+let buscaFert = '';
+let catFert = 'todas';
+let pesquisaTipo = 'bulario';  // alvo da pesquisa assistida: 'bulario' | 'insumosInfo'
+let editandoFichaId = null;
+let fertSelectsMontados = false;
+// Categorias funcionais dos insumos (filtros + select da ficha). Valores sem documento
+// ficam como estão até a conferência da ficha técnica — nada é presumido.
+const CATEG_FERT = ['NPK', 'Ca/Mg', 'Micronutrientes', 'Aminoácidos', 'Extratos de algas',
+  'Bioestimulantes', 'Silício', 'Adjuvante', 'Biológico', 'Outros insumos'];
 
 async function carregar(){
   const listEl = document.getElementById('list');
@@ -1065,10 +1182,10 @@ async function carregar(){
     infos = d.insumosInfo || [];
     caldas = d.caldas || [];
     testes = d.testesCopo || [];
-    render(); renderCaldas(); renderKpis();
+    render(); renderCaldas(); renderKpis(); renderFerts();
     if(typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
   }catch(e){
-    if(lista && lista.length){ render(); return; }
+    if(lista && lista.length){ render(); renderFerts(); return; }
     listEl.innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
   }
 }
@@ -1130,6 +1247,365 @@ function itensFiltrados(){
     }
     return true;
   }).sort((a,b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR'));
+}
+
+// ==== Área: Fertilizantes e insumos (fichas técnicas na aba InsumosInfo) ====
+// Regras: lista fechada (fichas criadas pela equipe), vínculo com o Estoque por
+// estoqueId — nunca duplica produto nem toca em quantidade/movimentação.
+// Campos sem documento ficam "pendente" (nada é inventado).
+function montarCategoriasFicha(){
+  if(fertSelectsMontados) return;
+  fertSelectsMontados = true;
+  const preencher = (sel, comVazio) => {
+    if(!sel) return;
+    if(comVazio){ const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '—'; sel.appendChild(o0); }
+    CATEG_FERT.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+  };
+  preencher(document.getElementById('fiCat'), false);
+  preencher(document.getElementById('fiCat2'), true);
+  preencher(document.getElementById('fFertCat'), false);
+}
+function irTipo(t){
+  tipoAba = t === 'fert' ? 'fert' : 'def';
+  document.querySelectorAll('#tipoTabs .tab').forEach(x => x.classList.toggle('active', x.dataset.t === tipoAba));
+  document.getElementById('subLista').hidden = tipoAba !== 'def';
+  document.getElementById('subFert').hidden = tipoAba !== 'fert';
+  document.getElementById('hdrActions').hidden = tipoAba !== 'def';
+  if(tipoAba === 'fert'){ montarCategoriasFicha(); renderFerts(); }
+}
+function estoqueDaFicha(p){
+  if(!p) return null;
+  if(p.estoqueId){ const e = estoque.find(x => x.id === p.estoqueId); if(e) return e; }
+  const k = chave(p.nome);
+  if(!k) return null;
+  return estoque.find(x => chave(x.nome) === k) || null;
+}
+function fichaPorId(id){ return infos.find(x => x.id === id); }
+function infosFiltradas(){
+  return infos.filter(p => {
+    if(catFert !== 'todas' && (p.categoria || '') !== catFert) return false;
+    if(buscaFert){
+      const q = buscaFert.toLowerCase();
+      const alvo = [p.nome, p.fabricante, p.categoria, p.categoriaExtra, p.grupoComercial,
+        p.finalidade, p.tipoAplicacao, p.nutrientes, p.composicao, p.garantias,
+        p.culturas, p.obs].join(' ');
+      if(!alvo.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR'));
+}
+function toggleFert(id){
+  const el = document.getElementById('fert-' + id);
+  if(el) el.classList.toggle('open');
+}
+function fmtQtdEstoque(e){
+  const v = e.estoqueAtual;
+  const n = typeof v === 'number' ? String(v).replace('.', ',') : String(v == null ? '' : v);
+  return (n || '—') + (e.unidade ? ' ' + e.unidade : '');
+}
+function renderFerts(){
+  const wrap = document.getElementById('listFert');
+  if(!wrap) return;
+  if(!infos.length){
+    wrap.innerHTML = '<div class="empty">Nenhuma ficha de fertilizante/insumo cadastrada ainda.</div>';
+    return;
+  }
+  const itens = infosFiltradas();
+  if(!itens.length){
+    wrap.innerHTML = '<div class="empty">Nenhuma ficha encontrada com estes filtros.</div>';
+    return;
+  }
+  wrap.innerHTML = itens.map(p => {
+    const id = escapeHtml(p.id || '');
+    const est = estoqueDaFicha(p);
+    const temDoc = !!(p.bulaFileId || '').trim() || !!(p.bulaLink || '').trim() || !!(p.fichaLink || '').trim();
+    const conferido = !!(p.fonteInfo || '').trim() || !!(p.conferidoEm || '').trim();
+    const cel = (icNome, rot, valor) => {
+      const v = String(valor || '').trim();
+      return `<div class="fcell">${ic(icNome)}<div class="fbody">
+        <span class="flabel">${rot}</span>
+        <b class="${v ? '' : 'sem'}">${v ? escapeHtml(v) : 'pendente'}</b>
+      </div></div>`;
+    };
+    const status = (!temDoc && !conferido)
+      ? '<div class="hint">Ficha pendente de conferência — nenhum documento vinculado ainda.</div>'
+      : (!conferido ? '<div class="hint">Documento vinculado — dados ainda não conferidos.</div>' : '');
+    return `
+    <div class="item" id="fert-${id}">
+      <div class="item-top" onclick="toggleFert('${id}')">
+        <div class="item-title">
+          <b>${escapeHtml(p.nome)}</b>
+          <span class="chev"></span>
+        </div>
+        <span class="cat outro">${escapeHtml(p.categoria || 'Outros insumos')}</span>
+      </div>
+      ${p.fabricante ? `<div class="item-ia" onclick="toggleFert('${id}')">${escapeHtml(p.fabricante)}</div>` : ''}
+      ${p.grupoComercial ? `<div class="item-desc" onclick="toggleFert('${id}')">${escapeHtml(p.grupoComercial)}</div>` : ''}
+      <div class="item-desc" onclick="toggleFert('${id}')">${est ? 'Estoque: ' + escapeHtml(fmtQtdEstoque(est)) : 'Sem vínculo no Estoque'}</div>
+      <div class="prod-body">
+        ${status}
+        <div class="fieldset-title">Identificação</div>
+        <div class="fgrid">
+          ${cel('fabricante', 'Fabricante', p.fabricante)}
+          ${cel('comp', 'Categoria funcional', p.categoria)}
+          ${cel('grupo', 'Categoria adicional', p.categoriaExtra)}
+          ${cel('grupo', 'Grupo comercial', p.grupoComercial)}
+          ${cel('dose', 'Finalidade', p.finalidade)}
+          ${cel('dose', 'Tipo de aplicação', p.tipoAplicacao)}
+        </div>
+        <div class="fieldset-title">Composição e qualidade</div>
+        <div class="fgrid">
+          ${cel('comp', 'Nutrientes', p.nutrientes)}
+          ${cel('garantias', 'Garantias', p.garantias)}
+          ${cel('formula', 'Concentrações', p.concentracao)}
+          ${cel('comp', 'Formas químicas', p.formasQuimicas)}
+          ${cel('comp', 'Composição (aminoácidos/extratos)', p.composicao)}
+          ${cel('ph', 'Solubilidade', p.solubilidade)}
+          ${cel('ph', 'pH', p.ph)}
+          ${cel('ph', 'Densidade', p.densidade)}
+          ${cel('carencia', 'Armazenamento', p.armazenamento)}
+        </div>
+        <div class="fieldset-title">Aplicação</div>
+        <div class="fgrid">
+          ${cel('culturas', 'Culturas', p.culturas)}
+          ${cel('dose', 'Dose / recomendação', p.dose)}
+          ${cel('comp', 'Restrições', p.restricoes)}
+          ${cel('comp', 'Compatibilidade', p.compatDocs)}
+          ${cel('fonte', 'Recomendações do fabricante', p.obs)}
+        </div>
+        <div class="fieldset-title">Documentação</div>
+        <div class="fgrid fgrid-fonte">
+          ${cel('fonte', 'Fonte da informação', fonteTexto(p))}
+          ${cel('carencia', 'Consulta em', p.conferidoEm ? fmtData(p.conferidoEm) : '')}
+          ${cel('comp', 'Origem do dado', p.origemDado)}
+        </div>
+        ${p.fonteUrl ? `<div class="fcell">${ic('url')}<div class="fbody"><span class="flabel">URL da fonte</span>
+          <b><a href="${escapeHtml(p.fonteUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(p.fonteUrl)}</a></b>
+        </div></div>` : ''}
+        <div class="bula-inline" id="fertDocBox-${id}" hidden></div>
+        <div class="p-actions">
+          <button class="btn-edit" onclick="event.stopPropagation();abrirFicha('${id}')">${ic('pencil', 'btn-ic')}Editar</button>
+          <button class="btn-bula" onclick="event.stopPropagation();docFicha('${id}')">${ic('doc', 'btn-ic')}Documento</button>
+          <button class="btn-del" onclick="event.stopPropagation();excluirFicha('${id}')">${ic('trash', 'btn-ic')}Excluir</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function abrirFicha(id){
+  editandoFichaId = id || null;
+  const p = id ? fichaPorId(id) : null;
+  document.getElementById('dlgFichaTitle').textContent = p ? 'Editar ficha' : 'Nova ficha';
+  montarCategoriasFicha();
+  const set = (k, v) => { document.getElementById(k).value = v == null ? '' : String(v); };
+  set('fiNome', p ? p.nome : '');
+  set('fiFab', p ? p.fabricante : '');
+  const catSel = document.getElementById('fiCat');
+  const catAtual = p ? String(p.categoria || '') : '';
+  if(catSel && catAtual && CATEG_FERT.indexOf(catAtual) === -1){
+    const o = document.createElement('option'); o.value = catAtual; o.textContent = catAtual; catSel.appendChild(o);
+  }
+  set('fiCat', catAtual || 'Outros insumos');
+  set('fiCat2', p ? (p.categoriaExtra || '') : '');
+  set('fiGrupo', p ? p.grupoComercial : '');
+  set('fiFinal', p ? p.finalidade : '');
+  set('fiAplic', p ? p.tipoAplicacao : '');
+  set('fiNutri', p ? p.nutrientes : '');
+  set('fiGar', p ? p.garantias : '');
+  set('fiConc', p ? p.concentracao : '');
+  set('fiFormas', p ? p.formasQuimicas : '');
+  set('fiComp', p ? p.composicao : '');
+  set('fiSol', p ? p.solubilidade : '');
+  set('fiDens', p ? p.densidade : '');
+  set('fiPh', p ? p.ph : '');
+  set('fiArm', p ? p.armazenamento : '');
+  set('fiCult', p ? p.culturas : '');
+  set('fiDose', p ? p.dose : '');
+  set('fiRest', p ? p.restricoes : '');
+  set('fiCompat', p ? p.compatDocs : '');
+  set('fiObs', p ? p.obs : '');
+  set('fiBulaLink', p ? p.bulaLink : '');
+  set('fiFichaLink', p ? p.fichaLink : '');
+  set('fiFonte', p ? (p.fonteInfo || '') : '');
+  set('fiFonteUrl', p ? p.fonteUrl : '');
+  set('fiOrigem', p ? (p.origemDado || '') : '');
+  set('fiConferido', p && p.conferidoEm ? fmtData(p.conferidoEm) : '');
+  const info = document.getElementById('fiEstoqueInfo');
+  if(info){
+    const est = estoqueDaFicha(p);
+    if(est){
+      info.hidden = false;
+      info.textContent = 'Vinculado ao Estoque: ' + est.nome + ' — saldo ' + fmtQtdEstoque(est) +
+        ' (o saldo não é alterado por esta ficha).';
+    }else if(p && p.estoqueId){
+      info.hidden = false;
+      info.textContent = 'Vinculado ao Estoque, mas o item não foi encontrado na lista atual.';
+    }else{
+      info.hidden = false;
+      info.textContent = 'Sem vínculo no Estoque — ficha técnica apenas (nenhuma linha criada no Estoque).';
+    }
+  }
+  document.getElementById('btnExcluirFicha').style.display = p ? '' : 'none';
+  document.getElementById('dlgFicha').showModal();
+}
+function lerFichaForm(){
+  const g = id => document.getElementById(id).value;
+  return {
+    nome: g('fiNome').trim(),
+    fabricante: g('fiFab').trim(),
+    categoria: g('fiCat'),
+    categoriaExtra: g('fiCat2'),
+    grupoComercial: g('fiGrupo').trim(),
+    finalidade: g('fiFinal').trim(),
+    tipoAplicacao: g('fiAplic').trim(),
+    nutrientes: g('fiNutri').trim(),
+    garantias: g('fiGar').trim(),
+    concentracao: g('fiConc').trim(),
+    formasQuimicas: g('fiFormas').trim(),
+    composicao: g('fiComp').trim(),
+    solubilidade: g('fiSol').trim(),
+    densidade: g('fiDens').trim(),
+    ph: g('fiPh').trim(),
+    armazenamento: g('fiArm').trim(),
+    culturas: g('fiCult').trim(),
+    dose: g('fiDose').trim(),
+    restricoes: g('fiRest').trim(),
+    compatDocs: g('fiCompat').trim(),
+    obs: g('fiObs').trim(),
+    bulaLink: g('fiBulaLink').trim(),
+    fichaLink: g('fiFichaLink').trim(),
+    fonteInfo: g('fiFonte'),
+    fonteUrl: g('fiFonteUrl').trim(),
+    origemDado: g('fiOrigem')
+  };
+}
+async function salvarFicha(){
+  const dados = lerFichaForm();
+  if(!dados.nome){ alert('Digite o nome do produto.'); return; }
+  if(dados.fonteInfo || dados.fonteUrl || dados.bulaLink || dados.fichaLink) dados.conferidoEm = hojeISO();
+  if(editandoFichaId){
+    const p = fichaPorId(editandoFichaId);
+    if(!p) return;
+    Object.assign(p, dados);
+    renderFerts();
+    document.getElementById('dlgFicha').close();
+    await apiCall('update', { id: editandoFichaId, data: dados }, 'insumosInfo');
+  }else{
+    const novo = Object.assign({}, dados);
+    const res = await apiCall('add', { data: novo }, 'insumosInfo');
+    if(res && res.id) novo.id = res.id;
+    infos.push(novo);
+    renderFerts();
+    document.getElementById('dlgFicha').close();
+  }
+}
+async function excluirFicha(idArg){
+  const id = idArg || editandoFichaId;
+  const p = fichaPorId(id);
+  if(!p) return;
+  if(!confirm('Excluir a ficha técnica de "' + p.nome + '"? O item do Estoque não é afetado.')) return;
+  infos = infos.filter(x => x.id !== id);
+  renderFerts();
+  const dlg = document.getElementById('dlgFicha');
+  if(dlg.open) dlg.close();
+  await apiCall('delete', { id }, 'insumosInfo');
+}
+// ---- Documento da ficha: PDF no Drive (leitor embutido) / link externo / busca ----
+async function docFicha(id){
+  const p = fichaPorId(id);
+  if(!p) return;
+  const card = document.getElementById('fert-' + id);
+  if(card && card.classList && !card.classList.contains('open')) card.classList.add('open');
+  const box = document.getElementById('fertDocBox-' + id);
+  if(!box) return;
+  box.hidden = false;
+  bulaAtual = { link: String(p.bulaLink || p.fichaLink || ''), fileId: String(p.bulaFileId || '') };
+  if(bulaAtual.fileId){
+    box.innerHTML = '<div class="bula-box"><div class="bula-msg">Carregando o arquivo do Drive…</div></div>' + fertDocTools(p);
+    try{
+      const r = await fetch(API_URL + '?anexoB64=' + encodeURIComponent(bulaAtual.fileId));
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || 'falha ao carregar');
+      if(bulaBlobUrl){ try{ URL.revokeObjectURL(bulaBlobUrl); }catch(e){} bulaBlobUrl = ''; }
+      const bytes = Uint8Array.from(atob(j.b64), c => c.charCodeAt(0));
+      bulaBlobUrl = URL.createObjectURL(new Blob([bytes], { type: j.mime || 'application/octet-stream' }));
+      const pdf = /pdf/i.test(j.mime || '') || /\.pdf$/i.test(j.nome || '');
+      if(pdf){
+        box.innerHTML = '<div class="bula-box"><div class="pv" id="fertPv-' + id + '"></div></div>' + fertDocTools(p);
+        const root = document.getElementById('fertPv-' + id);
+        pvAbrir(root, bytes, { nome: j.nome || 'ficha.pdf', blobUrl: bulaBlobUrl }).catch(function(){});
+      }else{
+        box.innerHTML = '<div class="bula-box"><img src="' + bulaBlobUrl + '" alt="' +
+          escapeHtml(j.nome || 'documento') + '"></div>' + fertDocTools(p);
+      }
+    }catch(e){
+      box.innerHTML = '<div class="bula-box"><div class="bula-msg">Não consegui carregar o arquivo do Drive.<br><small>' +
+        escapeHtml(e.message) + '</small></div></div>' + fertDocTools(p);
+    }
+    return;
+  }
+  if(bulaAtual.link){
+    box.innerHTML = '<div class="bula-box"><div class="bula-msg"><b>Documento em link externo</b><br>' +
+      escapeHtml(bulaAtual.link) + '<br>Sites oficiais podem bloquear a exibição dentro da página: ' +
+      'use <b>Abrir em nova aba</b> ou <b>Salvar PDF no Drive</b> para exibir aqui.</div></div>' +
+      fertDocTools(p);
+    return;
+  }
+  box.innerHTML = '<div class="bula-box"><div class="bula-msg"><b>Nenhum documento vinculado</b> a esta ficha — ' +
+    'use <b>Buscar ficha técnica automaticamente</b> para localizar o PDF oficial, conferir e vincular.</div></div>' +
+    fertDocTools(p);
+}
+function fertDocTools(p){
+  const temArq = !!(p.bulaFileId || '').trim();
+  const temLink = !!(p.bulaLink || p.fichaLink || '').trim();
+  const b = [];
+  if(temLink) b.push('<button class="gold" onclick="event.stopPropagation();abrirBulaExterna()">Abrir em nova aba</button>');
+  if(temLink && !temArq) b.push('<button class="gold" onclick="event.stopPropagation();importarDocDrive(\'' + p.id + '\')">Salvar PDF no Drive</button>');
+  if(!temArq) b.push('<button class="gold" onclick="event.stopPropagation();descobrirBulaFert(\'' + p.id + '\')">Buscar ficha técnica automaticamente</button>');
+  if(temArq || temLink) b.push('<button onclick="event.stopPropagation();substituirDoc(\'' + p.id + '\')">Substituir documento</button>');
+  b.push('<button onclick="event.stopPropagation();abrirFicha(\'' + p.id + '\')">Editar ficha</button>');
+  return '<div class="bula-tools">' + b.join('') + '</div><div class="bula-stat" id="bulaStat-' + p.id + '"></div>';
+}
+async function descobrirBulaFert(id){
+  abrirPesquisa(id, false, 'insumosInfo');
+  await descobrirAutomaticamente();
+}
+function substituirDoc(id){ abrirFicha(id); }
+// "Salvar PDF no Drive" da ficha: baixa pela busca real e vincula SÓ o PDF (sem conferir dados).
+async function importarDocDrive(id){
+  const p = resolverCadastro(id, 'insumosInfo');
+  if(!p) return;
+  const link = String(p.bulaLink || p.fichaLink || '').trim();
+  if(!link) return;
+  const setar = t => { const s = document.getElementById('bulaStat-' + id); if(s) s.textContent = t; };
+  abrirPesquisa(id, true, 'insumosInfo');
+  setar('Buscando fontes deste documento…');
+  let urls = [link];
+  try{
+    const r = await buscarCandidatos(p);
+    if(!r.indisponivel && r.encontrados && r.encontrados.length){
+      ultimosCandidatos = r.encontrados;
+      urls = urls.concat(r.encontrados.map(c => c && c.url).filter(u => u && urls.indexOf(u) < 0)).slice(0, 8);
+      const out = document.getElementById('qOut');
+      if(out) out.innerHTML = '<div class="q-fonte">Encontrei ' + r.encontrados.length +
+        ' fonte(s) na web — vou tentar em ordem até baixar um PDF válido. Nada é aplicado sem sua conferência.</div>';
+    }
+  }catch(e){ /* sem busca: tenta só o link cadastrado */ }
+  setar('Baixando o documento da fonte…');
+  const res = await baixarEConferir(urls, false);
+  if(res && res.ok) setar('PDF salvo no Drive e vinculado à ficha — os dados do cadastro não foram alterados.');
+  else if(res && res.cancelado) setar('Importação cancelada — nada foi alterado.');
+  else if(res && res.conflito) setar('Já existe um documento para este produto — escolha no diálogo o que fazer.');
+  else setar('Não consegui salvar no Drive (' + String((res && res.erro) || 'falha desconhecida') + ').');
+}
+// Resolve o cadastro-alvo da pesquisa assistida (Defensivos → lista, Fichas → infos).
+function resolverCadastro(id, tipo){
+  const arr = (tipo || pesquisaTipo) === 'insumosInfo' ? infos : lista;
+  return arr.find(x => x.id === id) || null;
+}
+function renderTipo(tipo){
+  if((tipo || pesquisaTipo) === 'insumosInfo') renderFerts();
+  else render();
 }
 // ==== Completude e conferência técnica campo a campo ====
 // Prévia técnica vem de previa-tecnica.js (gerado pela pesquisa automática dos 42
@@ -1617,13 +2093,24 @@ document.getElementById('busca').addEventListener('input', (e) => {
   render();
 });
 
+// ---- Sub-abas: Defensivos | Fertilizantes e insumos ----
+document.getElementById('buscaFert').addEventListener('input', (e) => {
+  buscaFert = e.target.value;
+  renderFerts();
+});
+document.getElementById('fFertCat').addEventListener('change', (e) => {
+  catFert = e.target.value;
+  renderFerts();
+});
+document.querySelectorAll('#tipoTabs .tab').forEach(t => t.addEventListener('click', () => irTipo(t.dataset.t)));
+
 // ---- Abas ----
 function irPara(sec){
   document.querySelectorAll('#secTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.s === sec));
   document.getElementById('secProd').hidden = sec !== 'prod';
   document.getElementById('secMontarDev').hidden = sec !== 'montar';
   document.getElementById('secBiblioDev').hidden = sec !== 'biblio';
-  document.getElementById('hdrActions').hidden = sec !== 'prod';
+  document.getElementById('hdrActions').hidden = sec !== 'prod' || tipoAba !== 'def';
   if(sec !== 'prod') document.getElementById('adminMenu').hidden = true;
 }
 document.querySelectorAll('#secTabs .tab').forEach(t => t.addEventListener('click', () => irPara(t.dataset.s)));
@@ -1696,12 +2183,16 @@ let pesquisaExtraida = null;
 let pesquisaFonte = '';      // URL consultada ('' = conteúdo colado manualmente)
 let pesquisaConfirma = false; // exige confirmação de fabricante/fórmula?
 
-function abrirPesquisa(id, soSalvar){
+function abrirPesquisa(id, soSalvar, tipo){
+  pesquisaTipo = tipo || 'bulario';
   pesquisaId = id;
   pesquisaExtraida = null; pesquisaFonte = ''; pesquisaConfirma = false;
   pesquisaArquivoId = ''; pesquisaArquivoUrl = ''; pesquisaSomenteVinculo = false;
   pesquisaSoSalvar = !!soSalvar;
-  const p = produtoPorId(id);
+  const p = resolverCadastro(id, pesquisaTipo);
+  const ehFert = pesquisaTipo === 'insumosInfo';
+  document.getElementById('qTitle').textContent = ehFert ? 'Pesquisar dados da ficha técnica' : 'Pesquisar dados do produto';
+  document.getElementById('qAplicar').textContent = ehFert ? 'Aplicar à ficha' : 'Aplicar ao produto';
   document.getElementById('qTexto').value = '';
   document.getElementById('qOut').innerHTML = '';
   document.getElementById('qAplicar').disabled = true;
@@ -1752,7 +2243,8 @@ function produtosSemelhantes(p){
   const k = chave(p.nome);
   if(!k) return [];
   const out = [];
-  for(const o of lista){
+  const arr = pesquisaTipo === 'insumosInfo' ? infos : lista;
+  for(const o of arr){
     if(!o.id || o.id === p.id) continue;
     const ko = chave(o.nome);
     if(!ko || ko === k) continue;
@@ -1835,7 +2327,7 @@ function extrairPesquisa(){
     document.getElementById('qAplicar').disabled = true;
     return;
   }
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   const d = extrairCampos(txt, null); // só o que está no texto colado (nada herdado do cadastro)
   const algum = ['ingredienteAtivo','dose','carencia','classeToxicologica','fabricante',
     'composicao','alvos','concentracao','formula','culturas'].some(k => String(d[k]||'').trim());
@@ -1883,7 +2375,7 @@ function extrairCampos(txt, p){
   };
 }
 function aplicarPesquisa(){
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   if(!p || (!pesquisaExtraida && !pesquisaSomenteVinculo)) return;
   if(pesquisaConfirma && !document.getElementById('qConf').checked){
     alert('Confirme fabricante e fórmula/concentração na caixa de conferência antes de aplicar.');
@@ -1907,9 +2399,9 @@ function aplicarPesquisa(){
   dados.conferidoEm = hojeISO();
   Object.assign(p, dados);
   pesquisaArquivoId = ''; pesquisaArquivoUrl = ''; pesquisaSomenteVinculo = false;
-  render();
+  renderTipo(pesquisaTipo);
   document.getElementById('dlgPesquisa').close();
-  apiCall('update', { id: p.id, data: dados });
+  apiCall('update', { id: p.id, data: dados }, pesquisaTipo);
 }
 
 // ---- Descoberta automática de bula/ficha (backend Code.gs) ----
@@ -1939,7 +2431,8 @@ function nomeBusca(p){
 async function buscarCandidatos(p){
   try{
     const j = await apiPost({ tipo:'bulario', action:'buscarBula', nome:nomeBusca(p),
-      fabricante:p.fabricante || '', categoria:p.categoria || '' });
+      fabricante:p.fabricante || '',
+      categoria: pesquisaTipo === 'insumosInfo' ? 'Fertilizante' : (p.categoria || '') });
     if(ehAcaoInvalida(j)) return { indisponivel:true, motivo:AVISO_BULA_SEM_BACKEND };
     if(!j || !j.ok) return { indisponivel:true,
       motivo:'A busca falhou: ' + String((j && j.error) || 'sem resposta') + '.' };
@@ -1949,10 +2442,12 @@ async function buscarCandidatos(p){
   }
 }
 function htmlAlternativasBula(){
+  const foto = pesquisaTipo === 'insumosInfo' ? '' :
+    '<button class="btn-anal" onclick="document.getElementById(\'dlgPesquisa\').close();abrirFoto(\'' +
+      pesquisaId + '\')">Foto/OCR</button>';
   return '<div class="sheet-actions" style="margin-top:10px">' +
     '<button class="btn-pesq" onclick="abrirBuscaExterna()">Abrir busca na web</button>' +
-    '<button class="btn-anal" onclick="document.getElementById(\'dlgPesquisa\').close();abrirFoto(\'' +
-      pesquisaId + '\')">Foto/OCR</button></div>';
+    foto + '</div>';
 }
 function exigirConfirmacaoBaixado(){
   // Regra: nunca aplicar documento baixado automaticamente sem confirmação explícita.
@@ -1978,7 +2473,7 @@ async function lerTextoDoArquivo(fileId){
   return await textoDePdf(bytes);
 }
 async function descobrirAutomaticamente(){
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   const out = document.getElementById('qOut');
   const btn = document.getElementById('qAuto');
   if(!p || !out) return;
@@ -2027,14 +2522,14 @@ async function descobrirBula(id){
   await descobrirAutomaticamente();
 }
 function marcarNaoEncontrado(){
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   if(!p) return;
   if(!confirm('Marcar "' + p.nome + '" como "Documento não encontrado" nesta data? O cadastro é ' +
     'preservado — apenas a fonte/documento é marcado como não encontrado.')) return;
   const dados = { fonteInfo:'nao_encontrada', conferidoEm: hojeISO() };
   Object.assign(p, dados);
-  render();
-  apiCall('update', { id:p.id, data: dados });
+  renderTipo(pesquisaTipo);
+  apiCall('update', { id:p.id, data: dados }, pesquisaTipo);
   document.getElementById('qOut').innerHTML =
     '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Marcado</span>' +
     'Documento não registrado como encontrado para ' + escapeHtml(p.nome) +
@@ -2049,7 +2544,7 @@ async function usarCandidato(i){
 // `alvo` pode ser uma URL ou uma lista (o backend tenta em ordem até achar um PDF válido).
 // Sempre devolve { ok } para o chamador dizer ao operador o que aconteceu.
 async function baixarEConferir(alvo, forcar){
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   const out = document.getElementById('qOut');
   if(!p || !out) return { ok:false, erro:'diálogo de pesquisa indisponível' };
   const listaUrls = (Array.isArray(alvo) ? alvo : [alvo])
@@ -2103,11 +2598,11 @@ async function baixarEConferir(alvo, forcar){
   const urlFonte = arq.fonte || url;
   // "Salvar PDF no Drive": vincula SOMENTE o arquivo ao cadastro — nenhum dado
   // do produto é lido, conferido nem alterado nesta modalidade.
-  if(pesquisaSoSalvar){
+    if(pesquisaSoSalvar){
     const dados = { bulaFileId: arq.id };
     Object.assign(p, dados);
     try{
-      const up = await apiCall('update', { id: p.id, data: dados });
+      const up = await apiCall('update', { id: p.id, data: dados }, pesquisaTipo);
       if(!up || up.ok === false) throw new Error(String((up && up.error) || 'falha na API'));
     }catch(e){
       out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
@@ -2116,8 +2611,8 @@ async function baixarEConferir(alvo, forcar){
         htmlAlternativasBula();
       return { ok:false, erro:String(e.message || e) };
     }
-    if(typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
-    render();
+    if(pesquisaTipo === 'bulario' && typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
+    renderTipo(pesquisaTipo);
     out.innerHTML = '<div class="res-box ok" style="margin-top:0">PDF salvo no Drive e vinculado a ' +
       escapeHtml(p.nome) + ' — <b>os dados do cadastro não foram alterados</b>.</div>';
     return { ok:true, arq:arq, soSalvar:true };
@@ -2252,7 +2747,7 @@ function loadPdfJs(){
   });
 }
 async function pesquisaAutomatica(){
-  const p = produtoPorId(pesquisaId);
+  const p = resolverCadastro(pesquisaId, pesquisaTipo);
   const out = document.getElementById('qOut');
   if(!p){ return; }
   const semelhantes = produtosSemelhantes(p);
@@ -3175,6 +3670,7 @@ async function excluirCalda(id){
 renderSel();
 renderCatalogo();
 renderKpis();
+montarCategoriasFicha();
 carregar();
 carregarPrevia().then(ok => { if(ok && lista && lista.length) render(); });
 </script>

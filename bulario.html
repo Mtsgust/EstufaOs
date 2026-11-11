@@ -168,9 +168,11 @@
 
   .item-ia{font-size:14px; font-weight:700; color:var(--ink); margin-top:6px; cursor:pointer; letter-spacing:-.01em; line-height:1.35;}
   .item-desc{font-size:12.5px; color:var(--mut); margin-top:4px; line-height:1.5; cursor:pointer;}
-  .cult-row{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; cursor:pointer;}
+  .cult-row{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:9px; cursor:pointer;}
   .cult{font-size:10.5px; background:transparent; border:1px solid rgba(143,209,154,.4); color:var(--lime);
-    padding:3px 9px; border-radius:14px; font-weight:500;}
+    padding:3px 9px; border-radius:14px; font-weight:500; white-space:nowrap;}
+  .cult-sep{font-size:10.5px; color:var(--dim); font-weight:700;}
+  .cult-more{font-size:10.5px; color:var(--mut); font-weight:600; white-space:nowrap;}
 
   .prod-body{display:none; border-top:1px solid var(--line); margin-top:12px; padding-top:12px;}
   .item.open .prod-body{display:block;}
@@ -202,7 +204,7 @@
   .btn-bula{background:transparent; color:var(--gold); border:1px solid rgba(217,164,65,.4)!important;}
   .btn-del{background:transparent; color:var(--red); border:1px solid rgba(224,120,95,.45)!important; flex:0 0 84px!important;}
 
-  /* Ações do card de produto (linha principal + linha secundária) */
+  /* Ações do card de produto (somente Editar/Bula/Excluir) */
   .p-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
   .p-actions button{flex:1; border-radius:12px; padding:12px 8px; font-size:13.5px; font-weight:700;
     cursor:pointer; font-family:inherit; border:1.5px solid var(--line); background:transparent;
@@ -211,14 +213,6 @@
   .p-actions .btn-edit{color:var(--lime); border-color:var(--leaf)!important;}
   .p-actions .btn-bula{color:var(--gold); border-color:rgba(217,164,65,.55)!important;}
   .p-actions .btn-del{color:var(--red); border-color:rgba(224,120,95,.55)!important; flex:1!important;}
-  .actions-sec{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap;}
-  .actions-sec button{border-radius:10px; padding:7px 13px; font-size:12px; font-weight:600; cursor:pointer;
-    font-family:inherit; border:1px solid var(--line); background:var(--card2); color:var(--ink);
-    transition:.15s; display:inline-flex; align-items:center; gap:7px; flex:0 1 auto;}
-  .actions-sec button:hover{border-color:var(--leaf);}
-  .actions-sec .btn-pesq{color:var(--blue); border-color:rgba(74,155,217,.4)!important; background:transparent;}
-  .actions-sec .btn-foto{color:var(--lime); border-color:var(--leaf)!important; background:transparent;}
-  .actions-sec .btn-conf{color:var(--gold); border-color:rgba(217,164,65,.45)!important; background:transparent;}
 
   /* Montar calda */
   .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px;}
@@ -354,7 +348,10 @@
     .row2{flex-direction:column;}
     .fgrid{grid-template-columns:1fr; gap:0;}
     .actions button{flex:1 1 calc(50% - 4px);}
-    .p-actions button{flex:1 1 calc(50% - 4px);}
+    .p-actions{gap:7px; flex-wrap:nowrap;}
+    .p-actions button{flex:1 1 0; min-width:0; padding:11px 4px; font-size:12.5px; gap:5px;}
+    .p-actions .btn-edit, .p-actions .btn-bula{flex:1.45 1 0;}
+    .p-actions .btn-del{flex:1 1 0!important;}
     .sinais{grid-template-columns:1fr;}
     .selrow input.dose{width:100%; order:5;}
     .item{padding:12px 13px;}
@@ -1238,7 +1235,8 @@ function ic(nome, cls){
   return '<svg class="fi '+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';
 }
 function culturasLista(p){
-  return String(p.culturas||'').split(',').map(s => s.trim()).filter(Boolean);
+  return String(p.culturas||'').split(',').map(s => s.trim()).filter(Boolean)
+    .flatMap(s => s.split(/\s+e\s+/).map(x => x.trim()).filter(Boolean));
 }
 // Lista -> frase ("Algodão, batata, ... tomate e uva.") para o campo CULTURAS REGISTRADAS.
 function culturasTexto(p){
@@ -1250,6 +1248,27 @@ function culturasTexto(p){
   else if(l.length === 2) t = cap(l[0]) + ' e ' + l[1];
   else t = cap(l[0]) + ', ' + l.slice(1, -1).join(', ') + ' e ' + l[l.length - 1];
   return t + '.';
+}
+// Resumo das culturas no card (só apresentação — os dados não mudam):
+// destaca Tomate e Pepino em chips; o resto vira contador discreto.
+function culturasResumoHtml(id, p){
+  const l = culturasLista(p);
+  if(!l.length) return '';
+  const vistos = new Set(), distintas = [];
+  for(const c of l){ const k = chave(c); if(!vistos.has(k)){ vistos.add(k); distintas.push(c); } }
+  const temTomate = distintas.some(c => chave(c) === 'tomate');
+  const temPepino = distintas.some(c => chave(c) === 'pepino');
+  const outras = distintas.length - (temTomate ? 1 : 0) - (temPepino ? 1 : 0);
+  const partes = [];
+  if(temTomate) partes.push('<span class="cult">Tomate</span>');
+  if(temPepino) partes.push('<span class="cult">Pepino</span>');
+  if(outras > 0){
+    const n = outras + (outras === 1 ? ' outra cultura' : ' outras culturas');
+    partes.push('<span class="cult-more">' + (partes.length ? '+' : '') + escapeHtml(n) + '</span>');
+  }
+  if(!partes.length) return '';
+  return '<div class="cult-row" onclick="toggle(\'' + id + '\')">' +
+    partes.join(' <span class="cult-sep">·</span> ') + '</div>';
 }
 function btnConferir(p){
   const v = previaProduto(p.id);
@@ -1387,7 +1406,6 @@ function render(){
   }
   wrap.innerHTML = itens.map(p => {
     const id = escapeHtml(p.id||'');
-    const cults = culturasLista(p);
     const temRest = !!(p.restricoes||'').trim();
     const temCompat = !!(p.compatDocs||'').trim();
     const ia = String(p.ingredienteAtivo||'').trim();
@@ -1414,7 +1432,7 @@ function render(){
       </div>
       ${ia ? `<div class="item-ia" onclick="toggle('${id}')">${escapeHtml(ia)}</div>` : ''}
       ${desc ? `<div class="item-desc" onclick="toggle('${id}')">${escapeHtml(desc)}</div>` : ''}
-      ${cults.length ? `<div class="cult-row" onclick="toggle('${id}')">${cults.map(c=>'<span class="cult">'+escapeHtml(c)+'</span>').join('')}</div>` : ''}
+      ${culturasResumoHtml(id, p)}
       <div class="prod-body">
         ${linhaCadastro(p)}
         <div class="fgrid">
@@ -1444,11 +1462,6 @@ function render(){
           <button class="btn-edit" onclick="event.stopPropagation();abrirProduto('${id}')">${ic('pencil','btn-ic')}Editar</button>
           <button class="btn-bula" onclick="event.stopPropagation();verBula('${id}')">${ic('doc','btn-ic')}Bula</button>
           <button class="btn-del" onclick="event.stopPropagation();excluirProduto('${id}')">${ic('trash','btn-ic')}Excluir</button>
-        </div>
-        <div class="actions-sec">
-          <button class="btn-pesq" onclick="event.stopPropagation();abrirPesquisa('${id}')">${ic('search','btn-ic')}Pesquisar</button>
-          <button class="btn-foto" onclick="event.stopPropagation();abrirFoto('${id}')">${ic('camera','btn-ic')}Foto/OCR</button>
-          ${btnConferir(p)}
         </div>
       </div>
     </div>`;

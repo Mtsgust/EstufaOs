@@ -1669,10 +1669,11 @@ let pesquisaExtraida = null;
 let pesquisaFonte = '';      // URL consultada ('' = conteúdo colado manualmente)
 let pesquisaConfirma = false; // exige confirmação de fabricante/fórmula?
 
-function abrirPesquisa(id){
+function abrirPesquisa(id, soSalvar){
   pesquisaId = id;
   pesquisaExtraida = null; pesquisaFonte = ''; pesquisaConfirma = false;
   pesquisaArquivoId = ''; pesquisaArquivoUrl = ''; pesquisaSomenteVinculo = false;
+  pesquisaSoSalvar = !!soSalvar;
   const p = produtoPorId(id);
   document.getElementById('qTexto').value = '';
   document.getElementById('qOut').innerHTML = '';
@@ -1895,6 +1896,7 @@ const AVISO_BULA_SEM_BACKEND =
 let pesquisaArquivoId = '';        // PDF salvo no Drive durante a conferência (pendente de aplicar)
 let pesquisaArquivoUrl = '';       // URL da fonte do documento escolhido
 let pesquisaSomenteVinculo = false;// leitura do PDF falhou: vincular sem extrair dados
+let pesquisaSoSalvar = false;      // "Salvar PDF no Drive": só vincula o PDF, sem conferência de dados
 let ultimosCandidatos = [];        // candidatos da última busca real (evita montar JS com URL crua)
 
 function ehAcaoInvalida(j){
@@ -2072,6 +2074,27 @@ async function baixarEConferir(alvo, forcar){
   }
   pesquisaArquivoId = arq.id;
   const urlFonte = arq.fonte || url;
+  // "Salvar PDF no Drive": vincula SOMENTE o arquivo ao cadastro — nenhum dado
+  // do produto é lido, conferido nem alterado nesta modalidade.
+  if(pesquisaSoSalvar){
+    const dados = { bulaFileId: arq.id };
+    Object.assign(p, dados);
+    try{
+      const up = await apiCall('update', { id: p.id, data: dados });
+      if(!up || up.ok === false) throw new Error(String((up && up.error) || 'falha na API'));
+    }catch(e){
+      out.innerHTML = '<div class="res-box bad" style="margin-top:0"><span class="res-tag">Falha</span>' +
+        escapeHtml('O PDF foi salvo no Drive, mas não consegui vincular ao produto (' +
+        String(e.message || e) + '). Nenhum dado do cadastro foi alterado.') + '</div>' +
+        htmlAlternativasBula();
+      return { ok:false, erro:String(e.message || e) };
+    }
+    if(typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
+    render();
+    out.innerHTML = '<div class="res-box ok" style="margin-top:0">PDF salvo no Drive e vinculado a ' +
+      escapeHtml(p.nome) + ' — <b>os dados do cadastro não foram alterados</b>.</div>';
+    return { ok:true, arq:arq, soSalvar:true };
+  }
   out.innerHTML = '<div class="loading">Lendo o PDF salvo para conferência…</div>';
   let texto = '', falhaLeitura = '';
   try{ texto = await lerTextoDoArquivo(arq.id); }
@@ -2640,15 +2663,14 @@ function substituirBula(id){
       'Há um PDF anexado no Drive. Anexar um novo arquivo SUBSTITUI o documento atual.';
   }
 }
-// "Salvar PDF no Drive": caminho ÚNICO já testado do app — busca fontes reais no backend,
-// baixa pelo baixarBula (tenta os candidatos em ordem) e abre a conferência.
-// Nada é vinculado ao cadastro sem a confirmação explícita do operador.
+// "Salvar PDF no Drive": busca fontes reais no backend, baixa pelo baixarBula (tenta os
+// candidatos em ordem) e vincula SOMENTE o PDF ao cadastro — nenhum dado é conferido
+// nem alterado (o clique no botão já é a confirmação do operador de salvar a bula).
 async function importarBulaDrive(id){
   const p = produtoPorId(id);
   if(!p || !p.bulaLink) return;
-  const stat = document.getElementById('bulaStat-' + id);
-  const setar = t => { if(stat) stat.textContent = t; };
-  abrirPesquisa(id);
+  const setar = t => { const s = document.getElementById('bulaStat-' + id); if(s) s.textContent = t; };
+  abrirPesquisa(id, true);
   setar('Buscando fontes deste documento…');
   let urls = [p.bulaLink];
   try{
@@ -2666,7 +2688,7 @@ async function importarBulaDrive(id){
   setar('Baixando o documento da fonte…');
   const res = await baixarEConferir(urls, false);
   if(res && res.ok){
-    setar('PDF salvo no Drive — confira os dados na janela aberta e clique em Aplicar para vincular.');
+    setar('PDF salvo no Drive e vinculado ao produto — os dados do cadastro não foram alterados.');
   }else if(res && res.cancelado){
     setar('Importação cancelada — nada foi alterado.');
   }else if(res && res.conflito){

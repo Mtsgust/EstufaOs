@@ -504,6 +504,7 @@
           <option>Fertilizante</option><option>Adjuvante</option><option>Bioestimulante</option>
           <option>Inoculante</option><option>Outros</option>
           <option value="Inseticida/Acaricida">Inseticida/Acaricida (legado)</option>
+          <option value="Fungicida/Bactericida">Fungicida/Bactericida</option>
         </select>
       </div>
       <div class="field"><label for="pFabricante">Fabricante</label><input id="pFabricante" type="text" placeholder="ex: Syngenta"></div>
@@ -721,26 +722,26 @@ const BULARIO_KEY = 'bularioProdutos_v1';
 const BULARIO_SEED = [
   ['Metiltiofan','Fungicida'], ['Orthocide','Fungicida'], ['Cercobin','Fungicida'],
   ['Dithane','Fungicida'], ['Score','Fungicida'], ['Amistar Top','Fungicida'],
-  ['Influx','Inseticida/Acaricida'], ['Verdavis','Inseticida/Acaricida'], ['Cabrio Top','Fungicida'],
+  ['Influx','Inseticida'], ['Verdavis','Inseticida/Acaricida'], ['Cabrio Top','Fungicida'],
   ['Bravonil 720','Fungicida'], ['Maxim','Fungicida'], ['Cobre Vermelho','Fungicida'],
-  ['Abelto Pro','Fungicida'], ['Verno','Fungicida'],
+  ['Abelto Pro','Fungicida'], ['Verno','Fertilizante'],
   ['Sumilex','Fungicida'], ['Bion','Fungicida'], ['RedShield','Fungicida'],
   ['Infinito','Fungicida'], ['Rovral','Fungicida'], ['Nativo','Fungicida'],
-  ['Elatus','Fungicida'], ['Kasumin','Fungicida'], ['Captive','Fungicida'],
+  ['Elatus','Fungicida'], ['Kasumin','Fungicida/Bactericida'], ['Captive','Fungicida'],
   ['Asbelto Pro','Fungicida'],
-  ['Trigard','Inseticida/Acaricida'], ['Abamectina','Inseticida/Acaricida'],
-  ['Actara','Inseticida/Acaricida'], ['Ampligo','Inseticida/Acaricida'],
-  ['Asgard','Inseticida/Acaricida'], ['Oberon','Inseticida/Acaricida'],
-  ['Connect','Inseticida/Acaricida'], ['Lanate','Inseticida/Acaricida'],
-  ['Dipel','Inseticida/Acaricida'], ['Minecto Pro','Inseticida/Acaricida'],
-  ['Torero','Inseticida/Acaricida'], ['Pirate','Inseticida/Acaricida'],
-  ['Corsário 700 WG','Inseticida/Acaricida'], ['Diador','Inseticida/Acaricida'],
-  ['Blade','Inseticida/Acaricida'], ['Privilege','Inseticida/Acaricida'],
-  ['Dimexion','Inseticida/Acaricida'], ['Delegate','Inseticida/Acaricida'],
+  ['Trigard','Inseticida'], ['Abamectina','Inseticida/Acaricida'],
+  ['Actara','Inseticida'], ['Ampligo','Inseticida'],
+  ['Asgard','Fungicida'], ['Oberon','Inseticida/Acaricida'],
+  ['Connect','Inseticida'], ['Lanate','Inseticida'],
+  ['Dipel','Inseticida'], ['Minecto Pro','Inseticida/Acaricida'],
+  ['Torero','Fungicida'], ['Pirate','Inseticida/Acaricida'],
+  ['Corsário 700 WG','Inseticida'], ['Diador','Inseticida/Acaricida'],
+  ['Blade','Inseticida'], ['Privilege','Inseticida'],
+  ['Dimexion','Inseticida/Acaricida'], ['Delegate','Inseticida'],
   ['Abamex maxx','Inseticida/Acaricida']
 ];
 
-const CATEGORIAS = ['Fungicida','Inseticida','Acaricida','Herbicida','Bactericida','Nematicida',
+const CATEGORIAS = ['Fungicida','Inseticida','Acaricida','Herbicida','Bactericida','Fungicida/Bactericida','Nematicida',
   'Fertilizante','Adjuvante','Bioestimulante','Inoculante','Outros'];
 
 function escapeHtml(s){
@@ -851,7 +852,7 @@ const REFERENCIA = {
     link: 'https://www.adapar.pr.gov.br/sites/adapar/arquivos_restritos/files/documento/2024-02/amistar_top.pdf' },
   'Influx': { ia: 'Benzoato de emamectina + lufenurom', tox: 'Categoria 4 — Pouco Tóxico',
     dose: '75–100 g/ha em 600 L/ha de calda (tomate — traça/broca-pequena)',
-    car: '3 dias (tomate)', cat: 'Inseticida/Acaricida',
+    car: '3 dias (tomate)', cat: 'Inseticida',
     link: 'https://www.adapar.pr.gov.br/sites/adapar/arquivos_restritos/files/documento/2026-02/influx.pdf' },
   'Verdavis': { ia: 'Isocicloseram + lambda-cialotrina', tox: 'Categoria 4 — Pouco Tóxico',
     dose: 'Sem registro para tomate (registrado p/ soja, milho e grãos) — não usar sem orientação',
@@ -1082,6 +1083,7 @@ function catClass(cat){
 }
 function catLabel(cat){
   if(cat === 'Inseticida/Acaricida') return 'Inset./Acaricida';
+  if(cat === 'Fungicida/Bactericida') return 'Fung./Bact.';
   return cat || 'Outros';
 }
 // ---- Fonte da informação (rotulagem honesta no card; sem status automático) ----

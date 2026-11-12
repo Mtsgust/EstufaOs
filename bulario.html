@@ -171,6 +171,15 @@
 
   .item-ia{font-size:14px; font-weight:700; color:var(--ink); margin-top:6px; cursor:pointer; letter-spacing:-.01em; line-height:1.35;}
   .item-desc{font-size:12.5px; color:var(--mut); margin-top:4px; line-height:1.5; cursor:pointer;}
+  .fert-line{margin-top:5px;}
+  .fert-line .fl{color:var(--ink); font-weight:650;}
+  .fert-line .sem{color:var(--dim); font-style:italic;}
+  .mix-alert{margin-top:7px; font-size:12.5px; line-height:1.5; cursor:pointer; color:var(--gold);
+    background:rgba(217,164,65,.08); border:1px solid rgba(217,164,65,.35); border-radius:8px; padding:6px 10px;}
+  .mix-alert .fi{width:16px; height:16px; color:var(--gold); vertical-align:-3px; margin-right:5px;}
+  .fhint{font-size:12px; color:var(--mut); margin-top:7px; line-height:1.5;}
+  .fhint.ok{color:var(--lime);}
+  .fhint.bad{color:var(--red);}
   .cult-row{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:9px; cursor:pointer;}
   .cult{font-size:10.5px; background:transparent; border:1px solid rgba(143,209,154,.4); color:var(--lime);
     padding:3px 9px; border-radius:14px; font-weight:500; white-space:nowrap;}
@@ -622,23 +631,33 @@
     </div>
     <div class="field"><label for="fiComp">Composição (aminoácidos, extratos ou outros componentes)</label>
       <textarea id="fiComp" rows="2" placeholder="conforme ficha técnica"></textarea></div>
+    <div class="field"><label for="fiArm">Armazenamento</label><input id="fiArm" type="text" placeholder="ex: local seco e ventilado"></div>
+    <div class="fieldset-title">Mistura e comportamento</div>
     <div class="row2">
-      <div class="field"><label for="fiSol">Solubilidade</label><input id="fiSol" type="text" placeholder="ex: alta em água"></div>
-      <div class="field"><label for="fiDens">Densidade</label><input id="fiDens" type="text" placeholder="ex: 1,2 g/mL"></div>
+      <div class="field"><label for="fiFormula">Tipo de formulação</label><input id="fiFormula" type="text" placeholder="ex: SC, WG, líquido, pó solúvel"></div>
+      <div class="field"><label for="fiNatureza">Natureza física</label><input id="fiNatureza" type="text" placeholder="ex: sólido solúvel, líquido, suspensão"></div>
     </div>
     <div class="row2">
       <div class="field"><label for="fiPh">pH</label><input id="fiPh" type="text" placeholder="ex: 6,0–7,5"></div>
-      <div class="field"><label for="fiArm">Armazenamento</label><input id="fiArm" type="text" placeholder="ex: local seco e ventilado"></div>
+      <div class="field"><label for="fiSol">Solubilidade</label><input id="fiSol" type="text" placeholder="ex: alta em água"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label for="fiMiscib">Miscibilidade / comportamento em água</label><input id="fiMiscib" type="text" placeholder="ex: miscível; não misturar com óleos"></div>
+      <div class="field"><label for="fiDens">Densidade</label><input id="fiDens" type="text" placeholder="ex: 1,2 g/mL"></div>
+    </div>
+    <div class="field"><label for="fiRest">Restrições de mistura</label>
+      <textarea id="fiRest" rows="2" placeholder="ex: não misturar com cálcio"></textarea></div>
+    <div class="field"><label for="fiIncompat">Incompatibilidades conhecidas</label>
+      <textarea id="fiIncompat" rows="2" placeholder="ex: incompatível com produtos à base de cálcio"></textarea></div>
+    <div class="field"><label for="fiCompat">Compatibilidades documentadas (fonte)</label>
+      <textarea id="fiCompat" rows="2" placeholder="somente o que estiver documentado com fonte"></textarea></div>
+    <div class="field"><label for="fiCuidados">Cuidados de mistura e aplicação</label>
+      <textarea id="fiCuidados" rows="2" placeholder="ex: adicionar por último, agitar antes de usar"></textarea></div>
     <div class="fieldset-title">Aplicação</div>
     <div class="row2">
       <div class="field"><label for="fiCult">Culturas</label><input id="fiCult" type="text" placeholder="ex: Tomate, Pepino"></div>
       <div class="field"><label for="fiDose">Dose / recomendação</label><input id="fiDose" type="text" placeholder="ex: 2 L/ha"></div>
     </div>
-    <div class="field"><label for="fiRest">Restrições</label>
-      <textarea id="fiRest" rows="2" placeholder="ex: não misturar com cálcio"></textarea></div>
-    <div class="field"><label for="fiCompat">Compatibilidade</label>
-      <textarea id="fiCompat" rows="2" placeholder="ex: compatível com a maioria dos defensivos"></textarea></div>
     <div class="field"><label for="fiObs">Recomendações do fabricante / observações</label><textarea id="fiObs" rows="2"></textarea></div>
     <div class="fieldset-title">Documentação</div>
     <div class="row2">
@@ -1317,71 +1336,26 @@ function renderFerts(){
   }
   wrap.innerHTML = itens.map(p => {
     const id = escapeHtml(p.id || '');
-    const est = estoqueDaFicha(p);
-    const temDoc = !!(p.bulaFileId || '').trim() || !!(p.bulaLink || '').trim() || !!(p.fichaLink || '').trim();
-    const conferido = !!(p.fonteInfo || '').trim() || !!(p.conferidoEm || '').trim();
-    const cel = (icNome, rot, valor) => {
-      const v = String(valor || '').trim();
-      return `<div class="fcell">${ic(icNome)}<div class="fbody">
-        <span class="flabel">${rot}</span>
-        <b class="${v ? '' : 'sem'}">${v ? escapeHtml(v) : 'pendente'}</b>
-      </div></div>`;
-    };
-    const status = (!temDoc && !conferido)
-      ? '<div class="hint">Ficha pendente de conferência — nenhum documento vinculado ainda.</div>'
-      : (!conferido ? '<div class="hint">Documento vinculado — dados ainda não conferidos.</div>' : '');
+    const comp = String(p.composicao || '').trim() || String(p.nutrientes || '').trim() ||
+      String(p.concentracao || '').trim() || String(p.garantias || '').trim();
+    const form = String(p.formula || '').trim() || String(p.naturezaFisica || '').trim();
+    const alertas = [p.restricoes, p.incompatibilidades].map(v => String(v || '').trim()).filter(Boolean);
+    const tog = `toggleFert('${id}')`;
     return `
     <div class="item" id="fert-${id}">
-      <div class="item-top" onclick="toggleFert('${id}')">
+      <div class="item-top" onclick="${tog}">
         <div class="item-title">
           <b>${escapeHtml(p.nome)}</b>
           <span class="chev"></span>
         </div>
         <span class="cat outro">${escapeHtml(p.categoria || 'Outros insumos')}</span>
       </div>
-      ${p.fabricante ? `<div class="item-ia" onclick="toggleFert('${id}')">${escapeHtml(p.fabricante)}</div>` : ''}
-      ${p.grupoComercial ? `<div class="item-desc" onclick="toggleFert('${id}')">${escapeHtml(p.grupoComercial)}</div>` : ''}
-      <div class="item-desc" onclick="toggleFert('${id}')">${est ? 'Estoque: ' + escapeHtml(fmtQtdEstoque(est)) : 'Sem vínculo no Estoque'}</div>
+      ${p.fabricante ? `<div class="item-ia" onclick="${tog}">${escapeHtml(p.fabricante)}</div>` : ''}
       <div class="prod-body">
-        ${status}
-        <div class="fieldset-title">Identificação</div>
-        <div class="fgrid">
-          ${cel('fabricante', 'Fabricante', p.fabricante)}
-          ${cel('comp', 'Categoria funcional', p.categoria)}
-          ${cel('grupo', 'Categoria adicional', p.categoriaExtra)}
-          ${cel('grupo', 'Grupo comercial', p.grupoComercial)}
-          ${cel('dose', 'Finalidade', p.finalidade)}
-          ${cel('dose', 'Tipo de aplicação', p.tipoAplicacao)}
-        </div>
-        <div class="fieldset-title">Composição e qualidade</div>
-        <div class="fgrid">
-          ${cel('comp', 'Nutrientes', p.nutrientes)}
-          ${cel('garantias', 'Garantias', p.garantias)}
-          ${cel('formula', 'Concentrações', p.concentracao)}
-          ${cel('comp', 'Formas químicas', p.formasQuimicas)}
-          ${cel('comp', 'Composição (aminoácidos/extratos)', p.composicao)}
-          ${cel('ph', 'Solubilidade', p.solubilidade)}
-          ${cel('ph', 'pH', p.ph)}
-          ${cel('ph', 'Densidade', p.densidade)}
-          ${cel('carencia', 'Armazenamento', p.armazenamento)}
-        </div>
-        <div class="fieldset-title">Aplicação</div>
-        <div class="fgrid">
-          ${cel('culturas', 'Culturas', p.culturas)}
-          ${cel('dose', 'Dose / recomendação', p.dose)}
-          ${cel('comp', 'Restrições', p.restricoes)}
-          ${cel('comp', 'Compatibilidade', p.compatDocs)}
-          ${cel('fonte', 'Recomendações do fabricante', p.obs)}
-        </div>
-        <div class="fieldset-title">Documentação</div>
-        <div class="fgrid fgrid-fonte">
-          ${cel('fonte', 'Fonte da informação', fonteTexto(p))}
-          ${cel('carencia', 'Consulta em', p.conferidoEm ? fmtData(p.conferidoEm) : '')}
-          ${cel('comp', 'Origem do dado', p.origemDado)}
-        </div>
-        ${p.fonteUrl ? `<div class="fcell">${ic('url')}<div class="fbody"><span class="flabel">URL da fonte</span>
-          <b><a href="${escapeHtml(p.fonteUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(p.fonteUrl)}</a></b>
-        </div></div>` : ''}
+        <div class="item-desc fert-line" onclick="${tog}"><span class="fl">Composição:</span> ${comp ? escapeHtml(comp) : '<span class="sem">pendente</span>'}</div>
+        <div class="item-desc fert-line" onclick="${tog}"><span class="fl">Formulação/natureza:</span> ${form ? escapeHtml(form) : '<span class="sem">pendente</span>'}</div>
+        ${alertas.length ? `<div class="mix-alert" onclick="${tog}">${ic('classe')}<span class="fl">Mistura:</span> ${escapeHtml(alertas.join(' · '))}</div>` : ''}
+        ${statusFicha(p)}
         <div class="bula-inline" id="fertDocBox-${id}" hidden></div>
         <div class="p-actions">
           <button class="btn-edit" onclick="event.stopPropagation();abrirFicha('${id}')">${ic('pencil', 'btn-ic')}Editar</button>
@@ -1391,6 +1365,20 @@ function renderFerts(){
       </div>
     </div>`;
   }).join('');
+}
+// Estado de confiabilidade da ficha: confirmada / não encontrada / ainda não verificada.
+function statusFicha(p){
+  const f = String(p.fonteInfo || '').trim();
+  const dt = String(p.conferidoEm || '').trim();
+  const url = String(p.fonteUrl || '').trim();
+  if(f === 'nao_encontrada'){
+    return '<div class="fhint bad">✗ Documento não encontrado · consulta de ' + escapeHtml(dt ? fmtData(dt) : '—') + '</div>';
+  }
+  if(f && dt){
+    return '<div class="fhint ok">✓ Confirmada · ' + escapeHtml(fonteResumo(p)) + ' · ' + escapeHtml(fmtData(dt)) +
+      (url ? ' · <a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">fonte</a>' : '') + '</div>';
+  }
+  return '<div class="fhint">○ Ainda não verificada — nenhum dado de fonte registrado.</div>';
 }
 function abrirFicha(id){
   editandoFichaId = id || null;
@@ -1415,6 +1403,8 @@ function abrirFicha(id){
   set('fiConc', p ? p.concentracao : '');
   set('fiFormas', p ? p.formasQuimicas : '');
   set('fiComp', p ? p.composicao : '');
+  set('fiFormula', p ? p.formula : '');
+  set('fiNatureza', p ? p.naturezaFisica : '');
   set('fiSol', p ? p.solubilidade : '');
   set('fiDens', p ? p.densidade : '');
   set('fiPh', p ? p.ph : '');
@@ -1422,7 +1412,10 @@ function abrirFicha(id){
   set('fiCult', p ? p.culturas : '');
   set('fiDose', p ? p.dose : '');
   set('fiRest', p ? p.restricoes : '');
+  set('fiIncompat', p ? p.incompatibilidades : '');
+  set('fiMiscib', p ? p.miscibilidade : '');
   set('fiCompat', p ? p.compatDocs : '');
+  set('fiCuidados', p ? p.cuidadosMistura : '');
   set('fiObs', p ? p.obs : '');
   set('fiBulaLink', p ? p.bulaLink : '');
   set('fiFichaLink', p ? p.fichaLink : '');
@@ -1463,6 +1456,8 @@ function lerFichaForm(){
     concentracao: g('fiConc').trim(),
     formasQuimicas: g('fiFormas').trim(),
     composicao: g('fiComp').trim(),
+    formula: g('fiFormula').trim(),
+    naturezaFisica: g('fiNatureza').trim(),
     solubilidade: g('fiSol').trim(),
     densidade: g('fiDens').trim(),
     ph: g('fiPh').trim(),
@@ -1470,7 +1465,10 @@ function lerFichaForm(){
     culturas: g('fiCult').trim(),
     dose: g('fiDose').trim(),
     restricoes: g('fiRest').trim(),
+    incompatibilidades: g('fiIncompat').trim(),
+    miscibilidade: g('fiMiscib').trim(),
     compatDocs: g('fiCompat').trim(),
+    cuidadosMistura: g('fiCuidados').trim(),
     obs: g('fiObs').trim(),
     bulaLink: g('fiBulaLink').trim(),
     fichaLink: g('fiFichaLink').trim(),

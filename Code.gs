@@ -26,7 +26,8 @@ var SHEETS = {
     name: 'InsumosInfo',
     // 28 colunas originais + 10 anexadas no fim (migração automática no 1º acesso após o deploy)
     headers: ['id', 'dataCriacao', 'estoqueId', 'nome', 'categoria', 'ingredienteAtivo', 'composicao', 'formula', 'concentracao', 'fabricante', 'garantias', 'frac', 'irac', 'ph', 'alvos', 'culturas', 'dose', 'carencia', 'restricoes', 'compatDocs', 'bulaLink', 'fichaLink', 'bulaFileId', 'foto', 'fonteInfo', 'fonteUrl', 'conferidoEm', 'obs',
-      'categoriaExtra', 'grupoComercial', 'finalidade', 'tipoAplicacao', 'nutrientes', 'formasQuimicas', 'solubilidade', 'densidade', 'armazenamento', 'origemDado']
+      'categoriaExtra', 'grupoComercial', 'finalidade', 'tipoAplicacao', 'nutrientes', 'formasQuimicas', 'solubilidade', 'densidade', 'armazenamento', 'origemDado',
+      'naturezaFisica', 'miscibilidade', 'incompatibilidades', 'cuidadosMistura']
   },
   caldas: {
     name: 'Caldas',

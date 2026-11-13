@@ -115,7 +115,7 @@
   .fab2:hover{background:var(--card2); border-style:solid;}
 
   dialog{border:none; border-radius:20px; width:min(94vw,480px); padding:0; background:var(--card);
-    border:1px solid var(--line); box-shadow:0 24px 64px rgba(0,0,0,.6);}
+    border:1px solid var(--line); box-shadow:0 24px 64px rgba(0,0,0,.6); margin:auto;}
   dialog::backdrop{background:rgba(0,0,0,.7); backdrop-filter:blur(4px);}
   .sheet{padding:24px; max-height:85vh; overflow-y:auto;}
   .sheet h2{margin:0 0 4px; font-size:18px; font-weight:700;}
@@ -137,6 +137,14 @@
   .btn-cancel:hover{color:var(--ink);}
   .btn-save{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
   .btn-save:hover{opacity:.9;}
+
+  .feito-opts{display:flex; flex-direction:column; gap:8px; margin-bottom:4px;}
+  .feito-opt{display:flex; align-items:center; gap:9px; font-size:13.5px; color:var(--ink);
+    cursor:pointer; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+    background:var(--card2); margin:0; font-weight:500; transition:.15s;}
+  .feito-opt:has(input:checked){border-color:var(--leaf); background:rgba(61,122,92,.12);}
+  .feito-opt input{accent-color:#3D7A5C; width:16px; height:16px; margin:0; flex-shrink:0;}
+  .feito-outro{display:none; margin-left:26px; margin-top:2px;}
 
   .item-row{display:flex; gap:6px; margin-bottom:8px; align-items:center;}
   .item-row .f-produto{flex:3; padding:9px 12px; border:1px solid var(--line); border-radius:8px;
@@ -332,6 +340,33 @@
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgReprog').close()">Cancelar</button>
       <button class="btn-save" onclick="salvarReprog()">Reprogramar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Marcar feita -->
+<dialog id="dlgFeito">
+  <div class="sheet">
+    <h2>Marcar como feita</h2>
+    <p class="sub" id="feitoInfo"></p>
+    <input type="hidden" id="feitoId">
+    <div class="feito-opts">
+      <label class="feito-opt">
+        <input type="radio" name="feitoQuando" value="hoje" id="feitoHoje" checked>
+        <span>Feito hoje — <b id="feitoHojeData"></b></span>
+      </label>
+      <label class="feito-opt">
+        <input type="radio" name="feitoQuando" value="outra" id="feitoOutra">
+        <span>Outra data</span>
+      </label>
+      <div class="field feito-outro" id="feitoOutroField">
+        <label>Data em que foi feito</label>
+        <input type="date" id="feitoData">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" onclick="document.getElementById('dlgFeito').close()">Cancelar</button>
+      <button class="btn-save" onclick="confirmarFeito()">Confirmar</button>
     </div>
   </div>
 </dialog>
@@ -621,7 +656,7 @@ function itemCard(d){
   }
 
   const acoes = [];
-  if(d.status !== 'feito') acoes.push(`<button class="btn-done" onclick="marcarFeito('${d.id}')">Marcar feita</button>`);
+  if(d.status !== 'feito') acoes.push(`<button class="btn-done" onclick="openFeito('${d.id}')">Marcar feita</button>`);
   if(d.status !== 'nao-realizada' && d.status !== 'feito') acoes.push(`<button class="btn-nao" onclick="marcarNaoRealizada('${d.id}')">Não realizada</button>`);
   if(d.status !== 'feito' && d.status !== 'nao-realizada') acoes.push(`<button class="btn-reprog" onclick="openReprog('${d.id}')">Reprogramar</button>`);
   acoes.push(`<button class="btn-edit" onclick="editarItem('${d.id}')">Editar</button>`);
@@ -669,7 +704,7 @@ function blocoEstufa(e, arr){
     : arr.some(d=>d.status==='reprogramada') ? 'reprogramada' : 'pendente';
   return `<div class="cal-block ${cls}"><div class="cal-est">Estufa ${escapeHtml(e)}</div>` +
     arr.map(d=>`<div class="cal-task"><span>${escapeHtml((parseItens(d).filter(i=>i.produto).map(i=>i.produto).join('+')) || d.produto || '(insumo)')}</span>` +
-      (d.status!=='feito' ? `<button onclick="marcarFeito('${d.id}')" title="Marcar feita">✓</button>` : '') + `</div>`).join('') +
+      (d.status!=='feito' ? `<button onclick="openFeito('${d.id}')" title="Marcar feita">✓</button>` : '') + `</div>`).join('') +
     `</div>`;
 }
 function renderSemana(){
@@ -743,13 +778,44 @@ async function excluirNota(){
 }
 
 // ===== AÇÕES =====
-async function marcarFeito(id){
+function openFeito(id){
+  const d = dados.find(x=>x.id===id);
+  if(!d || d.status==='feito') return;
+  document.getElementById('feitoId').value = id;
+  document.getElementById('feitoInfo').textContent =
+    `Estufa ${d.estufa||'?'} — ${parseItens(d).filter(i=>i.produto).map(i=>i.produto).join(', ') || d.produto || ''}`;
+  const hoje = hojeISO();
+  document.getElementById('feitoHojeData').textContent = fmtData(hoje);
+  document.getElementById('feitoHoje').checked = true;
+  document.getElementById('feitoData').value = hoje;
+  document.getElementById('feitoOutroField').style.display = 'none';
+  document.getElementById('dlgFeito').showModal();
+}
+document.querySelectorAll('input[name="feitoQuando"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    document.getElementById('feitoOutroField').style.display =
+      document.getElementById('feitoOutra').checked ? 'block' : 'none';
+  });
+});
+async function confirmarFeito(){
+  const id = document.getElementById('feitoId').value;
+  let data = hojeISO();
+  if(!document.getElementById('feitoHoje').checked){
+    data = document.getElementById('feitoData').value;
+    if(!data){ alert('Informe a data em que foi feito.'); return; }
+  }
+  document.getElementById('dlgFeito').close();
+  await marcarFeito(id, data);
+}
+
+async function marcarFeito(id, dataExec){
   const d = dados.find(x => x.id === id);
   if(!d || d.status === 'feito') return;
+  const dt = dataExec || hojeISO();
   const itens = parseItens(d).filter(i => i.produto && num(i.qtd) > 0);
   await fetch(API_URL, {method:'POST', body: JSON.stringify({
     tipo:'nutricao', action:'update', id,
-    data:{ status:'feito', dataExecucao: hojeISO(), dataPrevista:'' }
+    data:{ status:'feito', dataExecucao: dt, dataPrevista:'' }
   })});
   for(const item of itens){
     await baixarEstoque(item.produto, item.qtd, item.unidade, 'nutricao', id,

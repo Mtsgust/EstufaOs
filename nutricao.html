@@ -1194,8 +1194,9 @@ function parsePlanoSemanal(texto, stats){
     const mEst = lin.match(/estufas?\s*(\d+(?:\s*[,e\-–]+\s*\d+)*)/i);
     if(mEst){ estufas = mEst[1].match(/\d/g) || null; }
     else {
-      // Tabela: linha começa com o número da estufa sozinho na coluna (ex: "1 Nitrato de cálcio 6 kg + ...")
-      const mTab = lin.match(/^([1-7])(?:\s+(?!(?:kg|g|gr|ml|l|litros?|un)\b)|$)/i);
+      // Tabela: número da estufa na coluna inicial, com ou sem espaço antes do produto
+      // (ex: "1 Nitrato..." ou "1Nitrato..."). Não casa se for dose ("6 kg").
+      const mTab = lin.match(/^([1-7])(?:\s+(?!(?:kg|g|gr|ml|l|litros?|un)\b)|$|(?=[A-Za-zÀ-ÿ]))/i);
       if(mTab) estufas = [mTab[1]];
       else { const av = lin.match(/(?:^|[\s\-–\[\(])e\s?([1-7])(?:[\s,\]\).\-–]|$)/i); if(av) estufas = [av[1]]; }
     }

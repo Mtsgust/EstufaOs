@@ -59,7 +59,8 @@ var SHEETS = {
   },
   boletos: {
     name: 'Boletos',
-    headers: ['id', 'dataCriacao', 'nome', 'categoria', 'empresa', 'valor', 'vencimento', 'status', 'dataPagamento', 'linhaDigitavel', 'anexoUrl', 'anexoNome', 'eventId', 'obs']
+    headers: ['id', 'dataCriacao', 'nome', 'categoria', 'empresa', 'valor', 'vencimento', 'status', 'dataPagamento', 'linhaDigitavel', 'anexoUrl', 'anexoNome', 'eventId', 'obs',
+      'docTipo', 'docNumero', 'docEmissao', 'docChave', 'docExtra', 'docTexto']
   },
   anotacoes: {
     name: 'Anotacoes',
@@ -749,6 +750,8 @@ function boletoLinha_(sheet, rowIdx, headers) {
   headers.forEach(function (h, i) { o[h] = sheet.getRange(rowIdx, i + 1).getValue(); });
   return o;
 }
+function normLinha_(v) { return String(v || '').replace(/[^0-9]/g, ''); }
+function normChave_(v) { return String(v || '').replace(/[^0-9A-Za-z]/g, '').toLowerCase(); }
 function boletoSalvar_(d, id) {
   var valor = parseNum_(d.valor);
   if (!d.nome || !dataISO_(d.vencimento)) {
@@ -762,6 +765,22 @@ function boletoSalvar_(d, id) {
   var headers = vals[0];
   var status = d.status === 'pago' ? 'pago' : 'pendente';
   if (!id) {
+    // Dedupe: o mesmo documento nunca entra duas vezes (linha digitável ou chave de NF).
+    var linhaNova = normLinha_(d.linhaDigitavel);
+    var chaveNova = normChave_(d.docChave);
+    if (linhaNova || chaveNova) {
+      var idColD = headers.indexOf('id'), cLinhaD = headers.indexOf('linhaDigitavel'), cChaveD = headers.indexOf('docChave');
+      for (var di = 1; di < vals.length; di++) {
+        if (linhaNova && normLinha_(vals[di][cLinhaD]) === linhaNova) {
+          return { ok: false, duplicado: true, id: vals[di][idColD],
+            error: 'Este boleto já foi importado (linha digitável idêntica).' };
+        }
+        if (chaveNova && normChave_(vals[di][cChaveD]) === chaveNova) {
+          return { ok: false, duplicado: true, id: vals[di][idColD],
+            error: 'Este documento já foi importado (nota fiscal idêntica).' };
+        }
+      }
+    }
     var nid = Utilities.getUuid();
     // Se veio eventId (importado da Agenda), vincula nele em vez de criar outro evento.
     var eventId = d.eventId || (status === 'pendente'
@@ -769,7 +788,9 @@ function boletoSalvar_(d, id) {
       : '');
     sheet.appendRow([nid, new Date(), d.nome, d.categoria || 'Outros', d.empresa || '', valor,
       dataISO_(d.vencimento), status, status === 'pago' ? (dataISO_(d.dataPagamento) || dataISO_(new Date())) : '',
-      d.linhaDigitavel || '', d.anexoUrl || '', d.anexoNome || '', eventId, d.obs || '']);
+      d.linhaDigitavel || '', d.anexoUrl || '', d.anexoNome || '', eventId, d.obs || '',
+      d.docTipo || '', d.docNumero || '', d.docEmissao || '', d.docChave || '',
+      d.docExtra || '', String(d.docTexto || '').slice(0, 40000)]);
     return { ok: true, id: nid, evento: !!eventId };
   }
   var idCol = headers.indexOf('id');
@@ -786,6 +807,13 @@ function boletoSalvar_(d, id) {
         dataPagamento: status === 'pago' ? (dataISO_(d.dataPagamento) || dataISO_(ant.dataPagamento) || dataISO_(new Date())) : '',
         linhaDigitavel: d.linhaDigitavel || '', anexoUrl: d.anexoUrl !== undefined ? d.anexoUrl : ant.anexoUrl,
         anexoNome: d.anexoNome !== undefined ? d.anexoNome : ant.anexoNome, eventId: ev2, obs: d.obs || '' };
+      // Dados de documento (NF/boleto lido): só atualiza se veio no payload (preserva o resto).
+      if (d.docTipo !== undefined) mapa.docTipo = d.docTipo || '';
+      if (d.docNumero !== undefined) mapa.docNumero = d.docNumero || '';
+      if (d.docEmissao !== undefined) mapa.docEmissao = d.docEmissao || '';
+      if (d.docChave !== undefined) mapa.docChave = d.docChave || '';
+      if (d.docExtra !== undefined) mapa.docExtra = d.docExtra || '';
+      if (d.docTexto !== undefined) mapa.docTexto = String(d.docTexto || '').slice(0, 40000);
       Object.keys(mapa).forEach(function (k) {
         var c = headers.indexOf(k);
         if (c > -1) sheet.getRange(row, c + 1).setValue(mapa[k]);

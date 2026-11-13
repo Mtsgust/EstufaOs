@@ -338,6 +338,7 @@
     <div id="ocrReview" style="display:none">
       <div class="flags" id="ocrFlags"></div>
       <div class="doc-info" id="oDocInfo" style="display:none"></div>
+      <div class="ocr-nf" id="ocrNF" style="display:none"></div>
       <div class="field"><label>Nome da conta *</label><input id="oNome" type="text" placeholder="ex: Energia CPFL"></div>
       <div class="row2">
         <div class="field"><label>Valor (R$) *</label><input id="oValor" type="number" step="any"></div>
@@ -409,6 +410,7 @@ let aba = 'boletos';
 let editBolId = null, curAnexoUrl = '', curAnexoNome = '';
 let calAno = 0, calMes = 0;
 let ocrTexto = '', ocrAnexo = {url:'', nome:''}, ocrCands = [];
+let ocrDoc = {tipo:'', numero:'', serie:'', emissao:'', chave:'', extra:null};
 
 function num(v){ if(v===''||v==null) return 0; const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
 function esc(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -496,6 +498,19 @@ function cardBol(b){
     ? '<div><a href="#" onclick="verAnexo(\''+fid+'\');return false">Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a></div>'
     : '<div><a href="'+esc(b.anexoUrl)+'" target="_blank" rel="noopener">Ver anexo'+(b.anexoNome?' ('+esc(b.anexoNome)+')':'')+'</a></div>';
   if(b.obs) det += '<div>Obs <b>'+esc(b.obs)+'</b></div>';
+  if(b.docTipo) det += '<div>Documento <b>'+esc(String(b.docTipo).toUpperCase())+
+    (b.docNumero ? ' nº '+esc(b.docNumero) : '')+'</b>'+(b.docEmissao ? ' · emitido '+fmtData(b.docEmissao) : '')+'</div>';
+  if(b.docExtra){
+    try{
+      const ex = JSON.parse(b.docExtra);
+      if(ex && ex.emitente && (ex.emitente.cnpj || ex.emitente.nome))
+        det += '<div>Emitente <b>'+esc(ex.emitente.nome||'')+(ex.emitente.cnpj ? ' — CNPJ '+esc(ex.emitente.cnpj) : '')+'</b></div>';
+      if(ex && ex.bancoNome) det += '<div>Banco <b>'+esc(ex.bancoNome)+(ex.nossoNumero ? ' · NN '+esc(ex.nossoNumero) : '')+'</b></div>';
+      if(ex && ex.barras) det += '<div>Código de barras <b>'+esc(ex.barras)+'</b>'+(ex.barrasOk ? ' ✓' : ' ⚠')+'</div>';
+      if(ex && (ex.juros || ex.multa || ex.desconto))
+        det += '<div>Juros/Multa/Desc. <b>'+esc([ex.juros, ex.multa, ex.desconto].filter(Boolean).join(' · '))+'</b></div>';
+    }catch(e){}
+  }
   const cls = String(b.status)==='pago' ? 'pago' : (st==='atrasado' ? 'atrasado' : '');
   return '<div class="item '+cls+'"><div class="v-bar"></div>' +
     '<div class="item-top"><span class="cat">'+esc(b.categoria||'Outros')+'</span>' +
@@ -704,7 +719,7 @@ function abrirAnexo(){
 // ---- OCR: foto/PDF -> linha digitável -> valor + vencimento ----
 function soDig(s){ return String(s||'').replace(/[^0-9]/g,''); }
 function fatorVenc(f){
-  const n = parseInt(f,10); if(!n) return '';
+  const n = parseInt(f,10); if(isNaN(n)) return '';
   const b = new Date(1997,9,7); b.setDate(b.getDate()+n);
   return b.getFullYear()+'-'+String(b.getMonth()+1).padStart(2,'0')+'-'+String(b.getDate()).padStart(2,'0');
 }
@@ -759,6 +774,49 @@ function candidatosBoleto(txt){
   out.sort((a,b)=>b.score-a.score);
   return out.slice(0,6);
 }
+// ---- Boleto: banco, código de barras (44 díg.) e campos extra ----
+const BANCOS = {'001':'Banco do Brasil','033':'Santander','041':'Banrisul','070':'BRB','077':'Inter',
+  '104':'Caixa Econômica','237':'Bradesco','260':'Nu Pagamentos','290':'Mercado Pago','341':'Itaú Unibanco',
+  '399':'HSBC','422':'Safra','745':'Citi','748':'Sicredi','756':'Sicoob'};
+function codigoBarrasDaLinha(lin){
+  const d = soDig(lin);
+  if(d.length !== 47) return '';
+  // 44 díg. = banco(3)+moeda(1)+DV geral(1)+fator(4)+valor(10)+campo livre(25)
+  return d.slice(0,4) + d[32] + d.slice(33,47) + (d.slice(4,9) + d.slice(10,20) + d.slice(21,31));
+}
+function dvGeralBarras(barras){
+  if(!barras || barras.length !== 44) return '';
+  const sem = barras.slice(0,4) + barras.slice(5);
+  let soma = 0, peso = 2;
+  for(let i = sem.length - 1; i >= 0; i--){
+    soma += parseInt(sem[i],10) * peso;
+    peso = peso === 9 ? 2 : peso + 1;
+  }
+  const r = 11 - (soma % 11);
+  return String(r >= 10 ? 0 : r);
+}
+function dadosBoletoExtra(txt, linha){
+  const t = String(txt||'');
+  const out = {banco:'', bancoNome:'', barras:'', barrasOk:false, nossoNumero:'', juros:'', multa:'', desconto:'', emissao:''};
+  const d = soDig(linha);
+  if(d.length === 47){
+    out.banco = d.slice(0,3);
+    out.bancoNome = BANCOS[out.banco] || '';
+    const b = codigoBarrasDaLinha(d);
+    if(b){ out.barras = b; out.barrasOk = dvGeralBarras(b) === b[4]; }
+  }
+  let m = t.match(/NOSSO\s+N[ÚU]MERO\s*:?\s*([\d\-\/ ]{5,25})/i);
+  if(m) out.nossoNumero = m[1].trim().replace(/\s+/g,' ');
+  m = t.match(/JUROS[^\n]{0,40}?(\d+(?:[.,]\d{1,4})?\s*%|R\$\s?[\d.,]+)/i);
+  if(m) out.juros = m[1].trim();
+  m = t.match(/MULTA[^\n]{0,40}?(\d+(?:[.,]\d{1,2})?\s*%|R\$\s?[\d.,]+)/i);
+  if(m) out.multa = m[1].trim();
+  m = t.match(/DESCONTO[^\n]{0,40}?(R\$\s?[\d.,]+|\d+(?:[.,]\d{1,2})?\s*%)/i);
+  if(m) out.desconto = m[1].trim();
+  m = t.match(/(?:DATA\s+DE\s+)?EMISS[ÃA]O\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(m) out.emissao = m[3]+'-'+m[2]+'-'+m[1];
+  return out;
+}
 function parseNotaTexto(txt){
   const t = String(txt||'');
   let valor = 0;
@@ -779,6 +837,107 @@ function parseNotaTexto(txt){
   }
   return {valor:Math.round(valor*100)/100, venc, empresa};
 }
+// ---- Nota Fiscal (DANFE/NF-e/NFC-e): extração completa, nunca inventa ----
+function parseNotaFiscal(txt){
+  const t = String(txt||'');
+  if(!t.trim()) return null;
+  const linhas = t.split('\n').map(s=>s.replace(/[ \t]+/g,' ').trim()).filter(Boolean);
+  const j = linhas.join('\n');
+  // Chave de acesso (44 dígitos, em grupos de 4)
+  let chave = '';
+  const mCh = j.match(/CHAVE DE ACESSO\s*:?\s*([\d\s]{44,60})/i) ||
+    j.match(/\b(\d{4}\s\d{4}\s\d{4}\s\d{4}\s\d{4}\s\d{4}\s\d{4}\s\d{4}\s\d{4})\b/);
+  if(mCh){ const c = soDig(mCh[1]||''); if(c.length >= 44) chave = c.slice(0,44); }
+  const ehNF = /DANFE|DOCUMENTO AUXILIAR DA NOTA FISCAL|NOTA FISCAL ELETR[ôO]NICA|NFC-?E|NF-?E\b|NATUREZA DA OPERA[ÇC][ÃA]O|DESTINAT[ÁA]RIO\/REMETENTE|RECEBEMOS DE/i.test(j);
+  const cnpjRe = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/;
+  if(!(ehNF || (chave && cnpjRe.test(j)) || (/CFOP/i.test(j) && cnpjRe.test(j)))) return null;
+  const numDepois = re => { const m = j.match(re); return m ? parseNumBR(m[1]) : 0; };
+  // Número / série / emissão
+  let numero = '';
+  const mN = j.match(/N[ÚU]MERO\s*(?:DA\s*(?:NOTA|NF-?E|NFC-?E))?\s*:?\s*(\d{1,9})/i) ||
+    j.match(/\bN[º°]\s*(\d{1,9})/i) || j.match(/NF-?E\s*(?:N[º°]|N[ÚU]MERO)\s*:?\s*(\d{1,9})/i);
+  if(mN) numero = mN[1];
+  let serie = '';
+  const mS = j.match(/S[ÉE]RIE\s*(?:A|B)?\s*:?\s*(\d{1,3})/i);
+  if(mS) serie = mS[1];
+  let emissao = '';
+  const mE = j.match(/(?:DATA\s+DE\s+)?EMISS[ÃA]O\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(mE) emissao = mE[3]+'-'+mE[2]+'-'+mE[1];
+  // Emitente / destinatário (janelas de texto por rótulo)
+  function janela(reIni, reFim, max){
+    const m = j.match(reIni); if(!m) return '';
+    const resto = j.slice(m.index + m[0].length, m.index + m[0].length + (max||500));
+    const mf = resto.match(reFim);
+    return mf ? resto.slice(0, mf.index) : resto;
+  }
+  function camposDe(win){
+    const out = {nome:'', cnpj:'', endereco:''};
+    if(!win) return out;
+    const mc = win.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
+    if(mc) out.cnpj = mc[0];
+    for(const l of win.split('\n')){
+      const c = l.trim();
+      if(!c || c.length > 90) continue;
+      if(/\d{2}\.?\d{3}\.?\d{3}/.test(c) && c.replace(/\D/g,'').length <= 16 && !/[A-Za-z]{5,}/.test(c)) continue;
+      if(/[A-Za-zÀ-ÿ]{4,}/.test(c) && !/^(CNPJ|CPF|INSCRI|IE\b|RGE|ENDERE|FONE|CEP|C[ÓO]DIGO)/i.test(c) && !/^\d[\d\s.,/-]+$/.test(c)){
+        out.nome = c.replace(/\s*[-–—]?\s*CNPJ\b.*$/i, '').replace(/\s*[:–—]\s*\d{2}\.?\d{3}.*$/i, '').trim().slice(0,80) || c.slice(0,80);
+        break;
+      }
+    }
+    const me = win.match(/(?:RUA|AV\.|AVENIDA|ROD\.|ESTRADA|ALAMEDA|PRA[ÇC]A|TRAVESSA|VIADUTO)[^,\n]{2,70}/i);
+    if(me) out.endereco = me[0].trim().slice(0,90);
+    return out;
+  }
+  let emitente = camposDe(janela(/EMITENTE/i, /DESTINAT[ÁA]RIO|NATUREZA DA OPERA[ÇC][ÃA]O/i, 500));
+  if(!emitente.cnpj){ const mc = j.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/); if(mc) emitente.cnpj = mc[0]; }
+  if(!emitente.nome){
+    for(const l of linhas){
+      if(/LTDA|S\.?\s?A\.?|EIRELI|\bMEI?\b|SS LTDA/i.test(l) && l.length <= 80){ emitente.nome = l.slice(0,60); break; }
+    }
+  }
+  const destinatario = camposDe(janela(/DESTINAT[ÁA]RIO\/REMETENTE|DESTINAT[ÁA]RIO/i,
+    /C[ÁA]LCULO DO IMPOSTO|DADOS DOS PRODUTOS|FATURA|NATUREZA DA OPERA[ÇC][ÃA]O|CFOP|FORMA DE PAGAMENTO/i, 500));
+  // Itens: DANFE (desc NCM CFOP un qtd vUnit vTotal) e NFC-e (idx cód desc un qtd vUnit vTotal)
+  const itens = [];
+  for(const l of linhas){
+    let m = l.match(/^(.{3,140}?)\s(\d{8})\s(\d{4})\s([A-Za-z]{1,3})\s([\d.,]+)\s([\d.,]+)\s([\d.,]+)(\s|$)/);
+    if(m){
+      itens.push({desc:m[1].trim(), ncm:m[2], cfop:m[3], un:m[4].toUpperCase(),
+        qtd:parseNumBR(m[5]), vUnit:parseNumBR(m[6]), vTotal:parseNumBR(m[7])});
+      continue;
+    }
+    m = l.match(/^\d{1,3}\s+\S+\s+(.{3,90}?)\s([A-Za-z]{1,3})\s([\d.,]+)\s([\d.,]+)\s([\d.,]+)\s*$/);
+    if(m){
+      itens.push({desc:m[1].trim(), ncm:'', cfop:'', un:m[2].toUpperCase(),
+        qtd:parseNumBR(m[3]), vUnit:parseNumBR(m[4]), vTotal:parseNumBR(m[5])});
+    }
+  }
+  // Totais
+  const totais = {
+    valorProdutos: numDepois(/VALOR TOTAL DOS PRODUTOS(?: E DA SERVI[ÇC]OS)?\s*R?\$?\s*([\d.,]+)/i),
+    baseIcms: numDepois(/BASE DE C[ÁA]LCULO DO ICMS\s*R?\$?\s*([\d.,]+)/i),
+    icms: numDepois(/VALOR DO ICMS\s*R?\$?\s*([\d.,]+)/i),
+    icmsSt: numDepois(/VALOR DO ICMS ST\s*R?\$?\s*([\d.,]+)/i),
+    ipi: numDepois(/VALOR DO IPI\s*R?\$?\s*([\d.,]+)/i),
+    desconto: numDepois(/VALOR DO DESCONTO\s*R?\$?\s*([\d.,]+)/i),
+    pis: numDepois(/\bPIS\s*R?\$?\s*([\d.,]+)/i),
+    cofins: numDepois(/COFINS\s*R?\$?\s*([\d.,]+)/i)
+  };
+  let valor = numDepois(/VALOR TOTAL DA NOTA\s*R?\$?\s*([\d.,]+)/i) ||
+    numDepois(/VALOR TOTAL\s+R?\$?\s*([\d.,]+)/i) || numDepois(/TOTAL\s*R?\$?\s*([\d.,]+)/i);
+  if(!(valor > 0) && itens.length) valor = itens.reduce((a,it)=>a+(it.vTotal||0),0);
+  // Vencimento e forma de pagamento (quando existem no documento)
+  let venc = '';
+  const mV = j.match(/VENCIMENTO\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(mV) venc = mV[3]+'-'+mV[2]+'-'+mV[1];
+  let pagamento = '';
+  const mP = j.match(/(?:FORMA DE PAGAMENTO|CONDI[ÇC][ÃA]O DE PAGAMENTO)\s*:?\s*([^\n]{2,60})/i);
+  if(mP) pagamento = mP[1].trim();
+  if(!(valor > 0) && !numero && !chave && !emitente.cnpj) return null;
+  return {tipo:'nf', numero, serie, emissao, chave, emitente, destinatario, itens, totais,
+    valor:Math.round(valor*100)/100, venc, pagamento,
+    empresa: emitente.nome || '', fraca:false};
+}
 function parseBoletoTexto(txt){
   const t = String(txt||'');
   const cands = candidatosBoleto(t);
@@ -793,6 +952,7 @@ function parseBoletoTexto(txt){
 // ---- OCR: leitura com tela de revisão obrigatória ----
 function openOCR(){
   ocrTexto = ''; ocrAnexo = {url:'', nome:''}; ocrCands = [];
+  ocrDoc = {tipo:'', numero:'', serie:'', emissao:'', chave:'', extra:null};
   document.getElementById('ocrFile').value = '';
   document.getElementById('oLinhaManual').value = '';
   document.getElementById('ocrStatus').textContent = '';
@@ -800,6 +960,7 @@ function openOCR(){
   document.getElementById('ocrReview').style.display = 'none';
   document.getElementById('ocrCands').innerHTML = '';
   document.getElementById('ocrText').style.display = 'none';
+  renderNFBlock(null);
   document.getElementById('dlgOCR').showModal();
 }
 function prevOCR(){
@@ -851,13 +1012,23 @@ async function processarOCR(){
       texto = manual;
     }
     ocrTexto = texto;
-    let p = parseBoletoTexto(texto);
-    if(!p.linha && !(p.valor>0)){
-      const n = parseNotaTexto(texto);
-      if(n.valor > 0) p = {linha:'', valor:n.valor, venc:n.venc, empresa:n.empresa||p.empresa,
-        fraca:false, candidatos:p.candidatos||[]};
+    const nf = parseNotaFiscal(texto);
+    if(nf && (nf.valor > 0 || nf.numero || nf.chave)){
+      const p0 = parseBoletoTexto(texto);
+      ocrDoc = {tipo:'nf', numero:nf.numero, serie:nf.serie, emissao:nf.emissao, chave:nf.chave, extra:nf};
+      mostrarRevisaoNF(nf, p0.linha || '');
+    }else{
+      let p = parseBoletoTexto(texto);
+      if(!p.linha && !(p.valor>0)){
+        const n = parseNotaTexto(texto);
+        if(n.valor > 0) p = {linha:'', valor:n.valor, venc:n.venc, empresa:n.empresa||p.empresa,
+          fraca:false, candidatos:p.candidatos||[]};
+      }
+      ocrDoc = {tipo: p.linha ? 'boleto' : '', numero:'', serie:'', emissao:'', chave:'',
+        extra: p.linha ? dadosBoletoExtra(texto, p.linha) : null};
+      renderNFBlock(null);
+      mostrarRevisao(p);
     }
-    mostrarRevisao(p);
   }catch(e){
     mostrarRevisao({linha:'', valor:0, venc:'', empresa:'', fraca:false, candidatos:[]});
     st.textContent = 'Erro: '+e.message+' — confira o documento acima e complete os dados à mão.';
@@ -865,21 +1036,30 @@ async function processarOCR(){
     btn.disabled = false;
   }
 }
-async function lerPDF(f, st){
-  st.textContent = 'Lendo PDF...';
-  const buf = await f.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  let texto = '';
-  const n = Math.min(pdf.numPages, 2);
-  for(let i=1;i<=n;i++){
-    const pg = await pdf.getPage(i);
-    const tc = await pg.getTextContent();
-    texto += tc.items.map(it=>it.str).join('\n') + '\n';
+function agruparLinhasTC(items){
+  const grupos = [];
+  for(const it of items){
+    if(!it || it.str === undefined || it.str === null) continue;
+    const y = Math.round((it.transform && it.transform[5]) || 0);
+    let g = null;
+    for(const c of grupos){ if(Math.abs(c.y - y) <= 3){ g = c; break; } }
+    if(!g){ g = {y, parts:[]}; grupos.push(g); }
+    g.parts.push({x: (it.transform && it.transform[4]) || 0, s: it.str});
   }
-  if(/\d{5}\s*\.?\s*\d{5}/.test(texto.replace(/[^0-9.\s]/g,'')) || soDig(texto).length >= 44) return texto;
-  st.textContent = 'PDF escaneado, fazendo OCR...';
+  grupos.sort((a,b)=> b.y - a.y);
+  return grupos.map(g=>{
+    g.parts.sort((a,b)=> a.x - b.x);
+    let line = '';
+    for(const p of g.parts){
+      if(!p.s) continue;
+      if(line && !/\s$/.test(line) && !/^\s/.test(p.s)) line += ' ';
+      line += p.s;
+    }
+    return line.replace(/[ \t]+/g,' ').trim();
+  }).filter(Boolean);
+}
+async function ocrPaginaPdf(pg){
   await loadTesseract();
-  const pg = await pdf.getPage(1);
   const vp = pg.getViewport({scale:2.5});
   const cv = document.createElement('canvas');
   cv.width = vp.width; cv.height = vp.height;
@@ -888,16 +1068,41 @@ async function lerPDF(f, st){
   const r = await window.Tesseract.recognize(blob, 'por');
   return (r.data && r.data.text) || '';
 }
+async function lerPDF(f, st){
+  st.textContent = 'Lendo PDF "'+f.name+'"...';
+  const buf = await f.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const total = pdf.numPages;
+  let texto = '', escaneadas = 0;
+  for(let i=1;i<=total;i++){
+    const pg = await pdf.getPage(i);
+    const tc = await pg.getTextContent();
+    let t = agruparLinhasTC(tc.items).join('\n');
+    if(t.replace(/\s/g,'').length < 30){
+      escaneadas++;
+      st.textContent = 'Página '+i+'/'+total+' sem texto — lendo como imagem (OCR)...';
+      t = await ocrPaginaPdf(pg);
+    }else{
+      st.textContent = 'Lendo PDF "'+f.name+'"... página '+i+'/'+total;
+    }
+    texto += (i>1 ? '\n' : '') + t + '\n';
+  }
+  if(!texto.trim()) throw new Error('nada legível no arquivo');
+  st.textContent = 'PDF "'+f.name+'" lido: '+total+' página(s)' +
+    (escaneadas ? ', '+escaneadas+' via OCR' : '') + '.';
+  return texto.slice(0, 50000);
+}
 function setFlags(f){
   const itens = [
     f.nome ? ['ok','Nome'] : ['miss','Nome?'],
     f.valor ? ['ok','Valor'] : ['miss','Valor?'],
-    f.venc ? (f.fraca ? ['warn','Venc.'] : ['ok','Vencimento'])
+    f.venc ? (f.fraca ? ['warn','Venc.'] : (f.vencAprox ? ['warn','Venc. aproximado'] : ['ok','Vencimento']))
       : (f.valor>0 ? ['miss','Venc.?'] : ['miss','Vencimento?']),
     f.linha ? (f.fraca ? ['warn','Linha fraca'] : ['ok','Linha'])
       : (f.valor>0 ? ['warn','Sem linha'] : ['miss','Linha?']),
-    f.empresa ? ['ok','Empresa'] : ['warn','Empresa?']
-  ];
+    f.empresa ? ['ok','Empresa'] : ['warn','Empresa?'],
+    f.nf ? ['ok','NF-e'] : null
+  ].filter(Boolean);
   document.getElementById('ocrFlags').innerHTML =
     itens.map(x=>'<span class="flag '+x[0]+'">'+x[1]+'</span>').join('');
 }
@@ -938,12 +1143,81 @@ function mostrarRevisao(p){
   else
     st.textContent = 'Não consegui ler os dados — documento preservado acima, complete à mão.';
 }
+// ---- Revisão de Nota Fiscal ----
+function renderNFBlock(nf){
+  const box = document.getElementById('ocrNF');
+  if(!box) return;
+  if(!nf){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const lin = (k,v) => v ? '<div>'+k+': <b>'+esc(v)+'</b></div>' : '';
+  let itensHtml = '';
+  if(nf.itens && nf.itens.length){
+    itensHtml = '<details class="det" open><summary>Itens ('+nf.itens.length+')</summary><div class="det-grid">' +
+      nf.itens.slice(0,25).map((it,i)=>'<div>'+(i+1)+'. '+esc(it.desc)+' — '+
+        String(it.qtd).replace('.',',')+' '+esc(it.un||'')+' × '+BRL(it.vUnit)+' = <b>'+BRL(it.vTotal)+'</b>' +
+        (it.ncm?' <small>NCM '+esc(it.ncm)+'</small>':'') + (it.cfop?' <small>CFOP '+esc(it.cfop)+'</small>':'') +
+      '</div>').join('') +
+      (nf.itens.length > 25 ? '<div>… e mais '+(nf.itens.length-25)+' item(ns).</div>' : '') +
+      '</div></details>';
+  }
+  const tot = nf.totais || {};
+  const totais = [];
+  if(tot.valorProdutos) totais.push('Produtos '+BRL(tot.valorProdutos));
+  if(tot.baseIcms) totais.push('Base ICMS '+BRL(tot.baseIcms));
+  if(tot.icms) totais.push('ICMS '+BRL(tot.icms));
+  if(tot.icmsSt) totais.push('ICMS-ST '+BRL(tot.icmsSt));
+  if(tot.ipi) totais.push('IPI '+BRL(tot.ipi));
+  if(tot.desconto) totais.push('Desc. '+BRL(tot.desconto));
+  if(tot.pis) totais.push('PIS '+BRL(tot.pis));
+  if(tot.cofins) totais.push('COFINS '+BRL(tot.cofins));
+  box.innerHTML = '<div class="doc-info"><b>Nota Fiscal' + (nf.serie ? ' — Série '+esc(nf.serie) : '') +
+    (nf.numero ? ' nº '+esc(nf.numero) : '') + '</b>' +
+    lin('Emissão', nf.emissao ? fmtData(nf.emissao) : '') +
+    (nf.chave ? '<div>Chave: <b>'+esc(nf.chave)+'</b></div>' : '') +
+    lin('Emitente', (nf.emitente && nf.emitente.nome) || '') +
+    lin('CNPJ emitente', (nf.emitente && nf.emitente.cnpj) || '') +
+    lin('Destinatário', (nf.destinatario && nf.destinatario.nome) || '') +
+    lin('CNPJ destinatário', (nf.destinatario && nf.destinatario.cnpj) || '') +
+    lin('Condição de pagamento', nf.pagamento || '') +
+    (totais.length ? '<div style="margin-top:6px">'+totais.map(x=>'<div>'+x+'</div>').join('')+'</div>' : '') +
+    itensHtml + '</div>';
+  box.style.display = '';
+}
+function mostrarRevisaoNF(nf, linha){
+  ocrCands = [];
+  document.getElementById('ocrCands').innerHTML = '';
+  const nomeSug = nf.empresa || (nf.emitente && nf.emitente.nome) || '';
+  document.getElementById('oNome').value = nomeSug;
+  document.getElementById('oValor').value = nf.valor || '';
+  // NF sem vencimento: usa emissão (ou hoje) e avisa — nada de travar o salvamento.
+  const vencReal = !!nf.venc;
+  document.getElementById('oVenc').value = nf.venc || nf.emissao || hojeISO();
+  document.getElementById('oEmpresa').value = nomeSug;
+  document.getElementById('oLinha').value = linha || '';
+  document.getElementById('oObs').value = nf.pagamento ? ('Pagamento: '+nf.pagamento) : '';
+  document.getElementById('oCat').value = 'Outros';
+  renderNFBlock(nf);
+  const docBox = document.getElementById('oDocInfo');
+  const cnpj = (nf.emitente && nf.emitente.cnpj) || '';
+  if(cnpj){ docBox.style.display = ''; docBox.innerHTML = 'Emitente: <b>'+esc(cnpj)+'</b>'; }
+  else docBox.style.display = 'none';
+  const txt = document.getElementById('ocrText');
+  if(ocrTexto){ txt.style.display = ''; txt.textContent = ocrTexto.slice(0,1200); }
+  else txt.style.display = 'none';
+  setFlags({nome:!!nomeSug, valor:nf.valor>0, venc:true, vencAprox:!vencReal,
+    empresa:!!nomeSug, linha:!!linha, fraca:false, nf:true});
+  document.getElementById('ocrReview').style.display = '';
+  document.getElementById('ocrStatus').textContent =
+    'Nota Fiscal identificada' + (nf.numero ? ' — nº '+nf.numero : '') +
+    (vencReal ? '. Confira tudo e salve.' : '. Sem vencimento no documento — ajuste a data antes de salvar se precisar.');
+}
 function decodificarLinha(){
   const v = document.getElementById('oLinhaManual').value;
   if(!soDig(v)){ alert('Digite a linha digitável.'); return; }
   const p = parseBoletoTexto(v);
   if(!p.linha){ alert('Linha inválida (precisa de 44 a 48 dígitos).'); return; }
   ocrTexto = v;
+  ocrDoc = {tipo:'boleto', numero:'', serie:'', emissao:'', chave:'', extra:dadosBoletoExtra(v, p.linha)};
+  renderNFBlock(null);
   mostrarRevisao(p);
 }
 function usarCand(i){
@@ -951,6 +1225,7 @@ function usarCand(i){
   document.getElementById('oValor').value = c.valor || '';
   document.getElementById('oVenc').value = c.venc || '';
   document.getElementById('oLinha').value = c.linha;
+  if(ocrDoc.tipo === 'boleto') ocrDoc.extra = dadosBoletoExtra(ocrTexto, c.linha);
   document.getElementById('ocrStatus').textContent = 'Dados da opção escolhida — confira e salve.';
 }
 async function salvarOCR(){
@@ -960,6 +1235,21 @@ async function salvarOCR(){
   if(!nome){ alert('Informe o nome da conta.'); return; }
   if(!(valor>0)){ alert('Informe o valor.'); return; }
   if(!venc){ alert('Informe o vencimento.'); return; }
+  // Dedupe no cliente: linha digitável / chave de NF são únicas — bloqueia reimportação.
+  const linhaNorm = soDig(document.getElementById('oLinha').value);
+  if(linhaNorm){
+    const dup = boletos.find(b=>soDig(b.linhaDigitavel)===linhaNorm);
+    if(dup){ alert('Este boleto já foi importado como "'+dup.nome+'" (linha digitável idêntica).'); return; }
+  }
+  if(ocrDoc.chave){
+    const dupN = boletos.find(b=>String(b.docChave||'').replace(/[^0-9A-Za-z]/g,'').toLowerCase()===ocrDoc.chave);
+    if(dupN){ alert('Esta nota fiscal já foi importada como "'+dupN.nome+'".'); return; }
+  }
+  if(!linhaNorm && !ocrDoc.chave){
+    const k = chaveBol(nome, valor, venc);
+    const dupK = boletos.find(b=>chaveBol(b.nome, b.valor, isoD(b.vencimento))===k);
+    if(dupK && !confirm('Já existe uma conta idêntica (mesmo nome, valor e vencimento): "'+dupK.nome+'".\nSalvar mesmo assim?')) return;
+  }
   const f = document.getElementById('ocrFile').files[0];
   if(f && !ocrAnexo.url && f.size > 12*1024*1024){ alert('Arquivo muito grande (máx 12 MB).'); return; }
   const btn = document.getElementById('btnSaveOCR');
@@ -975,7 +1265,11 @@ async function salvarOCR(){
     }
     const data = {nome, categoria:document.getElementById('oCat').value, empresa:document.getElementById('oEmpresa').value.trim(),
       valor, vencimento:venc, status:'pendente', linhaDigitavel:document.getElementById('oLinha').value.trim(),
-      obs:document.getElementById('oObs').value.trim(), anexoUrl:ocrAnexo.url, anexoNome:ocrAnexo.nome};
+      obs:document.getElementById('oObs').value.trim(), anexoUrl:ocrAnexo.url, anexoNome:ocrAnexo.nome,
+      docTipo: ocrDoc.tipo || '', docNumero: ocrDoc.numero || '', docEmissao: ocrDoc.emissao || '',
+      docChave: ocrDoc.chave || '',
+      docExtra: ocrDoc.extra ? JSON.stringify(ocrDoc.extra).slice(0,20000) : '',
+      docTexto: (ocrTexto||'').slice(0,40000)};
     const r2 = await apiPost({action:'boletoSalvar', id:'', data});
     if(!r2.ok) throw new Error(r2.error||'falha ao salvar');
     document.getElementById('dlgOCR').close();

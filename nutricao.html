@@ -63,8 +63,19 @@
   .loading{text-align:center; color:var(--dim); font-size:13px; padding:40px 0;}
 
   .group-header{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
-    color:var(--dim); margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line);}
+    color:var(--dim); margin:24px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center; gap:8px;}
   .group-header:first-child{margin-top:0;}
+  .day-more{border:none; background:transparent; color:var(--dim); cursor:pointer; font-size:15px;
+    padding:1px 7px; border-radius:6px; line-height:1.3; font-family:inherit; letter-spacing:0; text-transform:none;}
+  .day-more:hover{background:var(--card2); color:var(--ink);}
+  .day-menu{position:fixed; z-index:200; background:var(--card); border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.45); padding:6px; min-width:210px;
+    display:flex; flex-direction:column; gap:2px;}
+  .day-menu button{border:none; background:transparent; color:var(--ink); text-align:left;
+    padding:9px 12px; border-radius:8px; font-size:13px; cursor:pointer; font-family:inherit;}
+  .day-menu button:hover{background:var(--card2);}
+  .day-menu button:disabled{opacity:.45; cursor:default;}
 
   .item{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; margin-bottom:12px;
     transition:border-color .18s;}
@@ -197,7 +208,8 @@
     overflow-x:auto; padding-bottom:60px;}
   .cal-col{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px; min-height:120px;}
   .cal-col.today{border-color:var(--leaf); box-shadow:0 0 0 1px var(--leaf);}
-  .cal-day{font-size:12px; color:var(--mut); margin-bottom:8px; text-transform:capitalize;}
+  .cal-day{font-size:12px; color:var(--mut); margin-bottom:8px; text-transform:capitalize;
+    display:flex; justify-content:space-between; align-items:center; gap:4px;}
   .cal-day b{color:var(--ink); font-size:13px;}
   .cal-block{border-radius:12px; padding:8px; margin-bottom:8px; font-size:12px; border:1px solid;}
   .cal-block.feito{background:rgba(61,122,92,.1); border-color:#2c5a3c;}
@@ -338,7 +350,7 @@
       <input type="text" id="reprogMotivo" placeholder="ex: chuva, planta precisou...">
     </div>
     <div class="sheet-actions">
-      <button class="btn-cancel" onclick="document.getElementById('dlgReprog').close()">Cancelar</button>
+      <button class="btn-cancel" onclick="diaAcao=null;document.getElementById('dlgReprog').close()">Cancelar</button>
       <button class="btn-save" onclick="salvarReprog()">Reprogramar</button>
     </div>
   </div>
@@ -365,7 +377,7 @@
       </div>
     </div>
     <div class="sheet-actions">
-      <button class="btn-cancel" onclick="document.getElementById('dlgFeito').close()">Cancelar</button>
+      <button class="btn-cancel" onclick="diaAcao=null;document.getElementById('dlgFeito').close()">Cancelar</button>
       <button class="btn-save" onclick="confirmarFeito()">Confirmar</button>
     </div>
   </div>
@@ -634,7 +646,10 @@ function renderLista(){
     if(chave !== grupoAtual){
       grupoAtual = chave;
       const titulo = dataExibicao(d) ? fmtData(dataExibicao(d)) : 'Sem data definida';
-      html += `<div class="group-header">${titulo}</div>`;
+      const chaveData = dataExibicao(d) || '';
+      html += `<div class="group-header"><span>${titulo}</span>` +
+        (chaveData ? `<button class="day-more" onclick="openDiaMenu(event,'${chaveData}')" title="Ações do dia">⋯</button>` : '') +
+        `</div>`;
     }
     html += itemCard(d);
   });
@@ -726,7 +741,7 @@ function renderSemana(){
     `<button onclick="mudaSemana(7)">›</button><button onclick="mudaSemana(0)">Hoje</button></div><div class="cal-grid">`;
   dias.forEach(dt=>{
     const dd = new Date(dt+'T00:00:00');
-    html += `<div class="cal-col${dt===hoje?' today':''}"><div class="cal-day">${DIAS_PT[dd.getDay()]} <b>${dt.slice(8)}/${dt.slice(5,7)}</b></div>`;
+    html += `<div class="cal-col${dt===hoje?' today':''}"><div class="cal-day"><span>${DIAS_PT[dd.getDay()]} <b>${dt.slice(8)}/${dt.slice(5,7)}</b></span><button class="day-more" onclick="openDiaMenu(event,'${dt}')" title="Ações do dia">⋯</button></div>`;
     const doDia = porDia[dt] || [];
     const porE = {};
     doDia.forEach(d=>{ const e = String(d.estufa||'?'); (porE[e] = porE[e] || []).push(d); });
@@ -778,9 +793,78 @@ async function excluirNota(){
 }
 
 // ===== AÇÕES =====
+let diaAcao = null; // {tipo:'feito'|'reprog', ids:[...]} quando agindo em dia inteiro
+
+function tarefasDoDia(dt){
+  return filtrar().filter(d => dataExibicao(d) === dt);
+}
+function fecharDiaMenu(){
+  const m = document.getElementById('dayMenu');
+  if(m) m.remove();
+}
+function openDiaMenu(ev, dt){
+  ev.stopPropagation();
+  fecharDiaMenu();
+  const doDia = tarefasDoDia(dt);
+  if(!doDia.length) return;
+  const nFeito = doDia.filter(d=>d.status!=='feito').length;
+  const nOutras = doDia.filter(d=>d.status!=='feito' && d.status!=='nao-realizada').length;
+  const menu = document.createElement('div');
+  menu.className = 'day-menu';
+  menu.id = 'dayMenu';
+  menu.innerHTML =
+    `<button ${nFeito?'':'disabled'} onclick="diaFeito('${dt}')">✓ Tudo feito${nFeito?' ('+nFeito+')':''}</button>` +
+    `<button ${nOutras?'':'disabled'} onclick="diaNaoRealizada('${dt}')">✗ Tudo não realizado${nOutras?' ('+nOutras+')':''}</button>` +
+    `<button ${nOutras?'':'disabled'} onclick="diaReprogramar('${dt}')">📅 Reprogramar dia${nOutras?' ('+nOutras+')':''}</button>`;
+  document.body.appendChild(menu);
+  const r = ev.target.getBoundingClientRect();
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.style.left = Math.min(r.left, window.innerWidth - menu.offsetWidth - 8) + 'px';
+}
+if(document.addEventListener) document.addEventListener('click', fecharDiaMenu);
+
+function diaFeito(dt){
+  fecharDiaMenu();
+  const alvos = tarefasDoDia(dt).filter(d=>d.status!=='feito');
+  if(!alvos.length) return;
+  diaAcao = {tipo:'feito', ids: alvos.map(d=>d.id)};
+  document.getElementById('feitoId').value = '';
+  document.getElementById('feitoInfo').textContent =
+    `${alvos.length} tarefa(s) de ${fmtData(dt)} — tudo do dia`;
+  const hoje = hojeISO();
+  document.getElementById('feitoHojeData').textContent = fmtData(hoje);
+  document.getElementById('feitoHoje').checked = true;
+  document.getElementById('feitoData').value = hoje;
+  document.getElementById('feitoOutroField').style.display = 'none';
+  document.getElementById('dlgFeito').showModal();
+}
+async function diaNaoRealizada(dt){
+  fecharDiaMenu();
+  const alvos = tarefasDoDia(dt).filter(d=>d.status!=='feito' && d.status!=='nao-realizada');
+  if(!alvos.length) return;
+  if(!confirm(`Marcar ${alvos.length} tarefa(s) de ${fmtData(dt)} como não realizada?`)) return;
+  for(const d of alvos){
+    await marcarNaoRealizada(d.id, true);
+  }
+  carregar();
+}
+function diaReprogramar(dt){
+  fecharDiaMenu();
+  const alvos = tarefasDoDia(dt).filter(d=>d.status!=='feito' && d.status!=='nao-realizada');
+  if(!alvos.length) return;
+  diaAcao = {tipo:'reprog', ids: alvos.map(d=>d.id)};
+  document.getElementById('reprogId').value = '';
+  document.getElementById('reprogData').value = dt;
+  document.getElementById('reprogMotivo').value = '';
+  document.getElementById('reprogInfo').textContent =
+    `${alvos.length} tarefa(s) de ${fmtData(dt)} — reprogramar tudo`;
+  document.getElementById('dlgReprog').showModal();
+}
+
 function openFeito(id){
   const d = dados.find(x=>x.id===id);
   if(!d || d.status==='feito') return;
+  diaAcao = null;
   document.getElementById('feitoId').value = id;
   document.getElementById('feitoInfo').textContent =
     `Estufa ${d.estufa||'?'} — ${parseItens(d).filter(i=>i.produto).map(i=>i.produto).join(', ') || d.produto || ''}`;
@@ -798,17 +882,23 @@ document.querySelectorAll('input[name="feitoQuando"]').forEach(r=>{
   });
 });
 async function confirmarFeito(){
-  const id = document.getElementById('feitoId').value;
   let data = hojeISO();
   if(!document.getElementById('feitoHoje').checked){
     data = document.getElementById('feitoData').value;
     if(!data){ alert('Informe a data em que foi feito.'); return; }
   }
   document.getElementById('dlgFeito').close();
+  if(diaAcao && diaAcao.tipo === 'feito'){
+    const ids = diaAcao.ids; diaAcao = null;
+    for(const id of ids){ await marcarFeito(id, data, true); }
+    carregar();
+    return;
+  }
+  const id = document.getElementById('feitoId').value;
   await marcarFeito(id, data);
 }
 
-async function marcarFeito(id, dataExec){
+async function marcarFeito(id, dataExec, silencioso){
   const d = dados.find(x => x.id === id);
   if(!d || d.status === 'feito') return;
   const dt = dataExec || hojeISO();
@@ -827,10 +917,10 @@ async function marcarFeito(id, dataExec){
       data:{ baixadoItens: JSON.stringify(itens) }
     })});
   }
-  carregar();
+  if(!silencioso) carregar();
 }
 
-async function marcarNaoRealizada(id){
+async function marcarNaoRealizada(id, silencioso){
   const d = dados.find(x => x.id === id);
   if(!d || d.status === 'nao-realizada') return;
   if(d.status === 'feito') await devolverTudo(d);
@@ -838,12 +928,13 @@ async function marcarNaoRealizada(id){
     tipo:'nutricao', action:'update', id,
     data:{ status:'nao-realizada', baixadoItens:'' }
   })});
-  carregar();
+  if(!silencioso) carregar();
 }
 
 function openReprog(id){
-  const d = dados.find(x => x.id === id);
+  const d = dados.find(x=>x.id===id);
   if(!d) return;
+  diaAcao = null;
   document.getElementById('reprogId').value = id;
   document.getElementById('reprogData').value = d.dataPrevista || hojeISO();
   document.getElementById('reprogMotivo').value = '';
@@ -852,10 +943,28 @@ function openReprog(id){
   document.getElementById('dlgReprog').showModal();
 }
 async function salvarReprog(){
-  const id = document.getElementById('reprogId').value;
   const novaData = document.getElementById('reprogData').value;
   const motivo = document.getElementById('reprogMotivo').value.trim();
   if(!novaData){ alert('Informe a nova data.'); return; }
+
+  if(diaAcao && diaAcao.tipo === 'reprog'){
+    const ids = diaAcao.ids; diaAcao = null;
+    for(const id of ids){
+      const d = dados.find(x=>x.id===id);
+      if(!d) continue;
+      const dataOriginal = d.dataOriginal || d.dataPrevista || '';
+      const obs = motivo ? (d.obs ? d.obs + ' | Reprogramada: ' + motivo : 'Reprogramada: ' + motivo) : (d.obs || '');
+      await fetch(API_URL, {method:'POST', body: JSON.stringify({
+        tipo:'nutricao', action:'update', id,
+        data:{ status:'reprogramada', dataPrevista: novaData, dataOriginal, obs }
+      })});
+    }
+    document.getElementById('dlgReprog').close();
+    carregar();
+    return;
+  }
+
+  const id = document.getElementById('reprogId').value;
   const d = dados.find(x => x.id === id);
   if(!d) return;
   const dataOriginal = d.dataOriginal || d.dataPrevista || '';

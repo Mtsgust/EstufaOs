@@ -82,15 +82,31 @@ function getSheet_(tipo) {
     sheet.appendRow(cfg.headers);
     sheet.setFrozenRows(1);
   } else {
-    // Se a planilha existe mas falta alguma coluna (ex: litrosAgua), adiciona no fim
-    var existing = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var missing = cfg.headers.filter(function(h) { return existing.indexOf(h) === -1; });
-    if (missing.length) {
-      var startCol = existing.length + 1;
-      var row = [];
-      for (var mi = 0; mi < existing.length; mi++) row.push('');
-      missing.forEach(function(h) { row.push(h); });
-      sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    // Garante que o cabeçalho da planilha bate com cfg.headers (ordem e colunas novas).
+    // Se só jogasse as colunas faltantes no fim, o add gravava na ordem errada
+    // (ex: qtdPlantas caía em dataPlantio) e os campos "não salvavam".
+    var lastCol = sheet.getLastColumn();
+    var existing = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].slice() : [];
+    while (existing.length && existing[existing.length - 1] === '') existing.pop();
+    var precisaAlinhar = existing.length !== cfg.headers.length ||
+      cfg.headers.some(function (h, i) { return existing[i] !== h; });
+    if (precisaAlinhar) {
+      var idxAntigo = {};
+      existing.forEach(function (h, i) { if (h) idxAntigo[String(h)] = i; });
+      var nLinhas = sheet.getLastRow();
+      var dadosAntigos = nLinhas > 1 ? sheet.getRange(2, 1, nLinhas - 1, Math.max(existing.length, 1)).getValues() : [];
+      var novasLinhas = dadosAntigos.map(function (row) {
+        return cfg.headers.map(function (h) {
+          var i = idxAntigo[h];
+          return i !== undefined ? row[i] : '';
+        });
+      });
+      sheet.clearContents();
+      sheet.getRange(1, 1, 1, cfg.headers.length).setValues([cfg.headers]);
+      if (novasLinhas.length) {
+        sheet.getRange(2, 1, novasLinhas.length, cfg.headers.length).setValues(novasLinhas);
+      }
+      sheet.setFrozenRows(1);
     }
   }
   try {
@@ -384,11 +400,14 @@ function doPost(e) {
       var d = body.data || {};
       var id = Utilities.getUuid();
       var now = new Date();
-      var row = cfg.headers.map(function (h) {
+      // Monta a linha pelo cabeçalho REAL da planilha (não por cfg.headers),
+      // para nunca desalinhar colunas se o sheet tiver ordem diferente.
+      var hdrRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var row = hdrRow.map(function (h) {
+        h = String(h);
         if (h === 'id') return id;
         if (h === 'dataCriacao') return now;
         if (h === 'status') return d.status || 'pendente';
-        // "estufa" sempre como texto ("1,3,7"), senão o Sheets converte em data/número
         if (h === 'estufa') return String(d[h] !== undefined ? d[h] : '');
         return d[h] !== undefined ? d[h] : '';
       });

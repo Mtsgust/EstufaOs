@@ -189,6 +189,53 @@ function estufaBate(d){
   return estufasDe(d).includes(estufa);
 }
 
+// ---------- flexibilidade de texto (acentos/caixa/typos leves) ----------
+function chaveFlex(s){
+  return String(s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+}
+function distEdit(a,b){
+  if(a === b) return 0;
+  if(Math.abs(a.length - b.length) > 2) return 99;
+  let prev = Array.from({length:b.length+1}, (_,j)=>j);
+  for(let i=1;i<=a.length;i++){
+    const cur = [i];
+    for(let j=1;j<=b.length;j++){
+      cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function toleraTexto(a,b){
+  a = chaveFlex(a); b = chaveFlex(b);
+  if(!a || !b) return false;
+  if(a === b) return true;
+  const minLen = Math.min(a.length, b.length);
+  if(minLen < 5) return false;
+  const lim = Math.min(a.length, b.length) >= 10 ? 2 : 1;
+  return distEdit(a,b) <= lim;
+}
+function fundirChavesFlex(map, mergeFn){
+  const keys = Object.keys(map);
+  const usadas = new Set();
+  const out = {};
+  for(const k of keys){
+    if(usadas.has(k)) continue;
+    let val = map[k];
+    for(const k2 of keys){
+      if(k2 === k || usadas.has(k2)) continue;
+      if(toleraTexto(k, k2)){ val = mergeFn(val, map[k2]); usadas.add(k2); }
+    }
+    out[k] = val;
+    usadas.add(k);
+  }
+  return out;
+}
+
 // ---------- helpers ----------
 function prodList(v){
   if(!v) return [];
@@ -311,10 +358,15 @@ function pintarPulverizacoes(){
   document.getElementById('puResumo').innerHTML =
     'Período: <b>'+fmtData(p.ini)+'</b> – <b>'+fmtData(p.fim)+'</b> · <b>'+lista.length+'</b> aplicação(ões)';
 
-  // A — alvos
+  // A — alvos (flex: acentos/caixa/typos leves não duplicam)
   const alvoCount = {};
-  lista.forEach(t => alvosLista(t.alvo).forEach(a => { const k = a.toLowerCase(); alvoCount[k] = alvoCount[k] || {nome:a, n:0}; alvoCount[k].n++; }));
-  const rkAlvos = Object.values(alvoCount).sort((a,b)=>b.n-a.n);
+  lista.forEach(t => alvosLista(t.alvo).forEach(a => {
+    const k = chaveFlex(a); if(!k) return;
+    alvoCount[k] = alvoCount[k] || {nome: String(a).trim(), n:0};
+    alvoCount[k].n++;
+  }));
+  const alvoFund = fundirChavesFlex(alvoCount, (a,b)=>({nome:a.nome, n:a.n+b.n}));
+  const rkAlvos = Object.values(alvoFund).sort((a,b)=>b.n-a.n);
   const totalAlvos = rkAlvos.reduce((a,x)=>a+x.n,0) || 1;
   const topA = rkAlvos.slice(0,8);
   novoChart('chAlvos', {type:'bar', data:{labels: topA.map(x=>x.nome), datasets:[{data: topA.map(x=>x.n), backgroundColor:cores.red, borderRadius:6}]}, options:barOpts()});
@@ -322,24 +374,31 @@ function pintarPulverizacoes(){
     ? rankHTML(rkAlvos.slice(0,10).map(x=>[x.nome, x.n, Math.round(x.n/totalAlvos*100)+'%']), v=>v+'×', 'Sem alvos registrados.')
     : '<div class="empty">Sem alvos no período.</div>';
 
-  // B — produtos
-  const prodCount = {};
+  // B — produtos (mesma flexibilidade + consumo tolerante)
+  const prodRaw = {};
   const consumo = {};
   (DADOS.movimentacoes||[]).forEach(m => {
     if(String(m.origem||'').toLowerCase() !== 'pulverizacao' || String(m.tipo) !== 'saida') return;
     if(!noPer(m.data, p)) return;
-    const k = (m.produtoNome||'—')+'|'+(m.unidade||'');
-    consumo[k] = (consumo[k]||0) + num(m.quantidade);
+    const k = chaveFlex(m.produtoNome||'—')+'|'+chaveFlex(m.unidade||'');
+    consumo[k] = consumo[k] || {qtd:0, un:m.unidade||'', nome:String(m.produtoNome||'—').trim()};
+    consumo[k].qtd += num(m.quantidade);
   });
   lista.forEach(t => prodList(t.produto).forEach(o => {
     const n = nomeProdOf(o); if(!n) return;
-    prodCount[n] = (prodCount[n]||0)+1;
+    const k = chaveFlex(n); if(!k) return;
+    prodRaw[k] = prodRaw[k] || {nome:String(n).trim(), n:0};
+    prodRaw[k].n++;
   }));
-  const rkProd = Object.entries(prodCount).sort((a,b)=>b[1]-a[1]);
-  const prodRows = rkProd.map(([nome,n]) => {
+  const prodFund = fundirChavesFlex(prodRaw, (a,b)=>({nome:a.nome, n:a.n+b.n}));
+  const rkProd = Object.entries(prodFund).map(([k,v])=>[k, v]).sort((a,b)=>b[1].n-a[1].n);
+  const prodRows = rkProd.map(([k,o]) => {
     let cons = '', un = '';
-    for(const k in consumo){ if(k.split('|')[0].toLowerCase() === nome.toLowerCase()){ cons = fmtQtd(consumo[k]); un = k.split('|')[1]; delete consumo[k]; break; } }
-    return '<tr><td>'+esc(nome)+'</td><td class="num">'+n+'</td><td class="num">'+(cons||'—')+'</td><td class="mut">'+esc(un||'—')+'</td></tr>';
+    for(const ck in consumo){
+      const parte = ck.split('|')[0];
+      if(parte === k || toleraTexto(parte, k)){ cons = fmtQtd(consumo[ck].qtd); un = consumo[ck].un; delete consumo[ck]; break; }
+    }
+    return '<tr><td>'+esc(o.nome)+'</td><td class="num">'+o.n+'</td><td class="num">'+(cons||'—')+'</td><td class="mut">'+esc(un||'—')+'</td></tr>';
   });
   document.getElementById('tbProdutos').innerHTML = tabela(
     [{t:'Nome comercial'},{t:'Aplicações',n:1},{t:'Consumido',n:1},{t:'Un.'}], prodRows, 'Sem pulverizações no período.');
@@ -404,17 +463,20 @@ function pintarNutricao(){
   document.getElementById('nuResumo').innerHTML =
     'Período: <b>'+fmtData(p.ini)+'</b> – <b>'+fmtData(p.fim)+'</b> · <b>'+lista.length+'</b> tarefa(s)';
 
-  // A — produtos (itens com qtd + unidade)
+  // A — produtos (itens com qtd + unidade; flex p/ acentos e typos)
   const prodAgg = {};
   lista.forEach(t => parseItensRel(t).forEach(it => {
     const n = it.produto || it.nome; if(!n) return;
     const un = it.unidade || '';
-    const k = n+'|'+un;
-    if(!prodAgg[k]) prodAgg[k] = {nome:n, un, qtd:0, tarefas:new Set()};
+    const k = chaveFlex(n)+'|'+chaveFlex(un);
+    if(!prodAgg[k]) prodAgg[k] = {nome:String(n).trim(), un, qtd:0, tarefas:new Set()};
     prodAgg[k].qtd += num(it.qtd);
     prodAgg[k].tarefas.add(t.id);
   }));
-  const rkProd = Object.values(prodAgg).sort((a,b)=>b.qtd-a.qtd);
+  const prodFund = fundirChavesFlex(prodAgg, (a,b)=>({
+    nome:a.nome, un:a.un||b.un, qtd:a.qtd+b.qtd, tarefas:new Set([...a.tarefas, ...b.tarefas])
+  }));
+  const rkProd = Object.values(prodFund).sort((a,b)=>b.qtd-a.qtd);
   const prodRows = rkProd.map(o =>
     '<tr><td>'+esc(o.nome)+'</td><td class="num">'+fmtQtd(o.qtd)+'</td><td class="mut">'+esc(o.un||'—')+'</td><td class="num">'+o.tarefas.size+'</td></tr>');
   document.getElementById('tbNutProd').innerHTML = tabela(

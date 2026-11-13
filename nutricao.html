@@ -1158,7 +1158,7 @@ function parsePlanoSemanal(texto, stats){
   const reTipoSolo = /(solo|gesso|cama|substrato|tratamento)/i;
   const reTipoBio = /(biol|tricho|beauveria|metarhizium|bacillus|biologico)/i;
   const reTipoFert = /(fertirrig|fert |nutri|cálcio|calcio|potássio|potassio|npk|ureia|nitrato|soil|mix|vita|mkp)/i;
-  const reCabecalho = /(produtor|matheus|moraes|cultura|variedade|localidade|pinhal|quantidade|plantas|semana|dosagens|frutilla|tomate|^\s*dia\s*$)/i;
+  const reCabecalho = /(produtor|matheus|moraes|cultura|variedade|localidade|pinhal|quantidade|plantas|semana|dosagens|frutilla|tomate|programa[çc][ãa]o|^\s*dia\s*$)/i;
   const reDoseTeste = /(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)(\/\w+)?/i;
   const reDoseG = /(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)(\/\w+)?/gi;
   function limpar(s){
@@ -1167,9 +1167,10 @@ function parsePlanoSemanal(texto, stats){
       .replace(/estufas?\s*[\d\s, e\-–]+/gi,' ')
       .replace(/(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)(-feira)?/gi,' ')
       .replace(/^(e\s?[1-7]|estufa\s?\d)\s*[-:–•|]+/i,' ')
-      .replace(/^[-–—•|:;.,\d)\s]+/,'')
+      .replace(/^[-–—•|+:;.,\d)\s]+/,'')
       .replace(/\s{2,}/g,' ')
       .replace(/[-–—•|:;.,\s]+$/,'')
+      .replace(/\s+\+$/,'')
       .trim();
   }
   function normUn(u){
@@ -1190,9 +1191,14 @@ function parsePlanoSemanal(texto, stats){
       dataAprox = false;
     }
     let estufas = null;
-    const mEst = lin.match(/estufas?\s*([\d\s, e\-–]+)/i);
+    const mEst = lin.match(/estufas?\s*(\d+(?:\s*[,e\-–]+\s*\d+)*)/i);
     if(mEst){ estufas = mEst[1].match(/\d/g) || null; }
-    else { const av = lin.match(/(?:^|[\s\-–\[\(])e\s?([1-7])(?:[\s,\]\).\-–]|$)/i); if(av) estufas = [av[1]]; }
+    else {
+      // Tabela: linha começa com o número da estufa sozinho na coluna (ex: "1 Nitrato de cálcio 6 kg + ...")
+      const mTab = lin.match(/^([1-7])(?:\s+(?!(?:kg|g|gr|ml|l|litros?|un)\b)|$)/i);
+      if(mTab) estufas = [mTab[1]];
+      else { const av = lin.match(/(?:^|[\s\-–\[\(])e\s?([1-7])(?:[\s,\]\).\-–]|$)/i); if(av) estufas = [av[1]]; }
+    }
     if(estufas && estufas.length) estufaCtx = estufas;
     if(reTipoSolo.test(lin)) tipoCtx = 'Tratamento de solo';
     else if(reTipoBio.test(lin)) tipoCtx = 'Biológico';
@@ -1208,7 +1214,7 @@ function parsePlanoSemanal(texto, stats){
     }
     reDoseG.lastIndex = 0;
     if(!hits.length){
-      if(mDia || mData || mEst || reTipoSolo.test(lin) || reTipoBio.test(lin) || reTipoFert.test(lin)) st.cabecalhos++;
+      if(mDia || mData || mEst || /^estufa\b/i.test(lin) || reTipoSolo.test(lin) || reTipoBio.test(lin) || reTipoFert.test(lin)) st.cabecalhos++;
       else st.ignoradas.push(lin);
       continue;
     }

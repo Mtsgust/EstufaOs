@@ -76,3 +76,10 @@ async function postarSeguro(corpo) {
   }
   throw ultimoErro || new Error("falha de rede");
 }
+
+/* Service worker: cache de assets estáticos (CSS, JS, logo) pra carregar mais rápido. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}

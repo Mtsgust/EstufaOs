@@ -176,6 +176,8 @@
     color:var(--gold); padding:2px 8px; border-radius:10px; margin-bottom:8px; letter-spacing:.03em;}
   .imp-dup{display:inline-block; font-size:10px; font-weight:700; background:rgba(224,120,95,.15);
     color:var(--red); padding:2px 8px; border-radius:10px; margin-left:6px;}
+  .imp-fonte{font-size:11px; color:var(--dim); margin-top:6px; line-height:1.45;
+    border-left:2px solid var(--line); padding-left:8px; word-break:break-word;}
 
   /* Calendário semanal */
   .cal-nav{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
@@ -264,8 +266,8 @@
   </div>
 
   <div class="view-toggle">
-    <button class="vt active" data-v="lista" onclick="mudaView('lista')">Lista</button>
     <button class="vt" data-v="semana" onclick="mudaView('semana')">Semana</button>
+    <button class="vt active" data-v="lista" onclick="mudaView('lista')">Lista</button>
   </div>
 
   <main id="list"><div class="loading">Carregando…</div></main>
@@ -997,35 +999,65 @@ function garantirPdfjs(){
     document.head.appendChild(s);
   });
 }
+function agruparLinhasTC(items){
+  const grupos = [];
+  for(const it of items){
+    if(!it || it.str === undefined || it.str === null) continue;
+    const y = Math.round((it.transform && it.transform[5]) || 0);
+    let g = null;
+    for(const c of grupos){ if(Math.abs(c.y - y) <= 3){ g = c; break; } }
+    if(!g){ g = {y, parts:[]}; grupos.push(g); }
+    g.parts.push({x: (it.transform && it.transform[4]) || 0, s: it.str});
+  }
+  grupos.sort((a,b)=> b.y - a.y);
+  return grupos.map(g=>{
+    g.parts.sort((a,b)=> a.x - b.x);
+    let line = '';
+    for(const p of g.parts){
+      if(!p.s) continue;
+      if(line && !/\s$/.test(line) && !/^\s/.test(p.s)) line += ' ';
+      line += p.s;
+    }
+    return line.replace(/[ \t]+/g,' ').trim();
+  }).filter(Boolean);
+}
+async function ocrPaginaPdf(pg){
+  await garantirTesseract();
+  const vp = pg.getViewport({scale:2.5});
+  const cv = document.createElement('canvas');
+  cv.width = vp.width; cv.height = vp.height;
+  await pg.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise;
+  const blob = await new Promise(r=>cv.toBlob(r,'image/png'));
+  const r = await window.Tesseract.recognize(blob, 'por');
+  return (r.data && r.data.text) || '';
+}
 async function lerPdfFile(f){
   const st = document.getElementById('impStatus');
   try{
     await garantirPdfjs();
-    st.textContent = 'Lendo PDF...';
+    st.textContent = `Lendo PDF "${f.name}"...`;
     const buf = await f.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-    let texto = '';
-    const n = Math.min(pdf.numPages, 3);
-    for(let i=1;i<=n;i++){
+    const total = pdf.numPages;
+    let texto = '', escaneadas = 0;
+    for(let i=1;i<=total;i++){
       const pg = await pdf.getPage(i);
       const tc = await pg.getTextContent();
-      texto += tc.items.map(it=>it.str).join('\n') + '\n';
-    }
-    if(texto.replace(/\s/g,'').length < 30){
-      st.textContent = 'PDF escaneado, lendo como foto... (pode levar ~20s)';
-      await garantirTesseract();
-      const pg = await pdf.getPage(1);
-      const vp = pg.getViewport({scale:2.5});
-      const cv = document.createElement('canvas');
-      cv.width = vp.width; cv.height = vp.height;
-      await pg.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise;
-      const blob = await new Promise(r=>cv.toBlob(r,'image/png'));
-      const r = await window.Tesseract.recognize(blob, 'por');
-      texto = (r.data && r.data.text) || '';
+      let t = agruparLinhasTC(tc.items).join('\n');
+      if(t.replace(/\s/g,'').length < 30){
+        escaneadas++;
+        st.textContent = `Página ${i}/${total} sem texto — lendo como imagem (OCR)...`;
+        t = await ocrPaginaPdf(pg);
+      } else {
+        st.textContent = `Lendo PDF "${f.name}"... página ${i}/${total}`;
+      }
+      texto += (i>1 ? '\n' : '') + t + '\n';
     }
     if(!texto.trim()) throw new Error('nada legível no arquivo');
-    document.getElementById('impTexto').value = texto.slice(0,8000);
-    st.textContent = 'PDF lido! Confira o texto e clique em "Ler texto".';
+    document.getElementById('impTexto').value = texto.slice(0,50000);
+    st.textContent = `PDF "${f.name}" lido: ${total} página(s)` +
+      (escaneadas ? `, ${escaneadas} via OCR` : '') +
+      '. Confira o texto e clique em "Ler texto".';
   }catch(err){ st.textContent = 'Não consegui ler o PDF (' + (err && err.message ? err.message : 'erro') + '). Tente foto ou cole o texto.'; }
 }
 document.getElementById('impArquivo').addEventListener('change', async (e)=>{
@@ -1098,7 +1130,9 @@ function chaveNome(s){
 function nomeOficial(nome){
   return APELIDOS[chaveNome(nome)] || String(nome||'').trim();
 }
-function parsePlanoSemanal(texto){
+function parsePlanoSemanal(texto, stats){
+  const st = stats || {};
+  st.linhas = 0; st.ignoradas = []; st.cabecalhos = 0;
   const raw = String(texto||'');
   const rejuntado = raw.replace(/[ \t]*[-–—][ \t]*\r?\n[ \t]*/g, ' - ');
   const brutas = rejuntado.split(/\r?\n/).map(l=>String(l).trim()).filter(Boolean);
@@ -1111,27 +1145,49 @@ function parsePlanoSemanal(texto){
     juntas.push(l);
   }
   const linhas = juntas.flatMap(l => String(l).split(/\s+\/\s+/)).map(l=>l.trim()).filter(Boolean);
+  st.linhas = linhas.length;
   const itens = [];
-  let estufaCtx = ['1'], dataCtx = hojeISO(), tipoCtx = 'Outro';
+  let estufaCtx = ['1'], dataCtx = '', dataAprox = false, tipoCtx = 'Outro';
   let semanaBase = null;
-  const mSem = raw.match(/semana[^\n]*?(\d{1,2})\/(\d{1,2})\s*a[^\n]*?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
+  const mSem = raw.match(/semana[^\n]*?(?<!\d)(\d{1,2})\/(\d{1,2})\s*a[^\n]*?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
   if(mSem){
     semanaBase = new Date(parseInt(mSem[5]), parseInt(mSem[2])-1, parseInt(mSem[1]));
   }
   const reDia = /(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)/i;
-  const reData = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;
+  const reData = /(?<!\d)(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;
   const reTipoSolo = /(solo|gesso|cama|substrato|tratamento)/i;
   const reTipoBio = /(biol|tricho|beauveria|metarhizium|bacillus|biologico)/i;
   const reTipoFert = /(fertirrig|fert |nutri|cálcio|calcio|potássio|potassio|npk|ureia|nitrato|soil|mix|vita|mkp)/i;
   const reCabecalho = /(produtor|matheus|moraes|cultura|variedade|localidade|pinhal|quantidade|plantas|semana|dosagens|frutilla|tomate|^\s*dia\s*$)/i;
+  const reDoseTeste = /(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)(\/\w+)?/i;
+  const reDoseG = /(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)(\/\w+)?/gi;
+  function limpar(s){
+    return String(s||'')
+      .replace(reData,' ')
+      .replace(/estufas?\s*[\d\s, e\-–]+/gi,' ')
+      .replace(/(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)(-feira)?/gi,' ')
+      .replace(/^(e\s?[1-7]|estufa\s?\d)\s*[-:–•|]+/i,' ')
+      .replace(/^[-–—•|:;.,\d)\s]+/,'')
+      .replace(/\s{2,}/g,' ')
+      .replace(/[-–—•|:;.,\s]+$/,'')
+      .trim();
+  }
+  function normUn(u){
+    const x = String(u||'').toLowerCase();
+    return x.startsWith('kg')?'kg':x.startsWith('ml')?'mL':x.startsWith('un')?'un':x.startsWith('g')?'g':'L';
+  }
   for(const lin of linhas){
     const low = lin.toLowerCase();
     const mDia = low.match(reDia);
-    if(mDia){ dataCtx = dataDiaSemana(mDia[1].toLowerCase(), semanaBase) || dataCtx; }
+    if(mDia){
+      const dt = dataDiaSemana(mDia[1].toLowerCase(), semanaBase);
+      if(dt){ dataCtx = dt; dataAprox = !semanaBase; }
+    }
     const mData = lin.match(reData);
     if(mData && !/semana/i.test(lin)){
       const ano = mData[3] ? (mData[3].length===2?'20'+mData[3]:mData[3]) : String(semanaBase ? semanaBase.getFullYear() : new Date().getFullYear());
       dataCtx = `${ano}-${String(mData[2]).padStart(2,'0')}-${String(mData[1]).padStart(2,'0')}`;
+      dataAprox = false;
     }
     let estufas = null;
     const mEst = lin.match(/estufas?\s*([\d\s, e\-–]+)/i);
@@ -1141,39 +1197,63 @@ function parsePlanoSemanal(texto){
     if(reTipoSolo.test(lin)) tipoCtx = 'Tratamento de solo';
     else if(reTipoBio.test(lin)) tipoCtx = 'Biológico';
     else if(reTipoFert.test(lin)) tipoCtx = 'Fertirrigação';
-    if(reCabecalho.test(lin) && !lin.match(/(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)/i)) continue;
+    if(reCabecalho.test(lin) && !reDoseTeste.test(lin)){ st.cabecalhos++; continue; }
     const soCabecalho = /^(plano|semana|nutri|técnico|tecnico|estufa|segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)[\s:–\-]*$/i.test(lin);
-    if(soCabecalho) continue;
-    let qtd='', un='kg';
-    const mDose = lin.match(/(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|mL\b|l\b|litros?|un\b)/i);
-    if(!mDose) continue;
-    qtd = mDose[1].replace(',','.');
-    {
-      const u = mDose[2].toLowerCase();
-      un = u.startsWith('kg')?'kg':u.startsWith('ml')?'mL':u.startsWith('un')?'un':u.startsWith('g')?'g':'L';
+    if(soCabecalho){ st.cabecalhos++; continue; }
+    const hits = [];
+    let m;
+    reDoseG.lastIndex = 0;
+    while((m = reDoseG.exec(lin))){
+      hits.push({start:m.index, end:m.index+m[0].length, qtd:m[1].replace(',','.'), un:normUn(m[2]), dose:m[0]});
     }
-    let prod = lin
-      .replace(reData,' ').replace(/estufas?\s*[\d\s, e\-–]+/gi,' ')
-      .replace(/(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)(-feira)?/gi,' ')
-      .replace(/(\d+[.,]?\d*)\s*(kg|g\b|gr\b|ml\b|l\b|litros?|un\b)(\/\w+)?/gi,' ')
-      .replace(/^(e\s?[1-7]|estufa\s?\d)\s*[-:–•|]+/i,' ')
-      .replace(/^[-–—•\d.)\s]+/,'').replace(/\s{2,}/g,' ').trim()
-      .replace(/[-–—•|:;.,\s]+$/,'').trim();
-    if(prod.length < 3) continue;
-    if(/^(fertirrigação|fertirrigacao|tratamento|biológico|biologico|outro)$/i.test(prod)) continue;
-    prod = nomeOficial(prod);
-    for(const e of estufaCtx){
-      itens.push({ estufa:e, tipoTarefa:tipoCtx, produto:prod.slice(0,60), dose: mDose?mDose[0]:'', qtd, unidade:un, data:dataCtx, obs:'Plano semanal' });
+    reDoseG.lastIndex = 0;
+    if(!hits.length){
+      if(mDia || mData || mEst || reTipoSolo.test(lin) || reTipoBio.test(lin) || reTipoFert.test(lin)) st.cabecalhos++;
+      else st.ignoradas.push(lin);
+      continue;
     }
+    let cursor = 0, achou = false;
+    for(let i=0;i<hits.length;i++){
+      const h = hits[i];
+      const fimSeg = (i+1<hits.length) ? hits[i+1].start : lin.length;
+      let antes = limpar(lin.slice(cursor, h.start));
+      let depois = '';
+      if(!antes){
+        depois = limpar(lin.slice(h.end, fimSeg));
+        cursor = fimSeg;
+      } else {
+        cursor = h.end;
+      }
+      let prod = nomeOficial(antes || depois);
+      if(prod.length < 3) continue;
+      if(/^(fertirrigação|fertirrigacao|tratamento|biológico|biologico|outro)$/i.test(prod)) continue;
+      achou = true;
+      prod = prod.slice(0,60);
+      for(const e of estufaCtx){
+        itens.push({ estufa:e, tipoTarefa:tipoCtx, produto:prod.slice(0,60), dose:h.dose, qtd:h.qtd, unidade:h.un, data:dataCtx, obs:'Plano semanal', fonte:lin, aprox: !!dataAprox });
+      }
+    }
+    if(!achou) st.ignoradas.push(lin);
   }
   return itens;
 }
 function processarTexto(){
   const txt = document.getElementById('impTexto').value;
-  impItens = parsePlanoSemanal(txt);
+  const stats = {};
+  impItens = parsePlanoSemanal(txt, stats);
   const st = document.getElementById('impStatus');
-  if(!impItens.length){ st.textContent = 'Não entendi nada. Cole uma linha por tarefa, ex: "Segunda - Estufa 1 - Trichoderma 2kg".'; return; }
-  st.textContent = `Entendi ${impItens.length} tarefas. Confira, ajuste e salve.`;
+  if(!impItens.length){
+    st.textContent = 'Não entendi nada. Cole uma linha por tarefa, ex: "Segunda - Estufa 1 - Trichoderma 2kg".' +
+      (stats.ignoradas && stats.ignoradas.length ? `\n⚠ ${stats.ignoradas.length} linha(s) não reconhecida(s).` : '');
+    renderImpPreview();
+    return;
+  }
+  let msg = `Entendi ${impItens.length} tarefas. Confira, ajuste e salve.`;
+  if(stats.ignoradas && stats.ignoradas.length){
+    msg += `\n⚠ ${stats.ignoradas.length} linha(s) não reconhecida(s): ` +
+      stats.ignoradas.slice(0,3).join(' | ') + (stats.ignoradas.length>3 ? ' …' : '');
+  }
+  st.textContent = msg;
   renderImpPreview();
 }
 function renderImpPreview(){
@@ -1183,19 +1263,29 @@ function renderImpPreview(){
   const existentes = new Set(dados.map(d =>
     `${d.estufa}|${(d.produto||'').toLowerCase().trim()}|${d.dataPrevista||''}`
   ));
+  const contagem = {};
+  impItens.forEach(t=>{
+    const k = `${t.estufa}|${(t.produto||'').toLowerCase().trim()}|${t.data||''}`;
+    contagem[k] = (contagem[k]||0)+1;
+  });
   w.innerHTML = impItens.map((t,i)=>{
-    const chave = `${t.estufa}|${t.produto.toLowerCase().trim()}|${t.data||''}`;
-    const dup = existentes.has(chave);
+    const chave = `${t.estufa}|${(t.produto||'').toLowerCase().trim()}|${t.data||''}`;
+    const badges = ['<span class="imp-warn">⚠ Confira os dados</span>'];
+    if(existentes.has(chave)) badges.push('<span class="imp-dup">Já existe!</span>');
+    if(contagem[chave] > 1) badges.push('<span class="imp-dup">Duplicado no lote</span>');
+    if(!t.data) badges.push('<span class="imp-warn">⚠ Sem data</span>');
+    else if(t.aprox) badges.push('<span class="imp-warn">≈ Data aproximada</span>');
+    if(!(num(t.qtd) > 0)) badges.push('<span class="imp-warn">⚠ Sem quantidade</span>');
     return `
     <div class="imp-item">
-      <span class="imp-warn">⚠ Confira os dados</span>${dup?'<span class="imp-dup">Já existe!</span>':''}
+      ${badges.join('')}
       <div class="row2">
-        <div class="field"><label>Data</label><input type="date" value="${t.data||''}" onchange="impItens[${i}].data=this.value"></div>
-        <div class="field"><label>Estufa</label><select onchange="impItens[${i}].estufa=this.value">
+        <div class="field"><label>Data</label><input type="date" value="${t.data||''}" onchange="impItens[${i}].data=this.value;renderImpPreview()"></div>
+        <div class="field"><label>Estufa</label><select onchange="impItens[${i}].estufa=this.value;renderImpPreview()">
           ${['1','2','3','4','5','6','7'].map(e=>`<option ${e===t.estufa?'selected':''}>${e}</option>`).join('')}
         </select></div>
       </div>
-      <div class="field"><label>Produto</label><input type="text" value="${escapeHtml(t.produto)}" onchange="impItens[${i}].produto=this.value"></div>
+      <div class="field"><label>Produto</label><input type="text" value="${escapeHtml(t.produto||'')}" onchange="impItens[${i}].produto=this.value"></div>
       <div class="row2">
         <div class="field"><label>Tipo</label><select onchange="impItens[${i}].tipoTarefa=this.value">
           ${['Tratamento de solo','Biológico','Fertirrigação','Outro'].map(x=>`<option ${x===t.tipoTarefa?'selected':''}>${x}</option>`).join('')}
@@ -1205,6 +1295,7 @@ function renderImpPreview(){
           ${['kg','g','L','mL','un'].map(x=>`<option ${x===t.unidade?'selected':''}>${x}</option>`).join('')}
         </select></div>
       </div>
+      ${t.fonte ? `<div class="imp-fonte">📄 ${escapeHtml(t.fonte)}</div>` : ''}
       <button class="imp-rm" onclick="impItens.splice(${i},1);renderImpPreview()">Remover</button>
     </div>`;
   }).join('');
@@ -1216,8 +1307,9 @@ async function salvarImportadas(){
   const existentes = new Set(dados.map(d =>
     `${d.estufa}|${(d.produto||'').toLowerCase().trim()}|${d.dataPrevista||''}`
   ));
-  let ok = 0, pulados = 0;
+  let ok = 0, pulados = 0, incompletas = 0;
   for(const t of impItens){
+    if(!String(t.produto||'').trim()){ incompletas++; continue; }
     const chave = `${t.estufa}|${t.produto.toLowerCase().trim()}|${t.data||''}`;
     if(existentes.has(chave)){ pulados++; continue; }
     try{
@@ -1233,7 +1325,9 @@ async function salvarImportadas(){
   }
   btn.disabled = false;
   document.getElementById('impStatus').textContent =
-    `Pronto! ${ok} tarefas salvas como pendentes.` + (pulados ? ` ${pulados} ignoradas por já existirem.` : '');
+    `Pronto! ${ok} tarefas salvas como pendentes.` +
+    (pulados ? ` ${pulados} ignoradas por já existirem.` : '') +
+    (incompletas ? ` ${incompletas} ignoradas por estarem incompletas.` : '');
   document.getElementById('dlgImp').close();
   carregar();
 }

@@ -28,47 +28,47 @@
   header p{margin:4px 0 0; font-size:12.5px; color:var(--mut);}
   main{padding:16px 20px; max-width:1080px; margin:0 auto;}
 
-  /* Filtros globais */
   .filtros{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;}
   .filtros .grp{display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:5px 8px;}
   .filtros label{font-size:11px; color:var(--mut); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
-  .filtros select,.filtros input{background:var(--bg2); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+  .filtros select{background:var(--bg2); color:var(--ink); border:1px solid var(--line); border-radius:8px;
     padding:7px 9px; font-size:13px; font-family:inherit; color-scheme:dark;}
-  .filtros select:focus,.filtros input:focus{outline:none; border-color:var(--leaf);}
-  .presets{display:flex; gap:5px; flex-wrap:wrap;}
-  .presets button{background:var(--card); color:var(--mut); border:1px solid var(--line); border-radius:9px;
-    padding:7px 11px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
-  .presets button.ativo{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
-  .nota-filtro{font-size:11.5px; color:var(--dim); margin:0 0 10px;}
+  .filtros select:focus{outline:none; border-color:var(--leaf);}
 
-  /* Abas de categoria */
   .cats{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px;}
   .cat{flex:0 0 auto; padding:9px 14px; border-radius:12px; font-size:12.5px; font-weight:700; cursor:pointer;
     background:var(--card); border:1px solid var(--line); color:var(--mut); transition:.18s; white-space:nowrap;}
   .cat:hover{background:var(--card2); color:var(--ink);}
   .cat.active{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff; border-color:transparent;}
 
+  .sec-head{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
+  .sec-head .resumo{font-size:13px; color:var(--mut);}
+  .sec-head .resumo b{color:var(--ink); font-weight:800;}
+  .per-toggle{display:flex; gap:5px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px;}
+  .per-toggle button{background:transparent; color:var(--mut); border:none; border-radius:9px; padding:7px 13px;
+    font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .per-toggle button.ativo{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
+  .per-toggle input[type=month]{background:var(--bg2); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+    padding:6px 8px; font-size:12.5px; font-family:inherit; color-scheme:dark;}
+
   .grid{display:grid; gap:14px;}
-  .kpis{grid-template-columns:repeat(4,1fr);}
+  .cols2{grid-template-columns:1fr 1fr;}
   .card{background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line);
     border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.3);}
   .card h2{margin:0 0 10px; font-size:14.5px; font-weight:700;}
-  .kpi .lbl{font-size:11.5px; color:var(--mut); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
-  .kpi .num{font-size:23px; font-weight:800; margin-top:6px; line-height:1.25; word-break:break-word;}
-  .kpi .num small{font-size:12px; color:var(--mut); font-weight:600;}
-  .delta{font-size:11px !important; font-weight:800 !important; margin-left:4px; white-space:nowrap;}
-  .delta.up{color:var(--lime);} .delta.down{color:var(--red);} .delta.neu{color:var(--dim); font-weight:600 !important;}
-  .cols2{grid-template-columns:1fr 1fr;}
+  .card h2 small{font-weight:600; color:var(--mut); font-size:11.5px; margin-left:6px;}
   canvas{max-height:250px;}
-  .legend{font-size:11.5px; color:var(--dim); margin-top:8px;}
   .rank{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13.5px; gap:10px;}
   .rank:last-child{border:none;} .rank b{color:var(--lime); white-space:nowrap;}
   .rank span{color:var(--mut); overflow:hidden; text-overflow:ellipsis;}
+  .rank .pct{color:var(--dim); font-size:11.5px; margin-left:6px; font-weight:600;}
   .empty{color:var(--dim); font-size:13px; text-align:center; padding:18px 0;}
   .loading{color:var(--dim); font-size:13px; text-align:center; padding:40px 0;}
+  .nota{font-size:12px; color:var(--dim); margin:8px 0 0;}
+  .alerta-linha{border-left:3px solid var(--red); padding-left:10px;}
+  .ok-linha{border-left:3px solid var(--lime); padding-left:10px;}
 
-  /* Tabelas */
-  .tbl-wrap{overflow-x:auto; max-height:340px; overflow-y:auto;}
+  .tbl-wrap{overflow-x:auto; max-height:360px; overflow-y:auto;}
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
   th{position:sticky; top:0; background:var(--card2); color:var(--mut); text-align:left; font-size:11px;
     text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid var(--line); z-index:1;}
@@ -80,19 +80,17 @@
   .badge.warn{background:rgba(217,164,65,.15); color:var(--gold);}
   .badge.err{background:rgba(224,120,95,.15); color:#F0907A;}
   .badge.info{background:rgba(92,143,209,.15); color:#8FB8E8;}
-  .sub-tit{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:6px 0 0;}
-  .sec{display:none;} .sec.ativa{display:block;}
   .duas{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .sub-tit{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:18px 0 8px;}
 
   @media (max-width:860px){
-    .kpis{grid-template-columns:repeat(2,1fr);}
     .cols2,.duas{grid-template-columns:1fr;}
   }
   @media (max-width:600px){
     main{padding:14px 12px;}
-    .kpi .num{font-size:19px;}
     .filtros{flex-direction:column; align-items:stretch;}
     .filtros .grp{justify-content:space-between;}
+    .sec-head{flex-direction:column; align-items:stretch;}
   }
 </style>
 <link rel="stylesheet" href="sidebar.css">
@@ -101,27 +99,15 @@
 <header>
   <a href="index.html">‹ voltar</a>
   <h1>Relatórios</h1>
-  <p>Todos os relatórios do sistema em um só lugar — filtros valem para as 7 categorias.</p>
+  <p>Análise da propriedade com dados reais do sistema.</p>
 </header>
 <main>
   <div class="filtros">
-    <div class="presets" id="presets">
-      <button data-d="30">30d</button>
-      <button data-d="90" class="ativo">90d</button>
-      <button data-d="180">6 meses</button>
-      <button data-d="365">12 meses</button>
-      <button data-d="mes">Este mês</button>
-    </div>
-    <div class="grp"><label>De</label><input type="date" id="fDe"></div>
-    <div class="grp"><label>Até</label><input type="date" id="fAte"></div>
     <div class="grp"><label>Estufa</label><select id="fEstufa"><option value="todas">Todas</option></select></div>
-    <div class="grp"><label>Cultura</label><select id="fCultura"><option value="todas">Todas</option></select></div>
   </div>
-  <p class="nota-filtro" id="notaFiltro" style="display:none"></p>
 
   <div class="cats" id="cats">
-    <div class="cat active" data-c="producao">Produção</div>
-    <div class="cat" data-c="pulverizacoes">Pulverizações</div>
+    <div class="cat active" data-c="pulverizacoes">Pulverizações</div>
     <div class="cat" data-c="nutricao">Nutrição</div>
     <div class="cat" data-c="estoque">Estoque</div>
     <div class="cat" data-c="colheita">Colheita</div>
@@ -140,12 +126,15 @@ const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;'
 const isoD = v => { if(!v) return ''; const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1]+'-'+m[2]+'-'+m[3] : ''; };
 const fmtData = v => { const s = isoD(v); return s ? s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4) : '—'; };
 const fmtQtd = v => { const n = num(v); return n % 1 === 0 ? String(n) : n.toFixed(2).replace('.',','); };
+const iso = dt => dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+const hojeISO = () => iso(new Date());
 
 let DADOS = {};
-let cat = 'producao';
-let per = {ini:'', fim:''};
-let estufa = 'todas', cultura = 'todas';
+let cat = 'pulverizacoes';
+let estufa = 'todas';
 const charts = {};
+const perSec = {pulv:'semana', nutr:'semana', colh:'semana', fin:'atual'};
+let vendMes = hojeISO().slice(0,7);
 
 async function get(t){
   try { if (typeof buscarTipo === 'function') return await buscarTipo(t); }
@@ -170,50 +159,37 @@ async function carregarDados(){
   tipos.forEach((t,i) => DADOS[t] = r[i] || []);
 }
 
-// ---------- período ----------
-function iso(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
-function presetDias(d){
+// ---------- períodos ----------
+function periodoDe(tipo){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  if(d === 'mes'){
-    const i = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    per = {ini: iso(i), fim: iso(hoje)};
-  }else{
-    const i = new Date(hoje); i.setDate(i.getDate() - (d - 1));
-    per = {ini: iso(i), fim: iso(hoje)};
+  if(tipo === 'semana'){
+    const ini = new Date(hoje); ini.setDate(ini.getDate() - 6);
+    return {ini: iso(ini), fim: iso(hoje)};
   }
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+  return {ini: iso(ini), fim: iso(fim)};
 }
-function periodoAnterior(){
-  const a = new Date(per.ini+'T00:00:00'), b = new Date(per.fim+'T00:00:00');
+function periodoAnteriorDe(p){
+  const a = new Date(p.ini+'T00:00:00'), b = new Date(p.fim+'T00:00:00');
   const dias = Math.round((b - a)/86400000) + 1;
   const f2 = new Date(a); f2.setDate(f2.getDate() - 1);
   const i2 = new Date(f2); i2.setDate(i2.getDate() - dias + 1);
   return {ini: iso(i2), fim: iso(f2)};
 }
-function noPer(v){ const s = isoD(v); return !!s && s >= per.ini && s <= per.fim; }
-function antPer(v){ const p = periodoAnterior(); const s = isoD(v); return !!s && s >= p.ini && s <= p.fim; }
-function mesesNoPer(){
-  const out = [];
-  const [ai,mi] = per.ini.split('-').map(Number), [af,mf] = per.fim.split('-').map(Number);
-  const d = new Date(ai, mi-1, 1), fim = new Date(af, mf-1, 1);
-  let guarda = 0;
-  while(d <= fim && guarda++ < 60){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); }
-  if(!out.length) out.push(per.ini.slice(0,7));
-  return out;
-}
-const nomeMes = ym => { const [a,m] = ym.split('-'); return m+'/'+a.slice(2); };
-function deltaPct(atual, anterior){ if(!(anterior > 0)) return null; return Math.round((atual - anterior)/anterior*100); }
-function kpiHTML(valor, d){
-  let h = valor;
-  if(d === null || d === undefined) h += ' <small class="delta neu" title="sem base de comparação no período anterior">sem base</small>';
-  else h += ' <small class="delta '+(d>=0?'up':'down')+'">'+(d>=0?'▲':'▼')+' '+Math.abs(d)+'%</small>';
-  return h;
-}
-function kpiSet(id, valor, d){ const el = document.getElementById(id); if(el) el.innerHTML = kpiHTML(valor, d); }
-
-// ---------- filtros ----------
+function noPer(v, p){ const s = isoD(v); return !!s && s >= p.ini && s <= p.fim; }
 function estOk(e){ return estufa === 'todas' || String(e ?? '') === estufa; }
-function cultOk(c){ return cultura === 'todas' || String(c ?? '') === cultura; }
-function cultDoCiclo(id){ const c = (DADOS.ciclos||[]).find(x => String(x.id) === String(id)); return c ? (c.cultura||'') : ''; }
+function estufasDe(d){
+  const s = String(d ?? '').trim();
+  if(!s) return [];
+  return s.split(',').map(x=>x.trim()).filter(Boolean);
+}
+function estufaBate(d){
+  if(estufa === 'todas') return true;
+  return estufasDe(d).includes(estufa);
+}
+
+// ---------- helpers ----------
 function prodList(v){
   if(!v) return [];
   if(Array.isArray(v)) return v;
@@ -221,13 +197,17 @@ function prodList(v){
   if(s.startsWith('[')){ try{ const a = JSON.parse(s); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
   return [{nome: s}];
 }
-function nomeProd(v){
-  const l = prodList(v);
-  return l.map(p => (p && (p.produto || p.nome)) || String(p)).filter(Boolean).join(' + ') || '—';
+function nomeProdOf(o){ return (o && (o.produto || o.nome)) || String(o || ''); }
+function alvosLista(alvo){ return String(alvo||'').split(/[,;]+/).map(s=>s.trim()).filter(Boolean); }
+function parseItensRel(t){
+  const v = t.itens;
+  if(Array.isArray(v)) return v;
+  if(typeof v === 'string' && v.trim().startsWith('[')){ try{ const a = JSON.parse(v); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  return [];
 }
-function dataTarefa(t){ return isoD(t.dataExecucao) || isoD(t.dataPrevista) || ''; }
+function cultDoCiclo(id){ const c = (DADOS.ciclos||[]).find(x => String(x.id) === String(id)); return c ? (c.cultura||'') : ''; }
+function cicloDe(id){ return (DADOS.ciclos||[]).find(x => String(x.id) === String(id)) || null; }
 
-// ---------- helpers de exibição ----------
 function tabela(cols, rows, vazio){
   if(!rows.length) return '<div class="empty">'+(vazio || 'Sem registros no período.')+'</div>';
   return '<div class="tbl-wrap"><table><thead><tr>'+cols.map(c=>'<th'+(c.n?' class="num"':'')+'>'+c.t+'</th>').join('')+
@@ -235,442 +215,581 @@ function tabela(cols, rows, vazio){
 }
 function rankHTML(pares, fmt, vazio){
   if(!pares.length) return '<div class="empty">'+(vazio || 'Sem dados no período.')+'</div>';
-  return pares.map(([k,v])=>'<div class="rank"><span>'+esc(k)+'</span><b>'+(fmt?fmt(v):v)+'</b></div>').join('');
+  return pares.map(([k,v,extra])=>'<div class="rank"><span>'+esc(k)+(extra!=null?'<span class="pct">'+extra+'</span>':'')+'</span><b>'+(fmt?fmt(v):v)+'</b></div>').join('');
 }
 function novoChart(id, cfg){
   const el = document.getElementById(id);
   if(!el) return;
-  if(charts[id]){ charts[id].destroy(); }
+  if(charts[id]) charts[id].destroy();
   if(!window.Chart) return;
   Chart.defaults.color = '#9DB8A4'; Chart.defaults.borderColor = '#24402F';
   charts[id] = new Chart(el, cfg);
-}
-function somaMes(ms, registros, dataFn, valFn, filtro){
-  return ms.map(m => registros.reduce((a,r) => {
-    if(filtro && !filtro(r)) return a;
-    if(isoD(dataFn(r)).slice(0,7) !== m) return a;
-    return a + valFn(r);
-  }, 0));
 }
 const cores = {leaf:'#3D7A5C', lime:'#8FD19A', gold:'#D9A441', red:'#E0785F', blue:'#5C8FD1', dim:'#6E8A75'};
 function barOpts(){
   return {plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{color:'#9DB8A4'}, grid:{color:'#24402F'}}, x:{ticks:{color:'#9DB8A4'}, grid:{display:false}}}};
 }
-
-// ---------- colheitas / produção ----------
-function colheitasPeriodo(Intervalo){
-  const f = Intervalo === 'ant' ? antPer : noPer;
-  return (DADOS.colheitas||[]).filter(h => f(h.data) && estOk(h.estufa) && cultOk(cultDoCiclo(h.cicloId)));
+function toggleHTML(sec, opcoes, atual){
+  return '<div class="per-toggle" data-sec="'+sec+'">'+opcoes.map(o=>
+    '<button data-p="'+o[0]+'"'+(o[0]===atual?' class="ativo"':'')+'>'+o[1]+'</button>').join('')+'</div>';
 }
-function somaKG(lista){ return lista.reduce((a,h) => String(h.unidade||'').toUpperCase()==='CX' ? a : a + num(h.quantidade), 0); }
-function somaCX(lista){ return lista.reduce((a,h) => String(h.unidade||'').toUpperCase()==='CX' ? a + num(h.quantidade) : a, 0); }
 
-function secProducao(){
-  const at = colheitasPeriodo('at'), an = colheitasPeriodo('ant');
-  const kg = Math.round(somaKG(at)), cx = Math.round(somaCX(at));
-  const kgAnt = Math.round(somaKG(an)), cxAnt = Math.round(somaCX(an));
-  const ms = mesesNoPer();
-  const porCult = {}, porEst = {};
-  at.forEach(h => {
-    const c = cultDoCiclo(h.cicloId) || '—';
-    porCult[c] = (porCult[c]||0) + (String(h.unidade||'').toUpperCase()==='CX' ? 0 : num(h.quantidade));
-    porEst[h.estufa||'—'] = (porEst[h.estufa||'—']||0) + (String(h.unidade||'').toUpperCase()==='CX' ? 0 : num(h.quantidade));
+// ---------- regra de falha (pulv + nutrição) ----------
+function classificarTarefa(t, tipo){
+  const st = String(t.status||'').toLowerCase();
+  const exec = isoD(t.dataExecucao);
+  let plan = '';
+  if(tipo === 'nutr'){
+    if(st === 'reprogramada') plan = isoD(t.dataOriginal) || '';
+    else plan = isoD(t.dataPrevista) || isoD(t.dataOriginal) || '';
+    if(st === 'feito' && !isoD(t.dataPrevista)) plan = isoD(t.dataOriginal) || '';
+  }else{
+    plan = isoD(t.dataPrevista) || '';
+  }
+  if(st === 'feito'){
+    if(plan && exec) return {plan, exec, classe: plan === exec ? 'sucesso' : 'transferida'};
+    if(exec) return {plan, exec, classe: plan ? 'transferida' : 'sem-plan'};
+    return {plan, exec, classe: 'sem-plan'};
+  }
+  if(st === 'reprogramada') return {plan, exec:'', classe:'transferida'};
+  if(st === 'nao-realizada') return {plan, exec:'', classe:'nao-real'};
+  if(st === 'pendente'){
+    if(plan && plan < hojeISO()) return {plan, exec:'', classe:'atrasada'};
+    return {plan, exec:'', classe:'pendente'};
+  }
+  if(st === 'cancelado') return {plan, exec:'', classe:'cancelada'};
+  return {plan, exec, classe:'outra'};
+}
+function desempenhoPorDia(lista, tipo, p){
+  const map = {};
+  const ensure = d => { if(!map[d]) map[d] = {sucesso:0, transferida:0, naoReal:0, atrasada:0, exec:0}; return map[d]; };
+  lista.forEach(t => {
+    const a = classificarTarefa(t, tipo);
+    if(a.plan && a.plan >= p.ini && a.plan <= p.fim){
+      const m = ensure(a.plan);
+      if(a.classe === 'sucesso') m.sucesso++;
+      else if(a.classe === 'transferida') m.transferida++;
+      else if(a.classe === 'nao-real') m.naoReal++;
+      else if(a.classe === 'atrasada') m.atrasada++;
+    }
+    if(a.exec && a.exec >= p.ini && a.exec <= p.fim) ensure(a.exec).exec++;
   });
-  const rkCult = Object.entries(porCult).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const rkEst = Object.entries(porEst).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const cmpRows = [
-    ['KG colhido', kg, kgAnt], ['CX colhido', cx, cxAnt],
-    ['Nº de colheitas', at.length, an.length]
-  ].map(([lbl, a2, b2]) => {
-    const d = deltaPct(a2, b2);
-    return '<tr><td>'+lbl+'</td><td class="num">'+fmtQtd(a2)+'</td><td class="num mut">'+fmtQtd(b2)+'</td><td class="num">'+
-      (d===null?'<span class="mut">sem base</span>':'<span class="delta '+(d>=0?'up':'down')+'">'+(d>=0?'▲':'▼')+' '+Math.abs(d)+'%</span>')+'</td></tr>';
-  });
-  return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">KG no período</div><div class="num" id="pKg">—</div></div>
-    <div class="card kpi"><div class="lbl">CX no período</div><div class="num" id="pCx">—</div></div>
-    <div class="card kpi"><div class="lbl">Colheitas</div><div class="num" id="pN">—</div></div>
-    <div class="card kpi"><div class="lbl">Variação vs anterior</div><div class="num" id="pVar">—</div></div>
-  </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Evolução da produção (KG/mês)</h2><canvas id="chProdMes"></canvas></div>
-    <div class="card"><h2>Atual × período anterior</h2><canvas id="chProdCmp"></canvas></div>
-  </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Top culturas (KG)</h2>${rankHTML(rkCult, v=>Math.round(v).toLocaleString('pt-BR')+' KG', 'Sem colheitas no período.')}</div>
-    <div class="card"><h2>Top estufas (KG)</h2>${rankHTML(rkEst, v=>Math.round(v).toLocaleString('pt-BR')+' KG', 'Sem colheitas no período.')}</div>
-  </div>
-  <div class="card" style="margin-top:14px"><h2>Comparação de períodos</h2>
-    ${tabela([{t:'Indicador'},{t:'Período atual',n:1},{t:'Período anterior',n:1},{t:'Variação',n:1}], cmpRows, 'Sem colheitas nos dois períodos.')}
-  </div>`;
-}
-function pintarProducao(){
-  const at = colheitasPeriodo('at'), an = colheitasPeriodo('ant');
-  const kg = Math.round(somaKG(at)), cx = Math.round(somaCX(at));
-  const kgAnt = Math.round(somaKG(an)), cxAnt = Math.round(somaCX(an));
-  kpiSet('pKg', kg.toLocaleString('pt-BR'), deltaPct(kg, kgAnt));
-  kpiSet('pCx', cx.toLocaleString('pt-BR'), deltaPct(cx, cxAnt));
-  kpiSet('pN', String(at.length), deltaPct(at.length, an.length));
-  const dVar = deltaPct(kg, kgAnt);
-  document.getElementById('pVar').innerHTML = dVar === null
-    ? '<small class="delta neu">sem base</small>'
-    : (dVar>=0?'+':'')+dVar+'% <small class="delta '+(dVar>=0?'up':'down')+'">'+(dVar>=0?'▲':'▼')+'</small>';
-  const ms = mesesNoPer();
-  const kgMes = somaMes(ms, at, h=>h.data, h=>String(h.unidade||'').toUpperCase()==='CX'?0:num(h.quantidade));
-  novoChart('chProdMes', {type:'bar', data:{labels:ms.map(nomeMes), datasets:[{data:kgMes, backgroundColor:cores.leaf, borderRadius:6}]}, options:barOpts()});
-  novoChart('chProdCmp', {type:'bar',
-    data:{labels:['KG','CX'], datasets:[
-      {label:'Atual', data:[kg,cx], backgroundColor:cores.lime, borderRadius:6},
-      {label:'Anterior', data:[kgAnt,cxAnt], backgroundColor:cores.dim, borderRadius:6}]},
-    options:{plugins:{legend:{labels:{color:'#9DB8A4'}}}, scales:{y:{beginAtZero:true, ticks:{color:'#9DB8A4'}, grid:{color:'#24402F'}}, x:{ticks:{color:'#9DB8A4'}, grid:{display:false}}}}});
+  return map;
 }
 
-// ---------- colheita (histórico) ----------
-function secColheita(){
-  const at = colheitasPeriodo('at');
-  const porEst = {};
-  at.forEach(h => { porEst[h.estufa||'—'] = (porEst[h.estufa||'—']||0) + (String(h.unidade||'').toUpperCase()==='CX'?0:num(h.quantidade)); });
-  const rkEst = Object.entries(porEst).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const linhas = at.slice().sort((a,b)=>isoD(b.data).localeCompare(isoD(a.data))).slice(0,60).map(h =>
-    '<tr><td>'+fmtData(h.data)+'</td><td class="num">'+esc(String(h.estufa||'—'))+'</td><td>'+esc(cultDoCiclo(h.cicloId)||'—')+
-    '</td><td class="num">'+fmtQtd(h.quantidade)+'</td><td class="mut">'+esc(String(h.unidade||'').toUpperCase())+'</td><td class="mut">'+esc(h.obs||'')+'</td></tr>');
-  // por ciclo
-  const ciclosUsados = {};
-  at.forEach(h => { const id = String(h.cicloId||''); if(!ciclosUsados[id]) ciclosUsados[id] = {kg:0, n:0, ciclo: (DADOS.ciclos||[]).find(c=>String(c.id)===id) || null}; ciclosUsados[id].kg += String(h.unidade||'').toUpperCase()==='CX'?0:num(h.quantidade); ciclosUsados[id].n++; });
-  const cicRows = Object.values(ciclosUsados).sort((a,b)=>b.kg-a.kg).slice(0,20).map(o => {
-    const c = o.ciclo || {};
-    return '<tr><td>'+esc(c.cultura||'—')+(c.variedade?' <span class="mut">('+esc(c.variedade)+')</span>':'')+'</td><td class="num">'+esc(String(c.estufa||'—'))+
-      '</td><td class="mut">'+fmtData(c.dataPlantio||c.dataInicio)+'</td><td class="mut">'+esc(c.status||'—')+
-      '</td><td class="num">'+Math.round(o.kg).toLocaleString('pt-BR')+'</td><td class="num">'+o.n+'</td></tr>';
+// ---------- PULVERIZAÇÕES ----------
+function pulvNoPeriodo(p){
+  return (DADOS.pulverizacao||[]).filter(t => {
+    const a = classificarTarefa(t, 'pulv');
+    const datas = [a.plan, a.exec].filter(Boolean);
+    const noPeriodo = datas.some(d => d >= p.ini && d <= p.fim);
+    return noPeriodo && estufaBate(t.estufa);
   });
-  const estufasAtivas = new Set(at.map(h=>String(h.estufa||''))).size;
-  return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">KG no período</div><div class="num" id="cKg">—</div></div>
-    <div class="card kpi"><div class="lbl">CX no período</div><div class="num" id="cCx">—</div></div>
-    <div class="card kpi"><div class="lbl">Registros</div><div class="num" id="cN">—</div></div>
-    <div class="card kpi"><div class="lbl">Estufas com colheita</div><div class="num" id="cEst">—</div></div>
-  </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>KG por estufa</h2><canvas id="chColEst"></canvas></div>
-    <div class="card"><h2>Produção por ciclo (top 20)</h2>
-      ${tabela([{t:'Cultura'},{t:'Estufa',n:1},{t:'Plantio'},{t:'Status'},{t:'KG',n:1},{t:'Colheitas',n:1}], cicRows, 'Sem colheitas no período.')}
-    </div>
-  </div>
-  <div class="card" style="margin-top:14px"><h2>Histórico de colheitas${at.length>60?' (últimos 60 de '+at.length+')':''}</h2>
-    ${tabela([{t:'Data'},{t:'Estufa',n:1},{t:'Cultura'},{t:'Qtd',n:1},{t:'Un.'},{t:'Obs'}], linhas, 'Sem colheitas no período.')}
-  </div>`;
-}
-function pintarColheita(){
-  const at = colheitasPeriodo('at');
-  document.getElementById('cKg').innerHTML = Math.round(somaKG(at)).toLocaleString('pt-BR');
-  document.getElementById('cCx').innerHTML = Math.round(somaCX(at)).toLocaleString('pt-BR');
-  document.getElementById('cN').textContent = at.length;
-  document.getElementById('cEst').textContent = new Set(at.map(h=>String(h.estufa||''))).size;
-  const porEst = {};
-  at.forEach(h => { porEst[h.estufa||'—'] = (porEst[h.estufa||'—']||0)+(String(h.unidade||'').toUpperCase()==='CX'?0:num(h.quantidade)); });
-  const ks = Object.keys(porEst).sort((a,b)=>num(a)-num(b));
-  novoChart('chColEst', {type:'bar', data:{labels:ks.map(k=>'Estufa '+k), datasets:[{data:ks.map(k=>Math.round(porEst[k])), backgroundColor:cores.gold, borderRadius:6}]}, options:barOpts()});
-}
-
-// ---------- pulverizações ----------
-function pulvPeriodo(f){
-  const fn = f === 'ant' ? antPer : noPer;
-  return (DADOS.pulverizacao||[]).filter(p => fn(dataTarefa(p)) && estOk(p.estufa));
 }
 function secPulverizacoes(){
-  const at = pulvPeriodo('at');
-  const ms = mesesNoPer();
-  const prodCount = {};
-  at.forEach(p => prodList(p.produto).forEach(o => { const n = (o && (o.produto||o.nome)) || String(o); if(n) prodCount[n] = (prodCount[n]||0)+1; }));
-  const rkProd = Object.entries(prodCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const porEst = {};
-  at.forEach(p => porEst[p.estufa||'—'] = (porEst[p.estufa||'—']||0)+1);
-  const rkEst = Object.entries(porEst).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const linhas = at.slice().sort((a,b)=>dataTarefa(b).localeCompare(dataTarefa(a))).slice(0,40).map(p =>
-    '<tr><td>'+fmtData(dataTarefa(p))+'</td><td class="num">'+esc(String(p.estufa||'—'))+'</td><td>'+esc(nomeProd(p.produto))+
-    '</td><td class="mut">'+esc(p.alvo||'—')+'</td><td>'+stBadge(p.status)+'</td></tr>');
+  const p = periodoDe(perSec.pulv);
+  const rot = perSec.pulv === 'semana' ? 'Semana' : 'Mês';
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">Tarefas no período</div><div class="num" id="puN">—</div></div>
-    <div class="card kpi"><div class="lbl">Feitas</div><div class="num" id="puF">—</div></div>
-    <div class="card kpi"><div class="lbl">Pendentes</div><div class="num" id="puP">—</div></div>
-    <div class="card kpi"><div class="lbl">Produtos usados</div><div class="num" id="puProd">—</div></div>
+  <div class="sec-head">
+    <div class="resumo" id="puResumo">Período: <b>${fmtData(p.ini)}</b> – <b>${fmtData(p.fim)}</b></div>
+    ${toggleHTML('pulv', [['semana','Semana'],['mes','Mês']], perSec.pulv)}
+  </div>
+  <div class="grid cols2">
+    <div class="card"><h2>A. Alvos mais visados <small>${rot}</small></h2><canvas id="chAlvos"></canvas><div id="rkAlvos"></div></div>
+    <div class="card"><h2>B. Produtos mais utilizados <small>${rot}</small></h2><div id="tbProdutos"></div></div>
   </div>
   <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Pulverizações feitas por mês</h2><canvas id="chPulvMes"></canvas></div>
-    <div class="card"><h2>Produtos mais usados</h2>${rankHTML(rkProd, v=>v+'×', 'Sem pulverizações no período.')}</div>
-  </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Por estufa</h2>${rankHTML(rkEst, v=>v+' tarefas', 'Sem pulverizações no período.')}</div>
-    <div class="card"><h2>Histórico recente</h2>
-      ${tabela([{t:'Data'},{t:'Estufa',n:1},{t:'Produto(s)'},{t:'Alvo'},{t:'Status'}], linhas, 'Sem pulverizações no período.')}
+    <div class="card"><h2>C. Estufas mais pulverizadas <small>${rot}</small></h2><canvas id="chEstufas"></canvas><div id="rkEstufas"></div></div>
+    <div class="card"><h2>D. Desempenho das aplicações por dia <small>${rot}</small></h2><div id="tbDia"></div>
+      <p class="nota">Falha = programada para o dia e não executada nele (transferida ou não realizada). Data planejada e de execução são preservadas; transferida não conta como 2 realizadas.</p>
     </div>
   </div>`;
 }
-function stBadge(s){
-  const v = String(s||'').toLowerCase();
-  if(v === 'feito' || v === 'concluido' || v === 'concluído') return '<span class="badge ok">Feito</span>';
-  if(v === 'cancelado') return '<span class="badge err">Cancelado</span>';
-  return '<span class="badge warn">'+esc(s||'Pendente')+'</span>';
-}
 function pintarPulverizacoes(){
-  const at = pulvPeriodo('at'), an = pulvPeriodo('ant');
-  const feitas = at.filter(p=>String(p.status).toLowerCase()==='feito');
-  const pend = at.length - feitas.length;
-  const prods = new Set();
-  at.forEach(p => prodList(p.produto).forEach(o => { const n = (o && (o.produto||o.nome)) || String(o); if(n) prods.add(n); }));
-  kpiSet('puN', String(at.length), deltaPct(at.length, an.length));
-  kpiSet('puF', String(feitas.length), deltaPct(feitas.length, an.filter(p=>String(p.status).toLowerCase()==='feito').length));
-  document.getElementById('puP').textContent = pend;
-  document.getElementById('puProd').textContent = prods.size;
-  const ms = mesesNoPer();
-  const dados = ms.map(m => feitas.filter(p=>isoD(dataTarefa(p)).slice(0,7)===m).length);
-  novoChart('chPulvMes', {type:'bar', data:{labels:ms.map(nomeMes), datasets:[{data:dados, backgroundColor:cores.lime, borderRadius:6}]}, options:barOpts()});
+  const p = periodoDe(perSec.pulv);
+  const lista = pulvNoPeriodo(p);
+  document.getElementById('puResumo').innerHTML =
+    'Período: <b>'+fmtData(p.ini)+'</b> – <b>'+fmtData(p.fim)+'</b> · <b>'+lista.length+'</b> aplicação(ões)';
+
+  // A — alvos
+  const alvoCount = {};
+  lista.forEach(t => alvosLista(t.alvo).forEach(a => { const k = a.toLowerCase(); alvoCount[k] = alvoCount[k] || {nome:a, n:0}; alvoCount[k].n++; }));
+  const rkAlvos = Object.values(alvoCount).sort((a,b)=>b.n-a.n);
+  const totalAlvos = rkAlvos.reduce((a,x)=>a+x.n,0) || 1;
+  const topA = rkAlvos.slice(0,8);
+  novoChart('chAlvos', {type:'bar', data:{labels: topA.map(x=>x.nome), datasets:[{data: topA.map(x=>x.n), backgroundColor:cores.red, borderRadius:6}]}, options:barOpts()});
+  document.getElementById('rkAlvos').innerHTML = rkAlvos.length
+    ? rankHTML(rkAlvos.slice(0,10).map(x=>[x.nome, x.n, Math.round(x.n/totalAlvos*100)+'%']), v=>v+'×', 'Sem alvos registrados.')
+    : '<div class="empty">Sem alvos no período.</div>';
+
+  // B — produtos
+  const prodCount = {};
+  const consumo = {};
+  (DADOS.movimentacoes||[]).forEach(m => {
+    if(String(m.origem||'').toLowerCase() !== 'pulverizacao' || String(m.tipo) !== 'saida') return;
+    if(!noPer(m.data, p)) return;
+    const k = (m.produtoNome||'—')+'|'+(m.unidade||'');
+    consumo[k] = (consumo[k]||0) + num(m.quantidade);
+  });
+  lista.forEach(t => prodList(t.produto).forEach(o => {
+    const n = nomeProdOf(o); if(!n) return;
+    prodCount[n] = (prodCount[n]||0)+1;
+  }));
+  const rkProd = Object.entries(prodCount).sort((a,b)=>b[1]-a[1]);
+  const prodRows = rkProd.map(([nome,n]) => {
+    let cons = '', un = '';
+    for(const k in consumo){ if(k.split('|')[0].toLowerCase() === nome.toLowerCase()){ cons = fmtQtd(consumo[k]); un = k.split('|')[1]; delete consumo[k]; break; } }
+    return '<tr><td>'+esc(nome)+'</td><td class="num">'+n+'</td><td class="num">'+(cons||'—')+'</td><td class="mut">'+esc(un||'—')+'</td></tr>';
+  });
+  document.getElementById('tbProdutos').innerHTML = tabela(
+    [{t:'Nome comercial'},{t:'Aplicações',n:1},{t:'Consumido',n:1},{t:'Un.'}], prodRows, 'Sem pulverizações no período.');
+
+  // C — estufas
+  const estCount = {};
+  lista.forEach(t => estufasDe(t.estufa).forEach(e => { if(e) estCount[e] = (estCount[e]||0)+1; }));
+  const rkEst = Object.entries(estCount).sort((a,b)=>num(a[0])-num(b[0]));
+  const totEst = rkEst.reduce((a,x)=>a+x[1],0) || 1;
+  const topE = rkEst.slice(0,7);
+  novoChart('chEstufas', {type:'bar', data:{labels: topE.map(x=>'Estufa '+x[0]), datasets:[{data: topE.map(x=>x[1]), backgroundColor:cores.leaf, borderRadius:6}]}, options:barOpts()});
+  document.getElementById('rkEstufas').innerHTML = rkEst.length
+    ? rankHTML(rkEst.map(x=>['Estufa '+x[0], x[1], Math.round(x[1]/totEst*100)+'%']), v=>v+'×', 'Sem pulverizações.')
+    : '<div class="empty">Sem pulverizações no período.</div>';
+
+  // D — desempenho por dia
+  const dias = desempenhoPorDia(lista, 'pulv', p);
+  const diasOrd = Object.keys(dias).sort().reverse();
+  const diaRows = diasOrd.map(d => {
+    const m = dias[d];
+    const falhas = m.transferida + m.naoReal + m.atrasada;
+    return '<tr'+(falhas?' class="alerta-linha"':(m.sucesso?' class="ok-linha"':''))+'><td>'+fmtData(d)+'</td>'+
+      '<td class="num">'+m.sucesso+'</td><td class="num">'+m.transferida+'</td>'+
+      '<td class="num">'+m.naoReal+'</td><td class="num">'+m.atrasada+'</td></tr>';
+  });
+  document.getElementById('tbDia').innerHTML = tabela(
+    [{t:'Dia'},{t:'Na data planejada',n:1},{t:'Transferidas',n:1},{t:'Não realizadas',n:1},{t:'Pendentes atrasadas',n:1}],
+    diaRows, 'Sem aplicações com data no período.');
 }
 
-// ---------- nutrição ----------
-function nutrPeriodo(f){
-  const fn = f === 'ant' ? antPer : noPer;
-  return (DADOS.nutricao||[]).filter(t => fn(dataTarefa(t)) && estOk(t.estufa));
+// ---------- NUTRIÇÃO ----------
+function nutrNoPeriodo(p){
+  return (DADOS.nutricao||[]).filter(t => {
+    const a = classificarTarefa(t, 'nutr');
+    const datas = [a.plan, a.exec].filter(Boolean);
+    const noPeriodo = datas.some(d => d >= p.ini && d <= p.fim);
+    return noPeriodo && estOk(t.estufa);
+  });
 }
 function secNutricao(){
-  const at = nutrPeriodo('at');
-  const ms = mesesNoPer();
-  const linhas = at.slice().sort((a,b)=>dataTarefa(b).localeCompare(dataTarefa(a))).slice(0,40).map(t =>
-    '<tr><td>'+fmtData(dataTarefa(t))+'</td><td class="num">'+esc(String(t.estufa||'—'))+'</td><td>'+esc(t.tipoTarefa||'—')+
-    '</td><td>'+esc(nomeProd(t.produto))+'</td><td>'+stBadge(t.status)+'</td></tr>');
-  const movs = (DADOS.movimentacoes||[]).filter(m => String(m.origem||'').toLowerCase()==='nutricao' && String(m.tipo)==='saida' && noPer(m.data) && estOk(m.estufa));
-  const consumo = {};
-  movs.forEach(m => { const k = (m.produtoNome||'—')+'|'+(m.unidade||''); consumo[k] = (consumo[k]||0) + num(m.quantidade); });
-  const rkConsumo = Object.entries(consumo).map(([k,v])=>[k.split('|')[0]+' ('+k.split('|')[1]+')', v]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const p = periodoDe(perSec.nutr);
+  const rot = perSec.nutr === 'semana' ? 'Semana' : 'Mês';
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">Tarefas no período</div><div class="num" id="nuN">—</div></div>
-    <div class="card kpi"><div class="lbl">Feitas</div><div class="num" id="nuF">—</div></div>
-    <div class="card kpi"><div class="lbl">Pendentes</div><div class="num" id="nuP">—</div></div>
-    <div class="card kpi"><div class="lbl">Baixas de estoque</div><div class="num" id="nuB">—</div></div>
+  <div class="sec-head">
+    <div class="resumo" id="nuResumo">Período: <b>${fmtData(p.ini)}</b> – <b>${fmtData(p.fim)}</b></div>
+    ${toggleHTML('nutr', [['semana','Semana'],['mes','Mês']], perSec.nutr)}
+  </div>
+  <div class="grid cols2">
+    <div class="card"><h2>A. Produtos mais utilizados <small>${rot}</small></h2><div id="tbNutProd"></div></div>
+    <div class="card"><h2>B. Dias mais bem-sucedidos <small>${rot}</small></h2><div id="rkBons"></div></div>
   </div>
   <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Tarefas feitas por mês</h2><canvas id="chNutrMes"></canvas></div>
-    <div class="card"><h2>Consumo de insumos (saídas "nutrição")</h2>${rankHTML(rkConsumo, v=>fmtQtd(v), 'Sem baixas vinculadas no período.')}</div>
-  </div>
-  <div class="card" style="margin-top:14px"><h2>Histórico de tarefas</h2>
-    ${tabela([{t:'Data'},{t:'Estufa',n:1},{t:'Tipo'},{t:'Produto(s)'},{t:'Status'}], linhas, 'Sem tarefas no período.')}
+    <div class="card"><h2>C. Dias com mais falhas <small>${rot}</small></h2><div id="rkFalhas"></div>
+      <p class="nota">Falha = transferida para outra data ou não realizada na data planejada.</p>
+    </div>
+    <div class="card"><h2>D. Estufas mais atendidas <small>${rot}</small></h2><div id="rkNutEst"></div></div>
   </div>`;
 }
 function pintarNutricao(){
-  const at = nutrPeriodo('at'), an = nutrPeriodo('ant');
-  const feitas = at.filter(t=>String(t.status).toLowerCase()==='feito');
-  kpiSet('nuN', String(at.length), deltaPct(at.length, an.length));
-  kpiSet('nuF', String(feitas.length), deltaPct(feitas.length, an.filter(t=>String(t.status).toLowerCase()==='feito').length));
-  document.getElementById('nuP').textContent = at.length - feitas.length;
-  document.getElementById('nuB').textContent = (DADOS.movimentacoes||[]).filter(m =>
-    String(m.origem||'').toLowerCase()==='nutricao' && String(m.tipo)==='saida' && noPer(m.data) && estOk(m.estufa)).length;
-  const ms = mesesNoPer();
-  const dados = ms.map(m => feitas.filter(t=>isoD(dataTarefa(t)).slice(0,7)===m).length);
-  novoChart('chNutrMes', {type:'bar', data:{labels:ms.map(nomeMes), datasets:[{data:dados, backgroundColor:cores.gold, borderRadius:6}]}, options:barOpts()});
+  const p = periodoDe(perSec.nutr);
+  const lista = nutrNoPeriodo(p);
+  document.getElementById('nuResumo').innerHTML =
+    'Período: <b>'+fmtData(p.ini)+'</b> – <b>'+fmtData(p.fim)+'</b> · <b>'+lista.length+'</b> tarefa(s)';
+
+  // A — produtos (itens com qtd + unidade)
+  const prodAgg = {};
+  lista.forEach(t => parseItensRel(t).forEach(it => {
+    const n = it.produto || it.nome; if(!n) return;
+    const un = it.unidade || '';
+    const k = n+'|'+un;
+    if(!prodAgg[k]) prodAgg[k] = {nome:n, un, qtd:0, tarefas:new Set()};
+    prodAgg[k].qtd += num(it.qtd);
+    prodAgg[k].tarefas.add(t.id);
+  }));
+  const rkProd = Object.values(prodAgg).sort((a,b)=>b.qtd-a.qtd);
+  const prodRows = rkProd.map(o =>
+    '<tr><td>'+esc(o.nome)+'</td><td class="num">'+fmtQtd(o.qtd)+'</td><td class="mut">'+esc(o.un||'—')+'</td><td class="num">'+o.tarefas.size+'</td></tr>');
+  document.getElementById('tbNutProd').innerHTML = tabela(
+    [{t:'Nome comercial'},{t:'Qtd. utilizada',n:1},{t:'Un.'},{t:'Aplicações',n:1}], prodRows, 'Sem itens com quantidade no período.');
+
+  // B / C — dias
+  const dias = desempenhoPorDia(lista, 'nutr', p);
+  const entradas = Object.entries(dias);
+  const bons = entradas.filter(([,m])=>m.sucesso>0).sort((a,b)=>b[1].sucesso-a[1].sucesso).slice(0,8);
+  const ruins = entradas.map(([d,m])=>[d, m.transferida+m.naoReal+m.atrasada, m])
+    .filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('rkBons').innerHTML = bons.length
+    ? rankHTML(bons.map(([d,m])=>[fmtData(d), m.sucesso]), v=>v+' no dia', 'Sem dias com execução na data correta.')
+    : '<div class="empty">Sem aplicações realizadas na data planejada.</div>';
+  document.getElementById('rkFalhas').innerHTML = ruins.length
+    ? rankHTML(ruins.map(([d,n,m])=>[fmtData(d), n, m.transferida+' trans. · '+m.naoReal+' não real. · '+m.atrasada+' atras.']), v=>v+' falha(s)', 'Sem falhas no período.')
+    : '<div class="empty">Sem falhas no período.</div>';
+
+  // D — estufas
+  const estAgg = {};
+  lista.forEach(t => {
+    const e = String(t.estufa||'—');
+    if(!estAgg[e]) estAgg[e] = {n:0, prods:new Set()};
+    estAgg[e].n++;
+    parseItensRel(t).forEach(it => { if(it.produto) estAgg[e].prods.add(it.produto); });
+    prodList(t.produto).forEach(o => { const n = nomeProdOf(o); if(n) estAgg[e].prods.add(n); });
+  });
+  const rkEst = Object.entries(estAgg).sort((a,b)=>num(a[0])-num(b[0]));
+  document.getElementById('rkNutEst').innerHTML = rkEst.length
+    ? rankHTML(rkEst.map(([e,o])=>['Estufa '+e, o.n, o.prods.size+' produto(s)']), v=>v+' tarefa(s)', 'Sem tarefas no período.')
+    : '<div class="empty">Sem tarefas no período.</div>';
 }
 
-// ---------- estoque ----------
-function estoqueSec(){
-  const est = DADOS.estoque || [];
-  const baixos = est.filter(e => num(e.estoqueMinimo) > 0 && num(e.estoqueAtual) <= num(e.estoqueMinimo));
-  const movs = (DADOS.movimentacoes||[]).filter(m => noPer(m.data) && estOk(m.estufa));
-  const saidas = movs.filter(m=>String(m.tipo)==='saida'), entradas = movs.filter(m=>String(m.tipo)==='entrada');
-  const consumo = {};
-  saidas.forEach(m => { const k = (m.produtoNome||'—')+'|'+(m.unidade||''); consumo[k] = (consumo[k]||0)+num(m.quantidade); });
-  const rkConsumo = Object.entries(consumo).map(([k,v])=>[k.split('|')[0]+' ('+k.split('|')[1]+')', v]).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const linhasEst = est.slice().sort((a,b)=>(num(a.estoqueAtual)-num(a.estoqueMinimo))-(num(b.estoqueAtual)-num(b.estoqueMinimo))).slice(0,40).map(e => {
-    const baixo = num(e.estoqueMinimo)>0 && num(e.estoqueAtual)<=num(e.estoqueMinimo);
-    return '<tr><td>'+esc(e.nome||'—')+'</td><td class="mut">'+esc(e.categoria||'—')+'</td><td class="num">'+fmtQtd(e.estoqueAtual)+' '+esc(e.unidade||'')+
-      '</td><td class="num mut">'+fmtQtd(e.estoqueMinimo)+'</td><td>'+(baixo?'<span class="badge err">Abaixo do mínimo</span>':'<span class="badge ok">OK</span>')+'</td></tr>';
-  });
+// ---------- ESTOQUE ----------
+function secEstoque(){
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">Itens cadastrados</div><div class="num" id="esN">—</div></div>
-    <div class="card kpi"><div class="lbl">Abaixo do mínimo</div><div class="num" id="esB">—</div></div>
-    <div class="card kpi"><div class="lbl">Saídas no período</div><div class="num" id="esS">—</div></div>
-    <div class="card kpi"><div class="lbl">Entradas no período</div><div class="num" id="esE">—</div></div>
+  <div class="sec-head">
+    <div class="resumo">Somente alertas com base nos <b>limites mínimos cadastrados</b>.</div>
   </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Movimentações por mês (qtd. de registros)</h2><canvas id="chEstMes"></canvas></div>
-    <div class="card"><h2>Maior consumo no período</h2>${rankHTML(rkConsumo, v=>fmtQtd(v), 'Sem saídas no período.')}</div>
-  </div>
-  <div class="card" style="margin-top:14px"><h2>Saldos de estoque${baixos.length?' — '+baixos.length+' abaixo do mínimo':''}</h2>
-    ${tabela([{t:'Produto'},{t:'Categoria'},{t:'Atual',n:1},{t:'Mínimo',n:1},{t:'Situação'}], linhasEst, 'Nenhum item em estoque.')}
+  <div class="grid cols2">
+    <div class="card"><h2>Estoque zerado</h2><div id="tbZero"></div></div>
+    <div class="card"><h2>Estoque baixo</h2><div id="tbBaixo"></div></div>
   </div>`;
 }
 function pintarEstoque(){
-  const est = DADOS.estoque || [];
-  const baixos = est.filter(e => num(e.estoqueMinimo) > 0 && num(e.estoqueAtual) <= num(e.estoqueMinimo));
-  const movs = (DADOS.movimentacoes||[]).filter(m => noPer(m.data) && estOk(m.estufa));
-  document.getElementById('esN').textContent = est.length;
-  const elB = document.getElementById('esB');
-  elB.innerHTML = baixos.length
-    ? String(baixos.length)+' <small class="delta down">atenção</small>'
-    : '0';
-  document.getElementById('esS').textContent = movs.filter(m=>String(m.tipo)==='saida').length;
-  document.getElementById('esE').textContent = movs.filter(m=>String(m.tipo)==='entrada').length;
-  const ms = mesesNoPer();
-  const s = ms.map(m => movs.filter(x=>String(x.tipo)==='saida' && isoD(x.data).slice(0,7)===m).length);
-  const e = ms.map(m => movs.filter(x=>String(x.tipo)==='entrada' && isoD(x.data).slice(0,7)===m).length);
-  novoChart('chEstMes', {type:'bar',
-    data:{labels:ms.map(nomeMes), datasets:[
-      {label:'Entradas', data:e, backgroundColor:cores.lime, borderRadius:5},
-      {label:'Saídas', data:s, backgroundColor:cores.red, borderRadius:5}]},
-    options:{plugins:{legend:{labels:{color:'#9DB8A4'}}}, scales:{y:{beginAtZero:true, ticks:{color:'#9DB8A4'}, grid:{color:'#24402F'}}, x:{ticks:{color:'#9DB8A4'}, grid:{display:false}}}}});
+  const est = (DADOS.estoque||[]).slice();
+  const zerados = est.filter(e => num(e.estoqueAtual) <= 0)
+    .sort((a,b)=>num(a.estoqueAtual)-num(b.estoqueAtual));
+  const baixos = est.filter(e => num(e.estoqueAtual) > 0 && num(e.estoqueMinimo) > 0 && num(e.estoqueAtual) <= num(e.estoqueMinimo))
+    .sort((a,b)=>(num(a.estoqueAtual)/Math.max(num(a.estoqueMinimo),1))-(num(b.estoqueAtual)/Math.max(num(b.estoqueMinimo),1)));
+  const zRows = zerados.map(e =>
+    '<tr><td>'+esc(e.nome||'—')+'</td><td class="num">'+fmtQtd(e.estoqueAtual)+'</td><td class="mut">'+esc(e.unidade||'—')+'</td><td><span class="badge err">Zerado</span></td></tr>');
+  const bRows = baixos.map(e =>
+    '<tr><td>'+esc(e.nome||'—')+'</td><td class="num">'+fmtQtd(e.estoqueAtual)+'</td><td class="mut">'+esc(e.unidade||'—')+'</td><td><span class="badge warn">Abaixo do mínimo</span></td></tr>');
+  document.getElementById('tbZero').innerHTML = tabela(
+    [{t:'Produto'},{t:'Atual',n:1},{t:'Un.'},{t:'Situação'}], zRows, 'Nenhum produto zerado.');
+  document.getElementById('tbBaixo').innerHTML = tabela(
+    [{t:'Produto'},{t:'Atual',n:1},{t:'Un.'},{t:'Situação'}], bRows, 'Nenhum produto abaixo do mínimo.');
 }
 
-// ---------- vendas ----------
-function vendasPeriodo(f){
-  const fn = f === 'ant' ? antPer : noPer;
-  return (DADOS.vendas||[]).filter(v => fn(v.data) && cultOk(v.cultura));
+// ---------- COLHEITA ----------
+function colheitasNoPeriodo(p){
+  return (DADOS.colheitas||[]).filter(h => noPer(h.data, p) && estOk(h.estufa));
+}
+function somaKG(lista){ return lista.reduce((a,h) => String(h.unidade||'').toUpperCase()==='CX' ? a : a + num(h.quantidade), 0); }
+function somaCXX(lista){ return lista.reduce((a,h) => String(h.unidade||'').toUpperCase()==='CX' ? a + num(h.quantidade) : a, 0); }
+function kgDe(h){ return String(h.unidade||'').toUpperCase()==='CX' ? 0 : num(h.quantidade); }
+
+function secColheita(){
+  const p = periodoDe(perSec.colh);
+  return `
+  <div class="sec-head">
+    <div class="resumo" id="coResumo">Período: <b>${fmtData(p.ini)}</b> – <b>${fmtData(p.fim)}</b></div>
+    ${toggleHTML('colh', [['semana','Semana'],['mes','Mês']], perSec.colh)}
+  </div>
+  <div class="grid cols2">
+    <div class="card"><h2>A. Produção das estufas no período <small>não é ranking de desempenho</small></h2><div id="tbProdEst"></div></div>
+    <div class="card"><h2>B. Estufas perdendo rendimento <small>vs. período anterior (mesma estufa)</small></h2><div id="tbQueda"></div>
+      <p class="nota">Comparação sempre com o histórico da própria estufa, com contexto do ciclo. Sem comparar ciclos de idades diferentes sem identificação.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px"><h2>C. Média de produção por planta <small>safra inteira — ignora filtro semanal/mensal</small></h2><div id="tbPlanta"></div></div>
+  <div class="card" style="margin-top:14px"><h2>D. Precocidade das estufas <small>plantio → 1ª colheita · safra inteira</small></h2><div id="tbPrec"></div></div>`;
+}
+function pintarColheita(){
+  const p = periodoDe(perSec.colh);
+  const at = colheitasNoPeriodo(p);
+  const ant = colheitasNoPeriodo(periodoAnteriorDe(p));
+  document.getElementById('coResumo').innerHTML =
+    'Período: <b>'+fmtData(p.ini)+'</b> – <b>'+fmtData(p.fim)+'</b> · <b>'+Math.round(somaKG(at))+'</b> KG · <b>'+somaCXX(at)+'</b> CX';
+
+  // A — produção por estufa (sem competição)
+  const porEst = {};
+  at.forEach(h => {
+    const e = String(h.estufa||'—');
+    if(!porEst[e]) porEst[e] = {kg:0, cx:0, n:0};
+    porEst[e].kg += kgDe(h);
+    if(String(h.unidade||'').toUpperCase()==='CX') porEst[e].cx += num(h.quantidade);
+    porEst[e].n++;
+  });
+  const estOrd = Object.keys(porEst).sort((a,b)=>num(a)-num(b));
+  const aRows = estOrd.map(e => {
+    const o = porEst[e];
+    return '<tr><td>Estufa '+esc(e)+'</td><td class="num">'+Math.round(o.kg).toLocaleString('pt-BR')+'</td>'+
+      '<td class="num">'+Math.round(o.cx).toLocaleString('pt-BR')+'</td><td class="num">'+o.n+'</td></tr>';
+  });
+  document.getElementById('tbProdEst').innerHTML = tabela(
+    [{t:'Estufa'},{t:'KG',n:1},{t:'CX',n:1},{t:'Colheitas',n:1}], aRows, 'Sem colheitas no período.');
+
+  // B — quedas vs período anterior (mesma estufa)
+  const antPorEst = {};
+  ant.forEach(h => { const e = String(h.estufa||'—'); antPorEst[e] = (antPorEst[e]||0) + kgDe(h); });
+  const bRows = [];
+  estOrd.forEach(e => {
+    const atual = porEst[e].kg;
+    const anterior = antPorEst[e] || 0;
+    if(!(anterior > 0)) return;
+    const dif = atual - anterior;
+    const pct = Math.round(dif/anterior*100);
+    const cicloAt = (DADOS.ciclos||[]).filter(c => String(c.estufa)===e && c.status==='ativa')[0]
+      || (DADOS.ciclos||[]).filter(c => String(c.estufa)===e).sort((a,b)=>String(b.dataPlantio||'').localeCompare(String(a.dataPlantio||'')))[0];
+    let contexto = '—';
+    if(cicloAt){
+      const plantio = isoD(cicloAt.dataPlantio);
+      const dias = plantio ? Math.max(0, Math.round((new Date(hojeISO()) - new Date(plantio))/86400000)) : null;
+      const colhendo = isoD(cicloAt.dataInicio) && !isoD(cicloAt.dataFim);
+      contexto = (cicloAt.cultura||'') + (cicloAt.variedade?' · '+cicloAt.variedade:'') +
+        (dias!=null?' · dia '+dias+' pós-plantio':'') + (colhendo?' · em colheita':' · fora de colheita');
+    }
+    const cor = dif < 0 ? 'style="color:var(--red)"' : 'style="color:var(--lime)"';
+    bRows.push('<tr'+(dif<0?' class="alerta-linha"':'')+'><td>Estufa '+esc(e)+'</td>'+
+      '<td class="num">'+Math.round(atual).toLocaleString('pt-BR')+'</td>'+
+      '<td class="num mut">'+Math.round(anterior).toLocaleString('pt-BR')+'</td>'+
+      '<td class="num" '+cor+'>'+(dif>=0?'+':'')+Math.round(dif).toLocaleString('pt-BR')+'</td>'+
+      '<td class="num" '+cor+'>'+(dif>=0?'+':'')+pct+'%</td>'+
+      '<td class="mut">'+esc(contexto)+'</td></tr>');
+  });
+  document.getElementById('tbQueda').innerHTML = tabela(
+    [{t:'Estufa'},{t:'Período atual (KG)',n:1},{t:'Anterior (KG)',n:1},{t:'Diferença',n:1},{t:'Variação',n:1},{t:'Contexto do ciclo'}],
+    bRows, 'Sem base de comparação (estufas sem produção no período anterior).');
+
+  // C — média por planta (safra inteira)
+  const ciclosRel = (DADOS.ciclos||[]).filter(c => estOk(c.estufa));
+  const colhPorCiclo = {};
+  (DADOS.colheitas||[]).forEach(h => {
+    const id = String(h.cicloId||'');
+    if(!colhPorCiclo[id]) colhPorCiclo[id] = {kg:0, cx:0, n:0};
+    colhPorCiclo[id].kg += kgDe(h);
+    if(String(h.unidade||'').toUpperCase()==='CX') colhPorCiclo[id].cx += num(h.quantidade);
+    colhPorCiclo[id].n++;
+  });
+  const cRows = [], semQtd = [];
+  ciclosRel.forEach(c => {
+    const t = colhPorCiclo[String(c.id)] || {kg:0, cx:0, n:0};
+    const qp = parseInt(c.qtdPlantas, 10);
+    const linha = {
+      estufa: c.estufa, cultura: c.cultura||'—', variedade: c.variedade||'',
+      plantio: fmtData(c.dataPlantio), status: c.status||'—',
+      kg: t.kg, cx: t.cx, n: t.n, qp: (qp>0?qp:0), ciclo: c
+    };
+    if(qp > 0 && t.n > 0) cRows.push(linha);
+    else if(qp > 0) cRows.push(linha);
+    else semQtd.push(linha);
+  });
+  cRows.sort((a,b)=> (b.kg/(b.qp||1)) - (a.kg/(a.qp||1)));
+  const cTab = cRows.map(o =>
+    '<tr><td>Estufa '+esc(String(o.estufa))+'</td><td>'+esc(o.cultura)+(o.variedade?' <span class="mut">('+esc(o.variedade)+')</span>':'')+'</td>'+
+    '<td class="mut">'+o.plantio+'</td><td class="num">'+o.qp+'</td>'+
+    '<td class="num">'+Math.round(o.kg).toLocaleString('pt-BR')+'</td>'+
+    '<td class="num">'+(o.kg>0?(o.kg/o.qp).toFixed(2).replace('.',','):'—')+'</td>'+
+    '<td class="num">'+(o.cx>0?(o.cx/o.qp).toFixed(2).replace('.',','):'—')+'</td>'+
+    '<td class="mut">'+esc(o.status)+'</td></tr>');
+  const semTab = semQtd.map(o =>
+    '<tr><td>Estufa '+esc(String(o.estufa))+'</td><td>'+esc(o.cultura)+(o.variedade?' <span class="mut">('+esc(o.variedade)+')</span>':'')+'</td>'+
+    '<td class="mut">'+o.plantio+'</td><td><span class="badge warn">sem qtd.</span></td>'+
+    '<td class="num">'+Math.round(o.kg).toLocaleString('pt-BR')+'</td><td class="num mut">—</td><td class="num mut">—</td>'+
+    '<td class="mut">'+esc(o.status)+'</td></tr>');
+  document.getElementById('tbPlanta').innerHTML =
+    tabela([{t:'Estufa'},{t:'Cultura'},{t:'Plantio'},{t:'Plantas',n:1},{t:'KG acum.',n:1},{t:'KG/planta',n:1},{t:'CX/planta',n:1},{t:'Status'}],
+      cTab, 'Sem ciclos com quantidade de plantas cadastrada.') +
+    (semTab.length ? '<div class="sub-tit">Ciclos sem quantidade de plantas cadastrada (preencha na edição do ciclo)</div>'+
+      tabela([{t:'Estufa'},{t:'Cultura'},{t:'Plantio'},{t:'Plantas',n:1},{t:'KG acum.',n:1},{t:'KG/planta',n:1},{t:'CX/planta',n:1},{t:'Status'}], semTab, '') : '');
+
+  // D — precocidade
+  const prec = [];
+  ciclosRel.forEach(c => {
+    const plantio = isoD(c.dataPlantio);
+    const cols = (DADOS.colheitas||[]).filter(h => String(h.cicloId)===String(c.id) && isoD(h.data)).sort((a,b)=>isoD(a.data).localeCompare(isoD(b.data)));
+    if(!plantio || !cols.length) return;
+    const primeira = isoD(cols[0].data);
+    const dias = Math.round((new Date(primeira+'T00:00:00') - new Date(plantio+'T00:00:00'))/86400000);
+    if(dias < 0) return;
+    prec.push({estufa:c.estufa, plantio, primeira, dias, cultura:c.cultura||'—', variedade:c.variedade||''});
+  });
+  prec.sort((a,b)=>a.dias-b.dias);
+  const pRows = prec.map((o,i) =>
+    '<tr><td class="num">'+(i+1)+'</td><td>Estufa '+esc(String(o.estufa))+'</td>'+
+    '<td>'+esc(o.cultura)+(o.variedade?' <span class="mut">('+esc(o.variedade)+')</span>':'')+'</td>'+
+    '<td class="mut">'+fmtData(o.plantio)+'</td><td class="mut">'+fmtData(o.primeira)+'</td>'+
+    '<td class="num"><b>'+o.dias+'</b> dias</td></tr>');
+  document.getElementById('tbPrec').innerHTML = tabela(
+    [{t:'#',n:1},{t:'Estufa'},{t:'Cultura'},{t:'Plantio'},{t:'1ª colheita'},{t:'Dias até colher',n:1}],
+    pRows, 'Sem ciclos com plantio e colheita registrados.');
+}
+
+// ---------- VENDAS ----------
+function semanaDeData(ds){
+  const d = new Date(ds+'T00:00:00');
+  const dow = (d.getDay()+6)%7; // 0=seg
+  const seg = new Date(d); seg.setDate(d.getDate()-dow);
+  const dom = new Date(seg); dom.setDate(seg.getDate()+6);
+  return {ini: iso(seg), fim: iso(dom), rot: 'Sem. '+fmtData(iso(seg)).slice(0,5)};
 }
 function secVendas(){
-  const at = vendasPeriodo('at');
-  const receb = at.filter(v=>String(v.status)==='recebido');
-  const ms = mesesNoPer();
-  const porComp = {}, porCult = {};
-  receb.forEach(v => {
-    porComp[v.comprador||'—'] = (porComp[v.comprador||'—']||0)+num(v.total);
-    porCult[v.cultura||'—'] = (porCult[v.cultura||'—']||0)+(String(v.unidade||'').toUpperCase()==='CX'?0:num(v.quantidade));
-  });
-  const rkComp = Object.entries(porComp).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const rkCult = Object.entries(porCult).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const linhas = at.slice().sort((a,b)=>isoD(b.data).localeCompare(isoD(a.data))).slice(0,40).map(v =>
-    '<tr><td>'+fmtData(v.data)+'</td><td>'+esc(v.comprador||'—')+'</td><td>'+esc(v.cultura||'—')+'</td>'+
-    '<td class="num">'+fmtQtd(v.quantidade)+' '+esc(String(v.unidade||'').toUpperCase())+'</td><td class="num">'+BRL(v.total)+'</td>'+
-    '<td>'+(String(v.status)==='recebido'?'<span class="badge ok">Recebido</span>':'<span class="badge warn">'+esc(v.status||'Pendente')+'</span>')+'</td></tr>');
+  const [a,m] = vendMes.split('-').map(Number);
+  const fim = new Date(a, m, 0);
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">Recebido no período</div><div class="num" id="vRec">—</div></div>
-    <div class="card kpi"><div class="lbl">A receber</div><div class="num" id="vPen">—</div></div>
-    <div class="card kpi"><div class="lbl">Vendas (nº)</div><div class="num" id="vN">—</div></div>
-    <div class="card kpi"><div class="lbl">Ticket médio</div><div class="num" id="vTm">—</div></div>
+  <div class="sec-head">
+    <div class="resumo" id="veResumo">Mês: <b>${m}/${a}</b></div>
+    <div class="per-toggle"><input type="month" id="veMes" value="${vendMes}"></div>
   </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Recebido por mês (R$)</h2><canvas id="chVendMes"></canvas></div>
-    <div class="card"><h2>Top compradores (R$ recebido)</h2>${rankHTML(rkComp, BRL, 'Sem vendas recebidas no período.')}</div>
+  <div class="grid cols2">
+    <div class="card"><h2>A. Quantidade vendida <small>mês</small></h2><div id="tbQtdV"></div></div>
+    <div class="card"><h2>B. Melhor semana do mês</h2><div id="tbSemana"></div></div>
   </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Volumes por cultura (KG recebido)</h2>${rankHTML(rkCult, v=>Math.round(v).toLocaleString('pt-BR')+' KG', 'Sem vendas no período.')}</div>
-    <div class="card"><h2>Histórico de vendas</h2>
-      ${tabela([{t:'Data'},{t:'Comprador'},{t:'Cultura'},{t:'Qtd',n:1},{t:'Total',n:1},{t:'Status'}], linhas, 'Sem vendas no período.')}
-    </div>
+  <div class="card" style="margin-top:14px"><h2>C. Preço médio do mês <small>média ponderada pelo volume</small></h2><div id="tbPreco"></div>
+    <p class="nota">Média ponderada = Σ total ÷ Σ volume. Culturas/unidades separadas quando necessário — nunca média simples de preços.</p>
   </div>`;
 }
 function pintarVendas(){
-  const at = vendasPeriodo('at'), an = vendasPeriodo('ant');
-  const receb = at.filter(v=>String(v.status)==='recebido');
-  const pend = at.filter(v=>String(v.status)!=='recebido');
-  const rec = receb.reduce((a,v)=>a+num(v.total),0);
-  const recAnt = an.filter(v=>String(v.status)==='recebido').reduce((a,v)=>a+num(v.total),0);
-  kpiSet('vRec', BRL(rec), deltaPct(rec, recAnt));
-  kpiSet('vPen', BRL(pend.reduce((a,v)=>a+num(v.total),0)), null);
-  document.getElementById('vPen').innerHTML = BRL(pend.reduce((a,v)=>a+num(v.total),0))+' <small class="delta neu">'+pend.length+' venda(s)</small>';
-  kpiSet('vN', String(at.length), deltaPct(at.length, an.length));
-  const tm = receb.length ? rec/receb.length : 0;
-  document.getElementById('vTm').textContent = BRL(tm);
-  const ms = mesesNoPer();
-  const dados = somaMes(ms, receb, v=>v.data, v=>num(v.total));
-  novoChart('chVendMes', {type:'bar', data:{labels:ms.map(nomeMes), datasets:[{data:dados, backgroundColor:cores.leaf, borderRadius:6}]}, options:barOpts()});
+  const ym = vendMes;
+  const lista = (DADOS.vendas||[]).filter(v => isoD(v.data).slice(0,7) === ym);
+  const [a,m] = ym.split('-').map(Number);
+  document.getElementById('veResumo').innerHTML = 'Mês: <b>'+m+'/'+a+'</b> · <b>'+lista.length+'</b> venda(s)';
+
+  // A — quantidades
+  let kg = 0, cx = 0;
+  lista.forEach(v => {
+    const q = num(v.qtdPaga) || num(v.quantidade);
+    if(String(v.unidade||'').toUpperCase()==='CX') cx += q; else kg += q;
+  });
+  document.getElementById('tbQtdV').innerHTML = tabela(
+    [{t:'Indicador'},{t:'Total',n:1}],
+    ['<tr><td>Total de KG vendidos</td><td class="num"><b>'+Math.round(kg).toLocaleString('pt-BR')+'</b> KG</td></tr>',
+     '<tr><td>Total de CAIXAS vendidas</td><td class="num"><b>'+Math.round(cx).toLocaleString('pt-BR')+'</b> CX</td></tr>'],
+    'Sem vendas no mês.');
+
+  // B — melhor semana (segunda a domingo, dentro do mês)
+  const sems = {};
+  lista.forEach(v => {
+    const ds = isoD(v.data); if(!ds) return;
+    const s = semanaDeData(ds);
+    const chave = s.ini;
+    if(!sems[chave]) sems[chave] = {rot:s.rot, ini:s.ini, fim:s.fim, kg:0, cx:0, fat:0, n:0};
+    const q = num(v.qtdPaga) || num(v.quantidade);
+    if(String(v.unidade||'').toUpperCase()==='CX') sems[chave].cx += q; else sems[chave].kg += q;
+    sems[chave].fat += num(v.total);
+    sems[chave].n++;
+  });
+  const semList = Object.values(sems).sort((a,b)=>(b.kg+b.cx*10)-(a.kg+a.cx*10));
+  const sRows = semList.map((s,i) =>
+    '<tr'+(i===0?' class="ok-linha"':'')+'><td>'+esc(s.rot)+'</td><td class="mut">'+fmtData(s.ini)+' – '+fmtData(s.fim)+'</td>'+
+    '<td class="num">'+Math.round(s.kg).toLocaleString('pt-BR')+'</td><td class="num">'+Math.round(s.cx).toLocaleString('pt-BR')+'</td>'+
+    '<td class="num">'+(s.fat>0?BRL(s.fat):'—')+'</td><td class="num">'+s.n+'</td></tr>');
+  document.getElementById('tbSemana').innerHTML = tabela(
+    [{t:'Semana'},{t:'Período'},{t:'KG',n:1},{t:'CX',n:1},{t:'Faturamento',n:1},{t:'Vendas',n:1}],
+    sRows, 'Sem vendas no mês.') +
+    (semList.length ? '<p class="nota">Melhor semana: <b style="color:var(--lime)">'+esc(semList[0].rot)+'</b></p>' : '');
+
+  // C — preço médio ponderado por cultura+unidade
+  const agg = {};
+  lista.forEach(v => {
+    const vol = num(v.qtdPaga) || num(v.quantidade);
+    if(vol <= 0) return;
+    const k = (v.cultura||'—')+'|'+String(v.unidade||'KG').toUpperCase();
+    if(!agg[k]) agg[k] = {cultura:v.cultura||'—', un:String(v.unidade||'KG').toUpperCase(), fat:0, vol:0, n:0};
+    agg[k].fat += num(v.total);
+    agg[k].vol += vol;
+    agg[k].n++;
+  });
+  const pRows = Object.values(agg).sort((a,b)=>b.fat-a.fat).map(o => {
+    const media = o.vol > 0 ? o.fat/o.vol : 0;
+    return '<tr><td>'+esc(o.cultura)+'</td><td class="mut">'+esc(o.un)+'</td>'+
+      '<td class="num">'+fmtQtd(o.vol)+'</td><td class="num">'+BRL(o.fat)+'</td>'+
+      '<td class="num"><b>'+BRL(media)+'</b></td><td class="num">'+o.n+'</td></tr>';
+  });
+  document.getElementById('tbPreco').innerHTML = tabela(
+    [{t:'Cultura'},{t:'Un.'},{t:'Volume',n:1},{t:'Faturamento',n:1},{t:'Preço médio ponderado',n:1},{t:'Vendas',n:1}],
+    pRows, 'Sem vendas com volume no mês.');
 }
 
-// ---------- financeiro ----------
-function finSec(){
-  const bol = DADOS.boletos||[], ven = DADOS.vendas||[];
-  const pagos = bol.filter(b=>String(b.status)==='pago' && noPer(b.dataPagamento));
-  const pagosAnt = bol.filter(b=>String(b.status)==='pago' && antPer(b.dataPagamento));
-  const abertos = bol.filter(b=>String(b.status)!=='pago');
-  const vencidos = abertos.filter(b=>{ const v = isoD(b.vencimento); return v && v < new Date().toISOString().slice(0,10); });
-  const receb = ven.filter(v=>String(v.status)==='recebido' && noPer(v.data));
-  const recebAnt = ven.filter(v=>String(v.status)==='recebido' && antPer(v.data));
-  const pagoTot = pagos.reduce((a,b)=>a+num(b.valor),0);
-  const recebTot = receb.reduce((a,v)=>a+num(v.total),0);
-  const pagoTotAnt = pagosAnt.reduce((a,b)=>a+num(b.valor),0);
-  const recebTotAnt = recebAnt.reduce((a,v)=>a+num(v.total),0);
-  const porCat = {};
-  pagos.forEach(b => porCat[b.categoria||'Outros'] = (porCat[b.categoria||'Outros']||0)+num(b.valor));
-  const rkCat = Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const ms = mesesNoPer();
-  const linhasPag = pagos.slice().sort((a,b)=>isoD(b.dataPagamento).localeCompare(isoD(a.dataPagamento))).slice(0,30).map(b =>
-    '<tr><td>'+esc(b.nome||'—')+'</td><td class="mut">'+esc(b.categoria||'Outros')+'</td><td class="num">'+BRL(b.valor)+'</td><td>'+fmtData(b.dataPagamento)+'</td></tr>');
-  const linhasAber = vencidos.slice().sort((a,b)=>isoD(a.vencimento).localeCompare(isoD(b.vencimento))).slice(0,30).map(b =>
-    '<tr><td>'+esc(b.nome||'—')+'</td><td class="mut">'+esc(b.categoria||'Outros')+'</td><td class="num">'+BRL(b.valor)+'</td><td>'+fmtData(b.vencimento)+
-    '</td><td><span class="badge err">Vencido</span></td></tr>');
+// ---------- FINANCEIRO ----------
+function situacaoBoleto(b){
+  const st = String(b.status||'').toLowerCase();
+  if(st === 'pago') return {cls:'ok', txt:'Pago'};
+  const v = isoD(b.vencimento);
+  if(v && v < hojeISO()) return {cls:'err', txt:'Vencido'};
+  return {cls:'warn', txt:'Pendente'};
+}
+function boletosNoMes(ym){
+  const vistos = new Set();
+  const out = [];
+  (DADOS.boletos||[]).forEach(b => {
+    const id = String(b.id||''); if(id && vistos.has(id)) return; if(id) vistos.add(id);
+    if(isoD(b.vencimento).slice(0,7) === ym) out.push(b);
+  });
+  return out.sort((a,b)=>isoD(a.vencimento).localeCompare(isoD(b.vencimento)));
+}
+function mesOffset(delta){
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()+delta);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function rotMes(ym){ const [a,m] = ym.split('-'); return m+'/'+a; }
+function secFinanceiro(){
   return `
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lbl">Pago no período</div><div class="num" id="fiPago">—</div></div>
-    <div class="card kpi"><div class="lbl">Recebido no período</div><div class="num" id="fiRec">—</div></div>
-    <div class="card kpi"><div class="lbl">Resultado (receb. − pago)</div><div class="num" id="fiRes">—</div></div>
-    <div class="card kpi"><div class="lbl">Vencidos em aberto</div><div class="num" id="fiVenc">—</div></div>
+  <div class="sec-head">
+    <div class="resumo" id="fiResumo"></div>
+    ${toggleHTML('fin', [['atual','Mês atual'],['proximo','Próximo mês']], perSec.fin)}
   </div>
-  <div class="grid cols2" style="margin-top:14px">
-    <div class="card"><h2>Entradas × saídas por mês (R$)</h2><canvas id="chFinMes"></canvas></div>
-    <div class="card"><h2>Despesas por categoria (pago no período)</h2>${rankHTML(rkCat, BRL, 'Nenhuma despesa paga no período.')}</div>
-  </div>
-  <div class="duas" style="margin-top:14px">
-    <div class="card"><h2>Contas pagas no período${pagos.length>30?' (últimas 30)':''}</h2>
-      ${tabela([{t:'Conta'},{t:'Categoria'},{t:'Valor',n:1},{t:'Pago em'}], linhasPag, 'Nenhuma conta paga no período.')}
+  <div class="grid cols2">
+    <div class="card"><h2 id="fiTitA">A. Boletos do mês</h2><div id="tbBoletos"></div>
+      <p class="nota" id="fiTotais"></p>
     </div>
-    <div class="card"><h2>Vencidos em aberto</h2>
-      ${tabela([{t:'Conta'},{t:'Categoria'},{t:'Valor',n:1},{t:'Vence'},{t:'Situação'}], linhasAber, 'Nenhuma conta vencida.')}
+    <div class="card"><h2>Situação</h2><div id="fiResumoCard"></div>
+      <p class="nota">Pagos não entram no total a pagar. Registros duplicados são ignorados.</p>
     </div>
   </div>`;
 }
 function pintarFinanceiro(){
-  const bol = DADOS.boletos||[], ven = DADOS.vendas||[];
-  const pagos = bol.filter(b=>String(b.status)==='pago' && noPer(b.dataPagamento));
-  const pagosAnt = bol.filter(b=>String(b.status)==='pago' && antPer(b.dataPagamento));
-  const abertos = bol.filter(b=>String(b.status)!=='pago');
-  const hoje = new Date().toISOString().slice(0,10);
-  const vencidos = abertos.filter(b=>{ const v = isoD(b.vencimento); return v && v < hoje; });
-  const receb = ven.filter(v=>String(v.status)==='recebido' && noPer(v.data));
-  const recebAnt = ven.filter(v=>String(v.status)==='recebido' && antPer(v.data));
-  const pagoTot = pagos.reduce((a,b)=>a+num(b.valor),0);
-  const recebTot = receb.reduce((a,v)=>a+num(v.total),0);
-  const pagoTotAnt = pagosAnt.reduce((a,b)=>a+num(b.valor),0);
-  const recebTotAnt = recebAnt.reduce((a,v)=>a+num(v.total),0);
-  kpiSet('fiPago', BRL(pagoTot), deltaPct(pagoTot, pagoTotAnt));
-  kpiSet('fiRec', BRL(recebTot), deltaPct(recebTot, recebTotAnt));
-  const res = recebTot - pagoTot, resAnt = recebTotAnt - pagoTotAnt;
-  const elRes = document.getElementById('fiRes');
-  elRes.innerHTML = BRL(res) + (resAnt !== 0 ? ' <small class="delta '+(res>=resAnt?'up':'down')+'">'+(res>=resAnt?'▲':'▼')+' vs ant.</small>' : ' <small class="delta neu">sem base</small>');
-  elRes.style.color = res >= 0 ? 'var(--lime)' : 'var(--red)';
-  const elV = document.getElementById('fiVenc');
-  elV.innerHTML = vencidos.length ? BRL(vencidos.reduce((a,b)=>a+num(b.valor),0))+' <small class="delta down">'+vencidos.length+' conta(s)</small>' : 'R$ 0,00';
-  const ms = mesesNoPer();
-  const ent = somaMes(ms, receb, v=>v.data, v=>num(v.total));
-  const sai = somaMes(ms, pagos, b=>b.dataPagamento, b=>num(b.valor));
-  novoChart('chFinMes', {type:'bar',
-    data:{labels:ms.map(nomeMes), datasets:[
-      {label:'Entradas (vendas recebidas)', data:ent, backgroundColor:cores.lime, borderRadius:5},
-      {label:'Saídas (contas pagas)', data:sai, backgroundColor:cores.red, borderRadius:5}]},
-    options:{plugins:{legend:{labels:{color:'#9DB8A4'}}}, scales:{y:{beginAtZero:true, ticks:{color:'#9DB8A4'}, grid:{color:'#24402F'}}, x:{ticks:{color:'#9DB8A4'}, grid:{display:false}}}}});
+  const ym = perSec.fin === 'atual' ? mesOffset(0) : mesOffset(1);
+  const lista = boletosNoMes(ym);
+  const rot = rotMes(ym);
+  const pagos = lista.filter(b=>String(b.status).toLowerCase()==='pago');
+  const abertos = lista.filter(b=>String(b.status).toLowerCase()!=='pago');
+  const totalPagar = abertos.reduce((a,b)=>a+num(b.valor),0);
+  const totalPago = pagos.reduce((a,b)=>a+num(b.valor),0);
+  document.getElementById('fiResumo').innerHTML = 'Período: <b>'+rot+'</b> · <b>'+lista.length+'</b> boleto(s)';
+  document.getElementById('fiTitA').textContent = (perSec.fin==='atual'?'A. Boletos do mês atual':'A. Boletos do próximo mês')+' · '+rot;
+
+  const rows = lista.map(b => {
+    const s = situacaoBoleto(b);
+    const valLbl = String(b.status||'').toLowerCase()==='pago' ? 'valor' : 'valor previsto';
+    return '<tr><td>'+esc(b.nome||b.empresa||'—')+'</td><td class="num">'+BRL(b.valor)+'</td>'+
+      '<td class="mut">'+fmtData(b.vencimento)+'</td><td><span class="badge '+s.cls+'">'+s.txt+'</span></td></tr>';
+  });
+  document.getElementById('tbBoletos').innerHTML = tabela(
+    [{t:'Loja / fornecedor'},{t:'Valor',n:1},{t:'Vencimento'},{t:'Situação'}], rows,
+    'Nenhum boleto com vencimento neste mês.');
+  document.getElementById('fiTotais').innerHTML =
+    '<b>'+lista.length+'</b> boleto(s) · Total a pagar: <b style="color:var(--gold)">'+BRL(totalPagar)+'</b>'+
+    (totalPago>0 ? ' · Já pago: <b style="color:var(--lime)">'+BRL(totalPago)+'</b>' : '');
+
+  const nPend = abertos.filter(b=>situacaoBoleto(b).txt==='Pendente').length;
+  const nVenc = abertos.filter(b=>situacaoBoleto(b).txt==='Vencido').length;
+  document.getElementById('fiResumoCard').innerHTML = rankHTML([
+    ['Pendentes (a pagar)', nPend, BRL(abertos.filter(b=>situacaoBoleto(b).txt==='Pendente').reduce((a,b)=>a+num(b.valor),0))],
+    ['Vencidos', nVenc, BRL(abertos.filter(b=>situacaoBoleto(b).txt==='Vencido').reduce((a,b)=>a+num(b.valor),0))],
+    ['Pagos no mês', pagos.length, BRL(totalPago)]
+  ], v=>v+' boleto(s)', 'Sem boletos.');
 }
 
 // ---------- orquestração ----------
 const SECS = {
-  producao: {html: secProducao, pintar: pintarProducao},
   pulverizacoes: {html: secPulverizacoes, pintar: pintarPulverizacoes},
   nutricao: {html: secNutricao, pintar: pintarNutricao},
-  estoque: {html: estoqueSec, pintar: pintarEstoque},
+  estoque: {html: secEstoque, pintar: pintarEstoque},
   colheita: {html: secColheita, pintar: pintarColheita},
   vendas: {html: secVendas, pintar: pintarVendas},
-  financeiro: {html: finSec, pintar: pintarFinanceiro}
+  financeiro: {html: secFinanceiro, pintar: pintarFinanceiro}
 };
 function render(){
   const s = SECS[cat];
   if(!s) return;
   document.getElementById('conteudo').innerHTML = s.html();
   s.pintar();
-  const nf = document.getElementById('notaFiltro');
-  if(cultura !== 'todas'){
-    nf.style.display = '';
-    nf.textContent = 'Filtro de cultura "'+cultura+'" vale para Produção, Colheita, Vendas e ciclos — as demais categorias ignoram esse filtro.';
-  } else nf.style.display = 'none';
 }
 function popularFiltros(){
   const estufas = new Set();
@@ -679,36 +798,9 @@ function popularFiltros(){
   const listaE = [...estufas].sort((a,b)=>num(a)-num(b));
   const selE = document.getElementById('fEstufa');
   selE.innerHTML = '<option value="todas">Todas</option>'+listaE.map(e=>'<option value="'+esc(e)+'">Estufa '+esc(e)+'</option>').join('');
-  const cults = new Set();
-  (DADOS.ciclos||[]).forEach(c => { if(c.cultura) cults.add(String(c.cultura)); });
-  (DADOS.vendas||[]).forEach(v => { if(v.cultura) cults.add(String(v.cultura)); });
-  const listaC = [...cults].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const selC = document.getElementById('fCultura');
-  selC.innerHTML = '<option value="todas">Todas</option>'+listaC.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
-}
-function aplicarPeríodoNosInputs(){
-  document.getElementById('fDe').value = per.ini;
-  document.getElementById('fAte').value = per.fim;
-}
-function marcarPreset(btn){
-  document.querySelectorAll('#presets button').forEach(b=>b.classList.remove('ativo'));
-  if(btn) btn.classList.add('ativo');
 }
 
-document.getElementById('presets').addEventListener('click', e => {
-  const b = e.target.closest('button[data-d]'); if(!b) return;
-  const d = b.dataset.d;
-  presetDias(d === 'mes' ? 'mes' : parseInt(d,10));
-  marcarPreset(b);
-  aplicarPeríodoNosInputs();
-  render();
-});
-['fDe','fAte'].forEach(id => document.getElementById(id).addEventListener('change', () => {
-  const ini = document.getElementById('fDe').value, fim = document.getElementById('fAte').value;
-  if(ini && fim && ini <= fim){ per = {ini, fim}; marcarPreset(null); render(); }
-}));
 document.getElementById('fEstufa').addEventListener('change', e => { estufa = e.target.value; render(); });
-document.getElementById('fCultura').addEventListener('change', e => { cultura = e.target.value; render(); });
 document.getElementById('cats').addEventListener('click', e => {
   const c = e.target.closest('.cat'); if(!c) return;
   document.querySelectorAll('.cat').forEach(x=>x.classList.remove('active'));
@@ -716,10 +808,20 @@ document.getElementById('cats').addEventListener('click', e => {
   cat = c.dataset.c;
   render();
 });
+document.getElementById('conteudo').addEventListener('click', e => {
+  const btn = e.target.closest('.per-toggle button[data-p]'); if(!btn) return;
+  const wrap = btn.closest('.per-toggle'); const sec = wrap.dataset.sec;
+  perSec[sec] = btn.dataset.p;
+  render();
+});
+document.getElementById('conteudo').addEventListener('change', e => {
+  if(e.target.id === 'veMes' && e.target.value){
+    vendMes = e.target.value;
+    render();
+  }
+});
 
 (async function init(){
-  presetDias(90);
-  aplicarPeríodoNosInputs();
   try{
     await carregarDados();
     popularFiltros();

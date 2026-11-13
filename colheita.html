@@ -276,10 +276,12 @@
       <div class="field"><label>Cultura</label><input id="cCultura" type="text" value="Tomate"></div>
     </div>
     <div class="field"><label>Variedade</label><input id="cVariedade" type="text" placeholder="ex: Frutilla"></div>
+    <div class="field"><label>Porta enxerto</label><input id="cPortaEnxerto" type="text" placeholder="ex: Maxifort"></div>
     <div class="row2">
+      <div class="field"><label>Quantidade de plantas *</label><input id="cQtdPlantas" type="number" min="1" step="1" inputmode="numeric" placeholder="ex: 1200"></div>
       <div class="field"><label>Data do plantio</label><input id="cPlantio" type="date"></div>
-      <div class="field"><label>Início da colheita</label><input id="cInicio" type="date"></div>
     </div>
+    <div class="field"><label>Início da colheita</label><input id="cInicio" type="date"></div>
     <div class="field"><label>Observação</label><textarea id="cObs" rows="2"></textarea></div>
     <div class="sheet-actions">
       <button class="btn-cancel" onclick="document.getElementById('dlgCiclo').close()">Cancelar</button>
@@ -700,7 +702,8 @@ function cardCiclo(c){
     </div>
     <h3>${escapeHtml(c.cultura||'Tomate')}${c.variedade?' · '+escapeHtml(c.variedade):''}</h3>
     <div class="total">${totTxt || '0'}</div>
-    <div class="meta">Plantio: ${fmtData(c.dataPlantio)} · Início: ${fmtData(c.dataInicio)}${diasColhendo(c)?' · '+diasColhendo(c):''}${c.obs?' · '+escapeHtml(c.obs):''}</div>
+    <div class="meta">Plantio: ${fmtData(c.dataPlantio)} · Início: ${fmtData(c.dataInicio)}${diasColhendo(c)?' · '+diasColhendo(c):''}</div>
+    ${(c.qtdPlantas||c.portaEnxerto)?`<div class="meta">${c.qtdPlantas?escapeHtml(c.qtdPlantas)+' plantas':''}${c.qtdPlantas&&c.portaEnxerto?' · ':''}${c.portaEnxerto?'Enxerto: '+escapeHtml(c.portaEnxerto):''}${c.obs?' · '+escapeHtml(c.obs):''}</div>`:(c.obs?`<div class="meta">${escapeHtml(c.obs)}</div>`:'')}
     <div class="actions">
       <button class="btn-in" onclick="openColheita('${escapeHtml(c.estufa)}')">+ Avulso</button>
       <button class="btn-hist" onclick="openHist('${c.id}')">Histórico</button>
@@ -747,6 +750,8 @@ function openCiclo(estufa){
   document.getElementById('cEstufa').value = estufa || '1';
   document.getElementById('cCultura').value = 'Tomate';
   document.getElementById('cVariedade').value = '';
+  document.getElementById('cPortaEnxerto').value = '';
+  document.getElementById('cQtdPlantas').value = '';
   document.getElementById('cPlantio').value = hojeISO();
   document.getElementById('cInicio').value = '';
   document.getElementById('cObs').value = '';
@@ -760,6 +765,8 @@ function editarCiclo(id){
   document.getElementById('cEstufa').value = c.estufa || '1';
   document.getElementById('cCultura').value = c.cultura || 'Tomate';
   document.getElementById('cVariedade').value = c.variedade || '';
+  document.getElementById('cPortaEnxerto').value = c.portaEnxerto || '';
+  document.getElementById('cQtdPlantas').value = c.qtdPlantas || '';
   document.getElementById('cPlantio').value = isoData(c.dataPlantio);
   document.getElementById('cInicio').value = isoData(c.dataInicio);
   document.getElementById('cObs').value = c.obs || '';
@@ -769,9 +776,16 @@ function editarCiclo(id){
 async function salvarCiclo(){
   const estufa = document.getElementById('cEstufa').value;
   if(!editCicloId && ativoDaEstufa(estufa)){ alert(`A estufa ${estufa} já tem ciclo ativo.`); return; }
+  const qtdRaw = document.getElementById('cQtdPlantas').value.trim();
+  const qtdNum = parseInt(qtdRaw, 10);
+  if(!editCicloId){
+    if(!qtdRaw || isNaN(qtdNum) || qtdNum <= 0){ alert('Informe a quantidade de plantas (número inteiro positivo).'); return; }
+  }
   const dadosForm = {
     estufa, cultura: document.getElementById('cCultura').value,
     variedade: document.getElementById('cVariedade').value,
+    portaEnxerto: document.getElementById('cPortaEnxerto').value,
+    qtdPlantas: (!qtdRaw || isNaN(qtdNum) || qtdNum <= 0) ? '' : String(qtdNum),
     dataPlantio: document.getElementById('cPlantio').value,
     dataInicio: document.getElementById('cInicio').value,
     obs: document.getElementById('cObs').value, status: 'ativa'

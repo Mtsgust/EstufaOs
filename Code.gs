@@ -47,7 +47,7 @@ var SHEETS = {
   },
   ciclos: {
     name: 'Ciclos',
-    headers: ['id', 'dataCriacao', 'estufa', 'cultura', 'variedade', 'dataPlantio', 'dataInicio', 'dataFim', 'status', 'obs']
+    headers: ['id', 'dataCriacao', 'estufa', 'cultura', 'variedade', 'portaEnxerto', 'qtdPlantas', 'dataPlantio', 'dataInicio', 'dataFim', 'status', 'obs']
   },
   colheitas: {
     name: 'Colheitas',

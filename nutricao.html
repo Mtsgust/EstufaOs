@@ -905,7 +905,7 @@ async function marcarFeito(id, dataExec, silencioso){
   const itens = parseItens(d).filter(i => i.produto && num(i.qtd) > 0);
   await fetch(API_URL, {method:'POST', body: JSON.stringify({
     tipo:'nutricao', action:'update', id,
-    data:{ status:'feito', dataExecucao: dt, dataPrevista:'' }
+    data:{ status:'feito', dataExecucao: dt, dataPrevista: d.dataPrevista || d.dataOriginal || '' }
   })});
   for(const item of itens){
     await baixarEstoque(item.produto, item.qtd, item.unidade, 'nutricao', id,

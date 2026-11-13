@@ -803,7 +803,21 @@ function secFinanceiro(){
     <div class="card"><h2>Situação</h2><div id="fiResumoCard"></div>
       <p class="nota">Pagos não entram no total a pagar. Registros duplicados são ignorados.</p>
     </div>
+  </div>
+  <div class="card" style="margin-top:14px"><h2>B. Lojas / fornecedores — quanto estamos devendo</h2>
+    <div id="tbLojas"></div>
+    <p class="nota">Só boletos <b>não pagos</b>. Coluna do mês = vencimento no período selecionado; Total = todos os abertos (qualquer data).</p>
   </div>`;
+}
+function boletosAbertosTodos(){
+  const vistos = new Set();
+  const out = [];
+  (DADOS.boletos||[]).forEach(b => {
+    if(String(b.status||'').toLowerCase() === 'pago') return;
+    const id = String(b.id||''); if(id && vistos.has(id)) return; if(id) vistos.add(id);
+    out.push(b);
+  });
+  return out;
 }
 function pintarFinanceiro(){
   const ym = perSec.fin === 'atual' ? mesOffset(0) : mesOffset(1);
@@ -818,7 +832,6 @@ function pintarFinanceiro(){
 
   const rows = lista.map(b => {
     const s = situacaoBoleto(b);
-    const valLbl = String(b.status||'').toLowerCase()==='pago' ? 'valor' : 'valor previsto';
     return '<tr><td>'+esc(b.nome||b.empresa||'—')+'</td><td class="num">'+BRL(b.valor)+'</td>'+
       '<td class="mut">'+fmtData(b.vencimento)+'</td><td><span class="badge '+s.cls+'">'+s.txt+'</span></td></tr>';
   });
@@ -836,6 +849,38 @@ function pintarFinanceiro(){
     ['Vencidos', nVenc, BRL(abertos.filter(b=>situacaoBoleto(b).txt==='Vencido').reduce((a,b)=>a+num(b.valor),0))],
     ['Pagos no mês', pagos.length, BRL(totalPago)]
   ], v=>v+' boleto(s)', 'Sem boletos.');
+
+  // B — lojas: dívida do mês + total geral em aberto
+  const todos = boletosAbertosTodos();
+  const porLoja = {};
+  const chaveLoja = b => {
+    const k = chaveFlex(b.nome || b.empresa || '—');
+    return k || 'sem nome';
+  };
+  todos.forEach(b => {
+    const k = chaveLoja(b);
+    if(!porLoja[k]) porLoja[k] = {nome: String(b.nome||b.empresa||'—').trim(), mes:0, total:0, nMes:0, nTotal:0, vencidos:0};
+    porLoja[k].total += num(b.valor);
+    porLoja[k].nTotal++;
+    const v = isoD(b.vencimento);
+    if(v && v < hojeISO()) porLoja[k].vencidos += num(b.valor);
+    if(v.slice(0,7) === ym){ porLoja[k].mes += num(b.valor); porLoja[k].nMes++; }
+  });
+  // lojas só com boleto pago no mês e nada em aberto não entram (só devendo)
+  const lojas = Object.values(porLoja).filter(o => o.total > 0 || o.mes > 0)
+    .sort((a,b) => b.total - a.total);
+  const somaMes = lojas.reduce((a,o)=>a+o.mes,0);
+  const somaTotal = lojas.reduce((a,o)=>a+o.total,0);
+  const lRows = lojas.map(o =>
+    '<tr'+(o.vencidos>0?' class="alerta-linha"':'')+'><td>'+esc(o.nome)+'</td>'+
+    '<td class="num">'+(o.mes>0?BRL(o.mes):'<span class="mut">—</span>')+'</td>'+
+    '<td class="num"><b>'+BRL(o.total)+'</b></td>'+
+    '<td class="num mut">'+o.nTotal+'</td>'+
+    '<td>'+(o.vencidos>0?'<span class="badge err">'+BRL(o.vencidos)+' vencido</span>':'<span class="badge warn">em dia</span>')+'</td></tr>');
+  document.getElementById('tbLojas').innerHTML =
+    (lojas.length ? '<p class="nota" style="margin:0 0 8px">Devendo no mês <b style="color:var(--gold)">'+BRL(somaMes)+'</b> · <b>Devendo no total</b> <b style="color:var(--red)">'+BRL(somaTotal)+'</b></p>' : '') +
+    tabela([{t:'Loja / fornecedor'},{t:'Mês ('+rot+')',n:1},{t:'Total em aberto',n:1},{t:'Boletos',n:1},{t:'Situação'}],
+      lRows, 'Nenhuma loja com valor em aberto.');
 }
 
 // ---------- orquestração ----------

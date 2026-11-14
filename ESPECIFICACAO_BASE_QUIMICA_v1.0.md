@@ -793,4 +793,4 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 
 ---
 
-*Fim da especificação v1.0 — pronta para revisão (P1–P6) e depois implementação incremental da Fase 1 com testes antes de qualquer publicação.*
+*Fim da especificação v1.0 — P1–P6 resolvidas; especificação fechada. Próxima etapa: implementação incremental da Fase 1 (§17) com testes antes de qualquer publicação.*

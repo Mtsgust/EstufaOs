@@ -1,0 +1,240 @@
+{
+  "pulverizacao": {
+    "colunas": [
+      "alvo",
+      "dataCriacao",
+      "dataExecucao",
+      "dataPrevista",
+      "dose",
+      "estufa",
+      "id",
+      "litrosAgua",
+      "litrosPorEstufa",
+      "obs",
+      "produto",
+      "status"
+    ],
+    "linhas": 88
+  },
+  "nutricao": {
+    "colunas": [
+      "baixadoItens",
+      "dataCriacao",
+      "dataExecucao",
+      "dataOriginal",
+      "dataPrevista",
+      "dose",
+      "estufa",
+      "id",
+      "itens",
+      "obs",
+      "produto",
+      "status",
+      "tipoTarefa"
+    ],
+    "linhas": 152
+  },
+  "bulario": {
+    "colunas": [
+      "alvos",
+      "bulaFileId",
+      "bulaLink",
+      "carencia",
+      "categoria",
+      "classeToxicologica",
+      "compatDocs",
+      "composicao",
+      "concentracao",
+      "conferidoEm",
+      "culturas",
+      "dataCriacao",
+      "dose",
+      "fabricante",
+      "fichaLink",
+      "fonteInfo",
+      "fonteUrl",
+      "formula",
+      "foto",
+      "frac",
+      "garantias",
+      "id",
+      "ingredienteAtivo",
+      "irac",
+      "nome",
+      "obs",
+      "ph",
+      "restricoes"
+    ],
+    "linhas": 43
+  },
+  "insumosInfo": {
+    "colunas": [
+      "alvos",
+      "armazenamento",
+      "bulaFileId",
+      "bulaLink",
+      "carencia",
+      "categoria",
+      "categoriaExtra",
+      "compatDocs",
+      "composicao",
+      "concentracao",
+      "conferidoEm",
+      "cuidadosMistura",
+      "culturas",
+      "dataCriacao",
+      "densidade",
+      "dose",
+      "estoqueId",
+      "fabricante",
+      "fichaLink",
+      "finalidade",
+      "fonteInfo",
+      "fonteUrl",
+      "formasQuimicas",
+      "formula",
+      "foto",
+      "frac",
+      "garantias",
+      "grupoComercial",
+      "id",
+      "incompatibilidades",
+      "ingredienteAtivo",
+      "irac",
+      "miscibilidade",
+      "naturezaFisica",
+      "nome",
+      "nutrientes",
+      "obs",
+      "origemDado",
+      "ph",
+      "restricoes",
+      "solubilidade",
+      "tipoAplicacao"
+    ],
+    "linhas": 29
+  },
+  "caldas": {
+    "colunas": [],
+    "linhas": 0
+  },
+  "testesCopo": {
+    "colunas": [],
+    "linhas": 0
+  },
+  "estoque": {
+    "colunas": [
+      "categoria",
+      "dataCriacao",
+      "estoqueAtual",
+      "estoqueMinimo",
+      "fornecedor",
+      "foto",
+      "id",
+      "nome",
+      "obs",
+      "unidade"
+    ],
+    "linhas": 58
+  },
+  "movimentacoes": {
+    "colunas": [
+      "data",
+      "dataCriacao",
+      "estufa",
+      "id",
+      "motivo",
+      "obs",
+      "origem",
+      "origemId",
+      "produtoId",
+      "produtoNome",
+      "quantidade",
+      "tipo",
+      "unidade"
+    ],
+    "linhas": 339
+  },
+  "ciclos": {
+    "colunas": [
+      "cultura",
+      "dataCriacao",
+      "dataFim",
+      "dataInicio",
+      "dataPlantio",
+      "estufa",
+      "id",
+      "obs",
+      "portaEnxerto",
+      "qtdPlantas",
+      "status",
+      "variedade"
+    ],
+    "linhas": 9
+  },
+  "colheitas": {
+    "colunas": [
+      "cicloId",
+      "data",
+      "dataCriacao",
+      "estufa",
+      "fechamento",
+      "id",
+      "obs",
+      "quantidade",
+      "unidade"
+    ],
+    "linhas": 150
+  },
+  "vendas": {
+    "colunas": [
+      "comprador",
+      "cultura",
+      "data",
+      "dataCriacao",
+      "id",
+      "obs",
+      "preco",
+      "qtdPaga",
+      "quantidade",
+      "status",
+      "total",
+      "unidade"
+    ],
+    "linhas": 156
+  },
+  "boletos": {
+    "colunas": [
+      "anexoNome",
+      "anexoUrl",
+      "categoria",
+      "dataCriacao",
+      "dataPagamento",
+      "docChave",
+      "docEmissao",
+      "docExtra",
+      "docNumero",
+      "docTexto",
+      "docTipo",
+      "empresa",
+      "eventId",
+      "id",
+      "linhaDigitavel",
+      "nome",
+      "obs",
+      "status",
+      "valor",
+      "vencimento"
+    ],
+    "linhas": 84
+  },
+  "anotacoes": {
+    "colunas": [
+      "data",
+      "dataCriacao",
+      "id",
+      "texto"
+    ],
+    "linhas": 8
+  }
+}

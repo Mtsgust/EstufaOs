@@ -74,14 +74,22 @@ var SHEETS = {
 var CAL_FIN_ID = '';
 
 function getSheet_(tipo) {
-  var cfg = SHEETS[tipo];
+  // Tipos bq* (Base Química) resolvem em SHEETS_BQ e vivem em planilha própria
+  // na pasta privada (bqPlanilha_) — nunca na planilha ativa do operador.
+  var cfg = SHEETS[tipo] ||
+    (typeof SHEETS_BQ !== 'undefined' && SHEETS_BQ[tipo] ? SHEETS_BQ[tipo] : null);
   if (!cfg) throw new Error('tipo inválido: ' + tipo);
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var interna = !!cfg.interna;
+  if (interna && String(cfg.name).indexOf('Q_') !== 0) {
+    throw new Error('guarda de escopo: planilha interna fora de Q_* — ' + cfg.name);
+  }
+  var ss = interna ? bqPlanilha_() : SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(cfg.name);
   if (!sheet) {
     sheet = ss.insertSheet(cfg.name);
     sheet.appendRow(cfg.headers);
     sheet.setFrozenRows(1);
+    if (interna) bqPosCriar_(sheet, cfg);
   } else {
     // Garante que o cabeçalho da planilha bate com cfg.headers (ordem e colunas novas).
     // Se só jogasse as colunas faltantes no fim, o add gravava na ordem errada
@@ -108,6 +116,7 @@ function getSheet_(tipo) {
         sheet.getRange(2, 1, novasLinhas.length, cfg.headers.length).setValues(novasLinhas);
       }
       sheet.setFrozenRows(1);
+      if (interna) bqPosCriar_(sheet, cfg);
     }
   }
   try {
@@ -253,14 +262,18 @@ function doGet(e) {
     // Abre anexo (foto/PDF) pela URL do próprio sistema: ?anexo=ID_DO_ARQUIVO
     if (e.parameter.anexo) return anexoHtml_(e.parameter.anexo);
     // Lote: ?tipos=pulverizacao,nutricao,estoque -> 1 chamada só (mais rápido)
+    // Aceita também tipos bq* (Base Química) misturados no mesmo lote.
     if (e.parameter.tipos) {
-      var lista = String(e.parameter.tipos).split(',').map(function (t) { return String(t).trim(); }).filter(function (t) { return t && SHEETS[t]; });
+      var lista = String(e.parameter.tipos).split(',').map(function (t) { return String(t).trim(); })
+        .filter(function (t) { return t && (SHEETS[t] || bqEhTipo_(t)); });
       if (!lista.length) return jsonOut_({ ok: false, error: 'nenhum tipo válido' });
       var out = {};
-      lista.forEach(function (t) { out[t] = dadosTipo_(t); });
+      lista.forEach(function (t) { out[t] = bqEhTipo_(t) ? bqDadosTipo_(t) : dadosTipo_(t); });
       return jsonOut_({ ok: true, dados: out });
     }
     var tipo = e.parameter.tipo;
+    // Tipos bq* (inclui o agregador bqVisao) vão para o handler da Base Química.
+    if (String(tipo || '').slice(0, 2) === 'bq') return jsonOut_(bqDoGet_(e));
     return jsonOut_({ ok: true, data: dadosTipo_(tipo) });
   } catch (err) {
     return jsonOut_({ ok: false, error: err.message });
@@ -305,6 +318,12 @@ function doPost(e) {
     var body = JSON.parse(e.postData.contents);
     var tipo = body.tipo;
     var action = body.action;
+
+    // --- Base Química: tipos bq* passam para o handler com guarda (§9.2) ---
+    if (String(tipo || '').slice(0, 2) === 'bq') {
+      lock.waitLock(15000);
+      return jsonOut_(bqDoPost_(body));
+    }
 
     // --- Ação especial do estoque: dá entrada/saída e já atualiza o saldo ---
     if (action === 'movimentar') {

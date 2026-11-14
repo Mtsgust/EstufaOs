@@ -1,7 +1,7 @@
 # Especificação Técnica — Base Química v1.0
 
 **Projeto:** EstufaOS · **Módulo:** Base Química (camada de conhecimento químico)
-**Versão do documento:** 1.0 · **Data:** 2026-11-14 · **Status:** para revisão antes de qualquer implementação
+**Versão do documento:** 1.0 · **Data:** 2026-11-14 · **Status:** revisada — P1/P2/P3/P5 resolvidas; restam **P4 e P6** antes da Fase 1
 **Próxima ação do OpenCode:** implementar a Fase 1 conforme §17, com testes (§14) antes de qualquer publicação.
 
 ---
@@ -68,7 +68,7 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 
 | Tema | Decisão |
 |---|---|
-| Armazenamento | Google Sheets, uma planilha por tabela `Q_*` na **mesma pasta da planilha atual** |
+| Armazenamento | Google Sheets, uma planilha por tabela `Q_*` em **pasta privada e independente** no Drive (decisão P5): **não** misturar com as planilhas operacionais; sem compartilhamento público; sem expor estrutura/links do Drive na interface (site vê **só a API**); acesso exclusivamente pelo Apps Script (pasta em Script Properties `BQ_FOLDER_ID`; se vazia, cria na 1ª execução) |
 | API | `Code.gs` atual — apenas **adição** de tipos `bq*` (nenhuma alteração dos tipos existentes) |
 | Cache | estender o padrão `cacheLer_`/`cacheSalvar_`/`cacheLimpar_` (Code.gs L226–238) aos tipos `bq*` |
 | Frontend | nova página **`basequimica.html`** + item no `sidebar.js` (§13) — o padrão do repo é multipágina (`estoque.html`, `nutricao.html` …); `bulario.html` já tem ~4000 linhas e não cresce na v1 |
@@ -99,7 +99,8 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
   - `GET /produtos-formulados` — busca (`q`, `numero_registro`, `marca_comercial`, `praga_nome_cientifico`, `praga_nome_comum`, `page`);
   - `GET /produtos-formulados/{numero_registro}` — detalhe: `marca_comercial[]`, `titular_registro`, `classe_categoria_agronomica[]`, `formulacao`, `ingrediente_ativo[]` (texto), `ingrediente_ativo_detalhado[]` (`ingrediente_ativo`, `grupo_quimico`, `concentracao`, `unidade_medida`, `percentual`), `produto_biologico`, `url_agrofit`, `documentos[]` (`descricao`, `tipo_documento`, `data_inclusao`, `url`, `origem`);
   - `GET /produtos-tecnicos` e `GET /produtos-tecnicos/{numero_registro}` (mesmo formato).
-- **Plano gratuito: 100 mil requisições/mês.** Acesso pela plataforma AgroAPI (cadastro) — **pendência P1: obter chave** (§20).
+- **Autenticação (testada em 2026-11-14):** header `Authorization: Bearer <token>` — token P1 obtido e validado (`/versao` → 200; sem token → 401; `/produtos-formulados?q=…` → 200 com dados). Armazenar em **Script Properties** (`AGROAPI_TOKEN`), **nunca** no repositório (cópia local fora do git). Se a resposta virar 401, o token expirou (padrão WSO2: 60 min, ou indeterminado se gerado com validity -1) — renovar no portal AgroAPI (APPLICATIONS → Show Keys) ou migrar para OAuth 2.0 `client_credentials` com Consumer Key + Consumer Secret.
+- **Plano gratuito: 100 mil requisições/mês.** Acesso pela plataforma AgroAPI (cadastro) — **P1 resolvida**.
 - Vantagem: JSON direto, consulta dirigida, traz links de bula/rótulo.
 
 **b) Dados abertos CKAN (fonte complementar / auditoria)**
@@ -117,10 +118,12 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 
 | Fonte | Uso | Observação |
 |---|---|---|
-| Embrapa — *Manual técnico para subsidiar a mistura em tanque de agrotóxicos e afins* (2021, Infoteca-e) | física/química da calda, água, temperatura, teste da jarra, tempo de armazenamento | URL exata do Infoteca-e: **a confirmar** (§20) — não inventar link |
-| FAO/WHO — Especificações de pesticidas (JMPR) | identidade/teor, propriedades físico-químicas, estabilidade | URL exata: a confirmar |
-| CIPAC | métodos padronizados de qualidade de formulação | URL exata: a confirmar |
-| MAPA — legislação de fertilizantes e registros | garantias nutricionais, classificação | URL exata: a confirmar |
+| Embrapa (Infoteca-e) — *Tecnologia de aplicação de defensivos agrícolas* (2006) | calda, formulações, pulverização, tecnologia de aplicação | https://www.infoteca.cnptia.embrapa.br/infoteca/handle/doc/426350 |
+| Embrapa (Infoteca-e) — *Uma nova proposta para a tecnologia de aplicação de defensivos agrícolas* | tecnologia de aplicação | https://www.infoteca.cnptia.embrapa.br/infoteca/handle/doc/967185 |
+| Embrapa — *Manual técnico para subsidiar a mistura em tanque de agrotóxicos e afins* (2021) | física/química da calda, teste da jarra, armazenamento | **única referência ainda sem link** (a confirmar) |
+| FAO/WHO — Manual de especificações de pesticidas, 3ª ed. (2025) | identidade/teor, propriedades físico-químicas, estabilidade | https://extranet.who.int/prequal/vector-control-products/manuals-development-and-use-faowho-specifications-pesticides · https://www.who.int/publications/b/81994 · https://extranet.who.int/prequal/vector-control-products/who-specifications-pesticides |
+| CIPAC — site oficial + instruções para elaboração de métodos | qualidade de formulação — **não é tabela de compatibilidade** | https://www.cipac.org/ · https://www.cipac.org/images/pdf/methods1.pdf |
+| MAPA — fertilizantes: legislação, manual de métodos oficiais, métodos da Rede LFDA | garantias nutricionais, classificação, métodos analíticos | https://www.gov.br/agricultura/pt-br/assuntos/insumos-agropecuarios/insumos-agricolas/fertilizantes/legislacoes · https://www.gov.br/agricultura/pt-br/assuntos/insumos-agropecuarios/insumos-agricolas/fertilizantes/legislacao/manual-de-metodos_2017_isbn-978-85-7991-109-5.pdf · https://www.gov.br/agricultura/pt-br/assuntos/lfda/legislacao-metodos-da-rede-lfda/fertilizantes-corretivos-substratos-e-inoculantes |
 | Fabricantes (bula/ficha/rótulo) | doses, restrições, cuidados de mistura, propriedades | sempre com `documentoId` |
 | Literatura revisada por pares | interações específicas | **estudo que testou a combinação exata pesa mais** que publicação genérica (§8.4) |
 
@@ -562,6 +565,8 @@ Toda função nova conversa **só** com `bqRepo_` (`bqRepo_.ler(tipo)`, `bqRepo_
 
 **API AgroAPI Embrapa** (JSON dirigido, 100k req/mês) para a v1; CKAN CSV (§4.1b) só para auditoria offline. Motivo do não-uso do CSV no Apps Script: tamanho (centenas de MB) × limite de execução/cota.
 
+**Autenticação:** `Authorization: Bearer <AGROAPI_TOKEN>`, lido de `PropertiesService.getScriptProperties()` — token validado em 2026-11-14, nunca hardcoded nem commitado.
+
 ### 10.2 O que a v1 importa (por produto)
 
 | Bloco AGROFIT | Destino | Evidência |
@@ -727,7 +732,7 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 
 **Ordem pedida:** ① fungicidas da bateria atual → ② inseticidas de tomate/pepino → ③ fertilizantes foliares/bioestimulantes → ④ cobre → ⑤ adjuvantes/condicionadores.
 
-**Pendência P2:** confirmar com o usuário **quais 6 fungicidas** compõem a bateria atual (hoje o `pulverizacoes` está vazio — sem histórico de uso para derivar). Candidatos do Bulário (a confirmar): Score, Amistar Top, Cabrio Top, Bravonil 720, Elatus, Infinito.
+**Bateria confirmada (P2 ✓):** Elatus, Score, Amistar Top, Cabrio Top, Bravonil 720, Infinito — os 6 fungicidas do lote piloto, definidos pelo usuário em 2026-11-14 (histórico de pulverizações estava vazio).
 
 **Já mapeados nos cadastros existentes (para a fase de vínculos):**
 
@@ -772,14 +777,14 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 
 ## 19. Pendências e decisões em aberto
 
-| # | Item | Responsável |
+| # | Item | Situação |
 |---|---|---|
-| P1 | Obter chave/cadastro na **AgroAPI Embrapa** (gratuito) | usuário |
-| P2 | Confirmar os **6 fungicidas** do lote piloto (§16) | usuário |
-| P3 | Confirmar URLs exatas: manual Embrapa (Infoteca-e), FAO/WHO, CIPAC, MAPA fertilizantes | OpenCode (busca) + usuário |
-| P4 | Confirmar decisão de UI: página nova `basequimica.html` (recomendado, §3.1) vs. seção dentro do `bulario.html` | usuário |
-| P5 | Nome da pasta Google onde nascerão as 13 planilhas `Q_*` (mesma da planilha atual) | usuário |
-| P6 | Aprovar a 13ª tabela `Q_Interacoes_Componentes` (desvio do plano original, justificado em §6.11) | usuário |
+| P1 | Chave/cadastro na **AgroAPI Embrapa** | **RESOLVIDA (2026-11-14):** Access Token obtido e testado (`/versao`, `/produtos-formulados` → 200). Guardar em Script Properties (`AGROAPI_TOKEN`); cópia local `agroapi.local.key` **fora do repositório**; nunca commitar. Em caso de 401 futuro: renovar no portal ou migrar p/ `client_credentials` (§4.1a) |
+| P2 | Os **6 fungicidas** do lote piloto | **RESOLVIDA:** Elatus, Score, Amistar Top, Cabrio Top, Bravonil 720, Infinito (§16) |
+| P3 | URLs exatas das fontes | **RESOLVIDA:** 11 links confirmados em §4.2/§20 — única exceção: manual de mistura em tanque 2021 segue sem link |
+| P4 | Decisão de UI: página nova `basequimica.html` (recomendado, §3.1) vs. seção dentro do `bulario.html` | **EM ABERTO — usuário** |
+| P5 | Pasta das 13 planilhas `Q_*` | **RESOLVIDA:** pasta **privada e independente** no Drive (§3.1) — não misturar com operacionais, sem exposição no site/sidebar/Drive, acesso só via Apps Script |
+| P6 | Aprovar a 13ª tabela `Q_Interacoes_Componentes` (desvio do plano original, justificado em §6.11) | **EM ABERTO — usuário** |
 
 ---
 
@@ -790,7 +795,12 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 - API AgroAPI Embrapa (docs): https://www.portal.agroapi.cnptia.embrapa.br/api-docs/agrofit/v1
 - AgroAPI portal: https://www.agroapi.cnptia.embrapa.br/ · produto Embrapa: https://www.embrapa.br/web/agricultura-digital/busca-de-solucoes-tecnologicas/-/produto-servico/11779/api-agrofit
 - AGROFIT consulta pública: https://agrofit.agricultura.gov.br/agrofit_cons/principal_agrofit_cons
-- Demais fontes (Embrapa Infoteca-e, FAO/WHO, CIPAC, MAPA fertilizantes): **URLs a confirmar** (P3) — o documento não inventa links.
+- Fontes confirmadas (P3) — Embrapa Infoteca-e: https://www.infoteca.cnptia.embrapa.br/infoteca/handle/doc/426350 · https://www.infoteca.cnptia.embrapa.br/infoteca/handle/doc/967185
+- FAO/WHO: https://extranet.who.int/prequal/vector-control-products/manuals-development-and-use-faowho-specifications-pesticides · https://www.who.int/publications/b/81994 · https://extranet.who.int/prequal/vector-control-products/who-specifications-pesticides
+- CIPAC: https://www.cipac.org/ · https://www.cipac.org/images/pdf/methods1.pdf
+- MAPA fertilizantes: https://www.gov.br/agricultura/pt-br/assuntos/insumos-agropecuarios/insumos-agricolas/fertilizantes/legislacoes · https://www.gov.br/agricultura/pt-br/assuntos/insumos-agropecuarios/insumos-agricolas/fertilizantes/legislacao/manual-de-metodos_2017_isbn-978-85-7991-109-5.pdf · https://www.gov.br/agricultura/pt-br/assuntos/lfda/legislacao-metodos-da-rede-lfda/fertilizantes-corretivos-substratos-e-inoculantes
+- Pendência restante de link: manual Embrapa de mistura em tanque (2021) — **a confirmar**.
+- Autenticação AgroAPI validada em 2026-11-14 (`Authorization: Bearer <token>`; ver §4.1a — credencial fora do repositório).
 
 ---
 

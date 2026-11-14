@@ -49,6 +49,7 @@
   .admin-menu .fill-status{margin:0;}
 
   .kpi-row{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px;}
+  .kpi-row[hidden]{display:none;}
   .kpi{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center;}
   .kpi-val{font-size:20px; font-weight:800; color:var(--lime); line-height:1.2; word-break:break-word;}
   .kpi-val.gold{color:var(--gold);}
@@ -266,6 +267,36 @@
   .btn-save{background:linear-gradient(135deg,#3D7A5C,#2A5A41); color:#fff;}
   .btn-anal{background:transparent; color:var(--gold); border:1px solid rgba(217,164,65,.5)!important;}
 
+  /* Montador de caldas: 2 colunas no desktop */
+  .mont-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;}
+  #mCatalogo{max-height:52vh; overflow-y:auto; padding-right:3px;}
+  .selrow .nm small{display:block; font-size:11px; color:var(--dim); font-weight:500; margin-top:2px; word-break:break-word;}
+  .selrow select.dose-u{width:112px; padding:7px 6px; border-radius:8px; border:1px solid var(--line);
+    background:var(--card); color:var(--ink); font-size:12px; font-family:inherit;}
+  @media (max-width:800px){ .mont-grid{grid-template-columns:1fr;} #mCatalogo{max-height:40vh;} }
+
+  /* Análise: pares, dados faltantes, físico, ordem */
+  .mtag.fis{background:rgba(74,155,217,.15); color:var(--blue);}
+  .res-box.fis{border-color:rgba(74,155,217,.4); background:rgba(74,155,217,.07);}
+  .res-box.fis .res-tag{color:var(--blue);}
+  .par-table{width:100%; border-collapse:collapse; margin-top:8px; font-size:12px;}
+  .par-table th{text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--dim); padding:4px 8px 5px 0; border-bottom:1px solid var(--line);}
+  .par-table td{padding:6px 8px 6px 0; border-bottom:1px solid var(--line); vertical-align:top; color:var(--mut);}
+  .par-table td b{color:var(--ink); font-weight:600;}
+  .par-table .mtag{vertical-align:1px;}
+  .falta-list{margin-top:6px; font-size:12.5px; color:var(--mut);}
+  .falta-list b{color:var(--ink);}
+  .falta-list .lim{color:var(--dim); font-style:italic;}
+  .fis-table{width:100%; border-collapse:collapse; margin-top:8px; font-size:12px;}
+  .fis-table th, .fis-table td{padding:5px 8px 5px 0; border-bottom:1px solid var(--line); text-align:left;}
+  .fis-table th{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim);}
+  .fis-table td{color:var(--mut);} .fis-table td b{color:var(--ink); font-weight:600;}
+  .ordem-box{margin-top:8px; background:rgba(74,155,217,.07); border:1px solid rgba(74,155,217,.3);
+    border-radius:9px; padding:9px 11px; font-size:12.5px; color:#A9D2F0; line-height:1.55;}
+  .ordem-box b{color:#D9ECFA;}
+  .ordem-box .seq{display:block; margin-top:5px; color:var(--ink); font-weight:600;}
+
   /* Biblioteca de caldas */
   .hrow{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 15px; margin-bottom:9px;}
   .hrow-top{display:flex; justify-content:space-between; align-items:center; gap:8px;}
@@ -280,14 +311,6 @@
   .hrow-sub b{color:var(--ink); font-weight:600;}
   .hrow small{display:block; font-size:11.5px; color:var(--dim); margin-top:4px;}
   .hrow .actions{margin-top:10px;}
-
-  /* Seções em desenvolvimento */
-  .dev-box{background:var(--card); border:1px dashed var(--line); border-radius:var(--r); padding:40px 24px; text-align:center;}
-  .dev-tag{display:inline-block; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em;
-    color:var(--gold); background:rgba(217,164,65,.12); border:1px solid rgba(217,164,65,.35);
-    padding:5px 12px; border-radius:20px; margin-bottom:14px;}
-  .dev-box h2{font-size:18px; font-weight:700; margin-bottom:8px;}
-  .dev-box p{font-size:13.5px; color:var(--mut); max-width:430px; margin:0 auto; line-height:1.6;}
 
   /* Diálogos */
   dialog{border:none; border-radius:20px; width:min(94vw,520px); padding:0; background:var(--card);
@@ -366,6 +389,7 @@
     .p-actions .btn-del{flex:1 1 0!important;}
     .sinais{grid-template-columns:1fr;}
     .selrow input.dose{width:100%; order:5;}
+    .selrow select.dose-u{width:100%; order:6;}
     .item{padding:12px 13px;}
     .item-title b{font-size:15.5px;}
     .item-ia{font-size:13.5px;}
@@ -399,10 +423,15 @@
     </div>
   </div>
 
-  <div class="kpi-row">
+  <div class="kpi-row" id="kpiProd">
     <div class="kpi"><div class="kpi-val" id="kProd">—</div><div class="kpi-lab">Produtos</div></div>
     <div class="kpi"><div class="kpi-val" id="kBula">—</div><div class="kpi-lab">Com bula</div></div>
     <div class="kpi"><div class="kpi-val gold" id="kSemComp">—</div><div class="kpi-lab">Sem composição</div></div>
+  </div>
+  <div class="kpi-row" id="kpiMont" hidden>
+    <div class="kpi"><div class="kpi-val" id="kCaldas">—</div><div class="kpi-lab">Caldas salvas</div></div>
+    <div class="kpi"><div class="kpi-val" id="kTestes">—</div><div class="kpi-lab">Testes do copo</div></div>
+    <div class="kpi"><div class="kpi-val gold" id="kCat">—</div><div class="kpi-lab">Produtos no catálogo</div></div>
   </div>
 
   <div class="tabs" id="secTabs">
@@ -433,58 +462,50 @@
       </div>
       <div id="listFert"><div class="loading">Carregando…</div></div>
     </div>
-
-    <div id="subBiblio" hidden>
-      <div class="filters">
-        <div class="f-group"><label for="fCalCult">Cultura</label>
-          <select id="fCalCult"><option value="todas">Todas</option></select>
-        </div>
-        <div class="f-group"><label for="fCalRes">Resultado</label>
-          <select id="fCalRes">
-            <option value="todos">Todos</option>
-            <option value="bom">Bom</option>
-            <option value="regular">Regular</option>
-            <option value="ruim">Ruim</option>
-            <option value="">Sem avaliação</option>
-          </select>
-        </div>
-        <input id="fCalProd" class="f-busca" type="text" placeholder="Filtrar por produto da calda...">
-      </div>
-      <div id="listCalda"><div class="loading">Carregando…</div></div>
-    </div>
   </section>
 
   <!-- ===== MONTAR CALDA ===== -->
   <section id="secMontar" hidden>
-    <div class="panel">
-      <div class="field">
-        <label for="mBusca">Buscar produto (Bulário + Estoque, sem duplicar)</label>
-        <input id="mBusca" type="text" placeholder="Digite o nome ou ingrediente...">
-      </div>
-      <div id="mCatalogo"></div>
-      <div class="sec-title">Produtos selecionados (ordem da mistura)</div>
-      <div id="mSel"><div class="empty">Nenhum produto selecionado ainda.</div></div>
-      <div class="row2">
-        <div class="field"><label for="mNome">Nome da calda</label><input id="mNome" type="text" placeholder="ex: Preventiva tomate"></div>
-        <div class="field"><label for="mCultura">Cultura</label><input id="mCultura" type="text" placeholder="ex: Tomate"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label for="mAlvo">Alvo (praga / doença)</label><input id="mAlvo" type="text" placeholder="ex: oídio, mosca-branca"></div>
-        <div class="field"><label for="mAgua">Água (L)</label><input id="mAgua" type="number" step="any" inputmode="decimal" placeholder="ex: 200"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label for="mEstufas">Estufas</label>
-          <select id="mEstufas">
-            <option value="">—</option>
-            <option value="1">Estufa 1</option><option value="2">Estufa 2</option><option value="3">Estufa 3</option>
-            <option value="4">Estufa 4</option><option value="5">Estufa 5</option><option value="6">Estufa 6</option>
-            <option value="7">Estufa 7</option><option value="1,2,3,4,5,6,7">Todas (1–7)</option>
-          </select>
+    <div class="mont-grid">
+      <div class="panel">
+        <div class="field">
+          <label for="mBusca">Buscar produto (Bulário + Estoque + Insumos, sem duplicar)</label>
+          <input id="mBusca" type="text" placeholder="Digite o nome, ingrediente ou fabricante...">
         </div>
-        <div class="field"><label for="mCond">Condições</label><input id="mCond" type="text" placeholder="ex: dia firme, below 30°C"></div>
+        <div id="mCatalogo"></div>
+        <div class="q-aviso" style="margin-top:10px; margin-bottom:0">Produtos com dados incompletos podem ser selecionados — a análise avisa exatamente o que falta. Esta aba <b>não altera</b> cadastros do Bulário nem move estoque.</div>
       </div>
-      <div class="field"><label for="mObs">Observação</label><textarea id="mObs" rows="2" placeholder="opcional"></textarea></div>
-      <div class="sheet-actions">
+      <div class="panel">
+        <div class="sec-title" style="margin-top:0">Produtos selecionados (ordem da mistura)</div>
+        <div id="mSel"><div class="empty">Nenhum produto selecionado ainda.</div></div>
+        <div class="row2">
+          <div class="field"><label for="mNome">Nome da calda</label><input id="mNome" type="text" placeholder="ex: Preventiva tomate"></div>
+          <div class="field"><label for="mCultura">Cultura</label><input id="mCultura" type="text" placeholder="ex: Tomate"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="mAlvo">Alvo (praga / doença)</label><input id="mAlvo" type="text" placeholder="ex: oídio, mosca-branca"></div>
+          <div class="field"><label for="mData">Data prevista</label><input id="mData" type="date"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="mAgua">Volume total de água (L)</label><input id="mAgua" type="number" step="any" inputmode="decimal" placeholder="ex: 200"></div>
+          <div class="field"><label for="mQtd">Quantidade de plantas / área</label><input id="mQtd" type="text" placeholder="ex: 300 plantas ou 200 m²"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="mEstufas">Estufas</label>
+            <select id="mEstufas">
+              <option value="">—</option>
+              <option value="1">Estufa 1</option><option value="2">Estufa 2</option><option value="3">Estufa 3</option>
+              <option value="4">Estufa 4</option><option value="5">Estufa 5</option><option value="6">Estufa 6</option>
+              <option value="7">Estufa 7</option><option value="1,2,3,4,5,6,7">Todas (1–7)</option>
+            </select>
+          </div>
+          <div class="field"><label for="mCond">Condições</label><input id="mCond" type="text" placeholder="ex: dia firme, below 30°C"></div>
+        </div>
+        <div class="field"><label for="mObs">Observação</label><textarea id="mObs" rows="2" placeholder="opcional"></textarea></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <div class="sheet-actions" style="margin-top:0">
         <button class="btn-anal" onclick="analisarUI()">Analisar mistura</button>
         <button class="btn-save" onclick="abrirTeste()">Teste do copo</button>
         <button class="btn-save" onclick="salvarCalda()">Salvar calda</button>
@@ -493,22 +514,26 @@
     </div>
   </section>
 
-  <!-- ===== MONTAR CALDA — em desenvolvimento ===== -->
-  <section id="secMontarDev" hidden>
-    <div class="dev-box">
-      <span class="dev-tag">Em desenvolvimento</span>
-      <h2>Montar calda</h2>
-      <p>A montagem de caldas com checagem de compatibilidade estará disponível em uma próxima etapa.</p>
+  <!-- ===== BIBLIOTECA DE CALDAS ===== -->
+  <section id="secBiblio" hidden>
+    <div class="filters">
+      <div class="f-group"><label for="fCalCult">Cultura</label>
+        <select id="fCalCult"><option value="todas">Todas</option></select>
+      </div>
+      <div class="f-group"><label for="fCalRes">Resultado</label>
+        <select id="fCalRes">
+          <option value="todos">Todos</option>
+          <option value="bom">Bom</option>
+          <option value="regular">Regular</option>
+          <option value="ruim">Ruim</option>
+          <option value="">Sem avaliação</option>
+        </select>
+      </div>
+      <input id="fCalProd" class="f-busca" type="text" placeholder="Filtrar por produto da calda...">
     </div>
-  </section>
-
-  <!-- ===== BIBLIOTECA — em desenvolvimento ===== -->
-  <section id="secBiblioDev" hidden>
-    <div class="dev-box">
-      <span class="dev-tag">Em desenvolvimento</span>
-      <h2>Biblioteca</h2>
-      <p>O histórico de caldas salvas e avaliações estará disponível em uma próxima etapa.</p>
-    </div>
+    <div id="listCalda"><div class="loading">Carregando…</div></div>
+    <div class="sec-title">Testes do copo recentes</div>
+    <div id="listTestes"><div class="empty">Nenhum teste do copo registrado.</div></div>
   </section>
 </div>
 
@@ -810,11 +835,16 @@
       <div class="field"><label for="tAgua">Água no copo</label><input id="tAgua" type="text" placeholder="ex: 200 mL"></div>
       <div class="field"><label for="tData">Data</label><input id="tData" type="date"></div>
     </div>
+    <div class="field"><label for="tOrdem">Ordem de adição usada</label>
+      <input id="tOrdem" type="text" placeholder="ex: A > B > C">
+      <div class="hint">Preenchida automaticamente com a ordem atual da mistura. Ajuste se tiver adicionado em outra ordem.</div>
+    </div>
     <div class="field"><label>Sinais observados</label>
       <div class="sinais">
         <label><input type="checkbox" value="precipitacao"> Precipitação</label>
         <label><input type="checkbox" value="separacao"> Separação de fases</label>
         <label><input type="checkbox" value="grumos"> Grumos / floco</label>
+        <label><input type="checkbox" value="cor"> Alteração de cor</label>
         <label><input type="checkbox" value="gel"> Espessamento / gel</label>
         <label><input type="checkbox" value="aquecimento"> Aquecimento</label>
         <label><input type="checkbox" value="outra"> Outro</label>
@@ -1201,7 +1231,7 @@ async function carregar(){
     infos = d.insumosInfo || [];
     caldas = d.caldas || [];
     testes = d.testesCopo || [];
-    render(); renderCaldas(); renderKpis(); renderFerts();
+    render(); renderCaldas(); renderTestes(); renderKpis(); renderFerts(); renderCatalogo();
     if(typeof cacheSalvarTipo === 'function') cacheSalvarTipo('bulario', lista);
   }catch(e){
     if(lista && lista.length){ render(); renderFerts(); return; }
@@ -1255,6 +1285,12 @@ function renderKpis(){
   document.getElementById('kProd').textContent = lista.length;
   document.getElementById('kBula').textContent = lista.filter(p => (p.bulaLink||'').trim() || (p.bulaFileId||'').trim()).length;
   document.getElementById('kSemComp').textContent = lista.filter(p => !(p.composicao||'').trim() && !(p.ingredienteAtivo||'').trim()).length;
+  const kc = document.getElementById('kCaldas');
+  if(kc){
+    kc.textContent = caldas.length;
+    document.getElementById('kTestes').textContent = testes.length;
+    document.getElementById('kCat').textContent = catalogoUnico().length;
+  }
 }
 function itensFiltrados(){
   return lista.filter(p => {
@@ -2106,10 +2142,14 @@ document.querySelectorAll('#tipoTabs .tab').forEach(t => t.addEventListener('cli
 function irPara(sec){
   document.querySelectorAll('#secTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.s === sec));
   document.getElementById('secProd').hidden = sec !== 'prod';
-  document.getElementById('secMontarDev').hidden = sec !== 'montar';
-  document.getElementById('secBiblioDev').hidden = sec !== 'biblio';
+  document.getElementById('secMontar').hidden = sec !== 'montar';
+  document.getElementById('secBiblio').hidden = sec !== 'biblio';
+  document.getElementById('kpiProd').hidden = sec !== 'prod';
+  document.getElementById('kpiMont').hidden = sec === 'prod';
   document.getElementById('hdrActions').hidden = sec !== 'prod' || tipoAba !== 'def';
   if(sec !== 'prod') document.getElementById('adminMenu').hidden = true;
+  if(sec === 'montar'){ renderCatalogo(); renderSel(); renderKpis(); }
+  if(sec === 'biblio'){ renderCaldas(); renderTestes(); renderKpis(); }
 }
 document.querySelectorAll('#secTabs .tab').forEach(t => t.addEventListener('click', () => irPara(t.dataset.s)));
 
@@ -3232,7 +3272,8 @@ function catalogoUnico(){
     const k = chave(p.nome);
     if(!k) continue;
     map.set(k, { chave:k, nome:p.nome, categoria:p.categoria||'', origem:'bulario',
-      ingredienteAtivo:p.ingredienteAtivo||'', dose:p.dose||'', rec:p });
+      ingredienteAtivo:p.ingredienteAtivo||'', dose:p.dose||'',
+      fabricante:p.fabricante||'', formula:p.formula||'', rec:p });
   }
   for(const e of estoque){
     const k = chave(e.nome);
@@ -3242,47 +3283,70 @@ function catalogoUnico(){
       const ent = map.get(k);
       ent.origem = 'ambos';
       if(!ent.ingredienteAtivo && inf) ent.ingredienteAtivo = inf.ingredienteAtivo||'';
+      if(!ent.fabricante && inf) ent.fabricante = inf.fabricante||'';
+      if(!ent.formula && inf) ent.formula = inf.formula||'';
       continue;
     }
     map.set(k, { chave:k, nome:e.nome, categoria:(inf && inf.categoria) || e.categoria || '',
       origem:'estoque',
       ingredienteAtivo:(inf && inf.ingredienteAtivo) || '',
-      dose:(inf && inf.dose) || '', rec:inf || e, estoqueId:e.id });
+      dose:(inf && inf.dose) || '',
+      fabricante:(inf && inf.fabricante) || '',
+      formula:(inf && inf.formula) || '',
+      rec:inf || e, estoqueId:e.id });
   }
   for(const i of infos){
     const k = chave(i.nome);
     if(!k || map.has(k)) continue;
     map.set(k, { chave:k, nome:i.nome, categoria:i.categoria||'', origem:'info',
-      ingredienteAtivo:i.ingredienteAtivo||'', dose:i.dose||'', rec:i });
+      ingredienteAtivo:i.ingredienteAtivo||'', dose:i.dose||'',
+      fabricante:i.fabricante||'', formula:i.formula||'', rec:i });
   }
   return [...map.values()].sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 // Resolve o registro técnico completo de um produto do catálogo (para a engine).
+// Merge sem sobrescrever com vazio: estoque < insumosInfo < bulário (campos não vazios vencem).
+function mesclarRec(base, extra){
+  if(!extra) return base;
+  for(const key of Object.keys(extra)){
+    const v = extra[key];
+    if(v !== undefined && v !== null && String(v).trim() !== '') base[key] = v;
+    else if(base[key] === undefined) base[key] = v;
+  }
+  return base;
+}
 function resolverProduto(chaveNome){
   const k = chave(chaveNome);
   const p = lista.find(x => chave(x.nome) === k);
-  if(p) return p;
   const inf = infos.find(x => chave(x.nome) === k);
-  if(inf) return inf;
   const e = estoque.find(x => chave(x.nome) === k);
-  if(e) return Object.assign({ ingredienteAtivo:'', restricoes:'', compatDocs:'', composicao:'' }, infoDoEstoque(e) || {}, { nome:e.nome });
-  return { nome:chaveNome, ingredienteAtivo:'', restricoes:'', compatDocs:'', composicao:'' };
+  let base = { nome: chaveNome, ingredienteAtivo:'', restricoes:'', compatDocs:'', composicao:'' };
+  if(e) base = mesclarRec(base, infoDoEstoque(e) || {});
+  if(inf) base = mesclarRec(base, inf);
+  if(p) base = mesclarRec(base, p);
+  if(p && p.nome) base.nome = p.nome;
+  else if(inf && inf.nome) base.nome = inf.nome;
+  else if(e && e.nome) base.nome = e.nome;
+  return base;
 }
 
 // ---- Montar calda ----
-let selProdutos = []; // [{chave, nome, dose}]
+let selProdutos = []; // [{chave, nome, dose, unidade}]
 let mBusca = '';
+const UNID_DOSE = ['', 'mL/100 L', 'L/100 L', 'mL/ha', 'L/ha', 'g/100 L', 'kg/ha', 'g/ha', '%', 'ppm'];
 function renderCatalogo(){
   const box = document.getElementById('mCatalogo');
+  if(!box) return;
   const termo = chave(mBusca);
   let cat = catalogoUnico();
-  if(termo) cat = cat.filter(c => chave(c.nome).includes(termo) || chave(c.ingredienteAtivo).includes(termo));
+  if(termo) cat = cat.filter(c => chave(c.nome).includes(termo) || chave(c.ingredienteAtivo).includes(termo) ||
+    chave(c.fabricante).includes(termo) || chave(c.categoria).includes(termo));
   const selK = new Set(selProdutos.map(s => s.chave));
-  const mostra = cat.filter(c => !selK.has(c.chave)).slice(0, 30);
+  const mostra = cat.filter(c => !selK.has(c.chave)).slice(0, 40);
   box.innerHTML = mostra.length
     ? mostra.map(c => `
       <div class="cat-item" onclick="addSel('${escapeHtml(c.chave)}')">
-        <span class="nm">${escapeHtml(c.nome)}${c.ingredienteAtivo ? ' <small style="color:var(--mut)">· '+escapeHtml(c.ingredienteAtivo)+'</small>' : ''}</span>
+        <span class="nm">${escapeHtml(c.nome)}<small style="color:var(--dim);display:block;font-weight:500;font-size:11.5px;">${[c.fabricante, c.ingredienteAtivo].filter(Boolean).map(escapeHtml).join(' · ') || escapeHtml(c.categoria || '')}</small></span>
         <span class="src ${c.origem==='estoque'?'fab':c.origem==='ambos'?'foto':'doc'}">${c.origem==='estoque'?'Estoque':c.origem==='ambos'?'Bulário+Estoque':'Bulário'}</span>
         <span class="add">＋</span>
       </div>`).join('')
@@ -3293,7 +3357,7 @@ function addSel(k){
   const cat = catalogoUnico();
   const c = cat.find(x => x.chave === k);
   if(!c) return;
-  selProdutos.push({ chave:k, nome:c.nome, dose:'' });
+  selProdutos.push({ chave:k, nome:c.nome, dose:'', unidade:'' });
   renderSel(); renderCatalogo();
   if(analise) analisarUI(true);
 }
@@ -3314,73 +3378,238 @@ function setDoseSel(k, v){
   const s = selProdutos.find(x => x.chave === k);
   if(s){ s.dose = v; if(analise) analisarUI(true); }
 }
+function setUnidSel(k, v){
+  const s = selProdutos.find(x => x.chave === k);
+  if(s){ s.unidade = v; if(analise) analisarUI(true); }
+}
 function renderSel(){
   const box = document.getElementById('mSel');
+  if(!box) return;
   if(!selProdutos.length){
     box.innerHTML = '<div class="empty">Nenhum produto selecionado ainda.</div>';
     return;
   }
-  box.innerHTML = selProdutos.map((s, i) => `
+  box.innerHTML = selProdutos.map((s, i) => {
+    const rec = resolverProduto(s.chave);
+    const sub = [rec.fabricante, rec.formula, rec.categoria].filter(x => x && String(x).trim()).map(x => escapeHtml(String(x).trim())).join(' · ');
+    const unidAtual = s.unidade || '';
+    const opts = UNID_DOSE.includes(unidAtual) || !unidAtual ? UNID_DOSE : UNID_DOSE.concat([unidAtual]);
+    return `
     <div class="selrow">
       <div class="ord">
         <button onclick="moveSel('${escapeHtml(s.chave)}',-1)" ${i===0?'disabled':''} title="Subir">▲</button>
         <button onclick="moveSel('${escapeHtml(s.chave)}',1)" ${i===selProdutos.length-1?'disabled':''} title="Descer">▼</button>
       </div>
-      <span class="nm">${i+1}. ${escapeHtml(s.nome)}</span>
+      <span class="nm">${i+1}. ${escapeHtml(s.nome)}${sub ? '<small>'+sub+'</small>' : ''}</span>
       <input class="dose" type="text" placeholder="dose (opcional)" value="${escapeHtml(s.dose||'')}"
         oninput="setDoseSel('${escapeHtml(s.chave)}', this.value)">
+      <select class="dose-u" onchange="setUnidSel('${escapeHtml(s.chave)}', this.value)" title="Unidade da dose">
+        ${opts.map(u => '<option value="'+escapeHtml(u)+'"'+(u===unidAtual?' selected':'')+'>'+(u || 'unidade')+'</option>').join('')}
+      </select>
       <button class="rm" onclick="remSel('${escapeHtml(s.chave)}')" title="Remover">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 document.getElementById('mBusca').addEventListener('input', (e) => { mBusca = e.target.value; renderCatalogo(); });
 
 // ---- Motor de compatibilidade ----
-// 3 classes apenas com dados registrados: DOCUMENTADA / INCOMPATIBILIDADE / SEM INFORMAÇÃO.
-// Padrão nunca é "compatível". Teste do copo idêntico compatível NÃO vira DOCUMENTADA.
+// 4 classes apenas com dados registrados:
+// INCOMPATIBILIDADE / DOCUMENTADA / FÍSICA (teste do copo) / SEM INFORMAÇÃO.
+// Padrão nunca é "compatível". Ausência de informação nunca vira compatibilidade.
+// Teste do copo idêntico compatível NÃO vira DOCUMENTADA.
+// Pares compatíveis individualmente NÃO tornam a mistura segura sem documentação dela.
+function normTxt(s){
+  let t = String(s ?? '').trim().toLowerCase();
+  try{ t = t.normalize('NFD').replace(/[̀-ͯ]/g, ''); }catch(e){}
+  return t;
+}
+const NEG_RE = /nao\s*misturar|nao\s*associar|evitar\s*mistura|incompat|nao\s*combinar|proibid|jamais|nao\s*deve\s*ser\s*mistur|nao\s*deve\s*entrar/;
+const ORDEM_RE = /adicionar primeiro|primeiro adicionar|iniciar com|comecar com|por ultimo|ao final da mistura|ao fim da mistura|adicionar antes de|antes de adicionar|antes de misturar|depositar primeiro|primeiro depositar|finalizar com|ultima adicao|ultima a adicionar/;
+
 function chaveCalda(nomes){
   return nomes.map(chave).filter(Boolean).sort().join('|');
 }
-function parIncompativel(a, b){
-  // restrições de "a" citando "b" (por nome ou ingrediente ativo)
-  const rest = chave(a.restricoes || '');
-  if(!rest) return '';
-  const alvos = [chave(b.nome), chave(b.ingredienteAtivo)].filter(x => x.length > 2);
-  for(const alvo of alvos){
-    if(rest.includes(alvo)) return (a.restricoes || '').trim();
-  }
-  return '';
+function docCitaPar(doc, a, b){
+  const d = chave(doc);
+  if(!d) return false;
+  const alvosA = [chave(a.nome), chave(a.ingredienteAtivo)].filter(x => x.length > 2);
+  const alvosB = [chave(b.nome), chave(b.ingredienteAtivo)].filter(x => x.length > 2);
+  return alvosA.some(x => d.includes(x)) && alvosB.some(x => d.includes(x));
 }
 function compatDocsCita(doc, nomes){
   const d = chave(doc || '');
   if(!d) return false;
   return nomes.every(n => { const k = chave(n); return k.length > 2 && d.includes(k); });
 }
+function citaTexto(texto, alvos){
+  const t = chave(texto);
+  if(!t) return false;
+  return alvos.some(x => t.includes(x));
+}
+// Avalia UM par (a × b) com as fontes registradas. Nunca presume compatibilidade.
+function avaliarPar(a, b){
+  const alvosB = [chave(b.nome), chave(b.ingredienteAtivo)].filter(x => x.length > 2);
+  // 1) campos que são restrições por definição, citando o parceiro
+  for(const campo of ['restricoes', 'incompatibilidades']){
+    const txt = a[campo] || '';
+    if(citaTexto(txt, alvosB)){
+      return { classe:'INCOMPATIBILIDADE',
+        evidencia: a.nome + ' registra em ' + campo + ': "' + String(txt).trim() + '"' };
+    }
+  }
+  // 2) miscibilidade/cuidados com citação + palavra negativa
+  for(const campo of ['miscibilidade', 'cuidadosMistura']){
+    const txt = a[campo] || '';
+    if(citaTexto(txt, alvosB) && NEG_RE.test(normTxt(txt))){
+      return { classe:'INCOMPATIBILIDADE',
+        evidencia: a.nome + ' registra em ' + campo + ': "' + String(txt).trim() + '"' };
+    }
+  }
+  // 3) compatibilidade documentada (ou incompatibilidade documentada) citando OS DOIS
+  for(const s of [a, b]){
+    const d = s.compatDocs || '';
+    if(!docCitaPar(d, a, b)) continue;
+    if(NEG_RE.test(normTxt(d))){
+      return { classe:'INCOMPATIBILIDADE',
+        evidencia: 'Compatibilidade documentada (' + s.nome + ') registra incompatibilidade: "' + String(d).trim() + '"' };
+    }
+    return { classe:'DOCUMENTADA',
+      evidencia: 'Compatibilidade documentada (' + s.nome + '): "' + String(d).trim() + '"' };
+  }
+  // 4) teste do copo registrado para este par
+  const parKey = [chave(a.nome), chave(b.nome)].filter(Boolean).sort().join('|');
+  const tst = testes.filter(t => {
+    const ks = String(t.chave || '').split('|').filter(Boolean);
+    return ks.includes(chave(a.nome)) && ks.includes(chave(b.nome));
+  });
+  const exato = tst.filter(t => String(t.chave) === parKey);
+  const incomp = (exato.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat')) ||
+                  tst.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat')));
+  if(incomp){
+    const onde = String(incomp.chave) === parKey ? 'para este par' : 'em mistura com outros produtos';
+    return { classe:'INCOMPATIBILIDADE',
+      evidencia: 'Teste do copo ' + onde + ' com resultado INCOMPATÍVEL' +
+        (incomp.dataTeste ? ' em ' + fmtData(incomp.dataTeste) : '') + '.' };
+  }
+  const comp = exato.find(t => String(t.resultado||'').toLowerCase().startsWith('compat')) ||
+               tst.find(t => String(t.resultado||'').toLowerCase().startsWith('compat'));
+  if(comp){
+    const onde = String(comp.chave) === parKey ? 'para este par' : 'em mistura com outros produtos';
+    return { classe:'FÍSICA',
+      evidencia: 'Teste do copo ' + onde + ' compatível' + (comp.dataTeste ? ' em ' + fmtData(comp.dataTeste) : '') +
+        ' (só avalia compatibilidade física, não substitui a bula).' };
+  }
+  // 5) sem informação: dizer o que impede a conclusão neste par
+  const faltam = [];
+  for(const s of [a, b]){
+    if(!(s.restricoes||'').trim()) faltam.push('restricoes (' + s.nome + ')');
+    if(!(s.compatDocs||'').trim()) faltam.push('compatDocs (' + s.nome + ')');
+  }
+  return { classe:'SEM INFORMAÇÃO',
+    evidencia: faltam.length ? 'Sem registro de restrições/compatibilidade: falta ' + faltam.join(', ') + '.'
+      : 'Há registros, mas nenhum deles cita esta combinação.' };
+}
+// Dados que faltam em cada produto e o que cada falta limita na análise.
+function dadosFaltantes(sel){
+  const out = [];
+  for(const s of sel){
+    const f = [];
+    if(!(s.fabricante||'').trim()) f.push({ c:'fabricante', l:'sem fabricante não há como rastrear orientação oficial' });
+    if(!(s.ingredienteAtivo||'').trim() && !(s.composicao||'').trim())
+      f.push({ c:'composição/ingrediente ativo', l:'não dá para cruzar constituintes entre os produtos' });
+    if(!(s.formula||'').trim()) f.push({ c:'formulação', l:'não é possível recomendar ordem de mistura por tipo de produto' });
+    if(!(s.ph||'').trim() && !(s.naturezaFisica||'').trim())
+      f.push({ c:'pH / natureza física', l:'análise física fica limitada ao teste do copo' });
+    if(!(s.restricoes||'').trim())
+      f.push({ c:'restrições', l:'não é possível afirmar ausência de incompatibilidade' });
+    if(!(s.compatDocs||'').trim())
+      f.push({ c:'compatibilidade documentada', l:'não há respaldo oficial para a mistura' });
+    if(f.length) out.push({ nome: s.nome, campos: f });
+  }
+  return out;
+}
+function dadosFisicos(sel){
+  return sel.filter(s => (s.ph||s.naturezaFisica||s.solubilidade||s.densidade||s.miscibilidade))
+    .map(s => ({ nome:s.nome, ph:s.ph||'', natureza:s.naturezaFisica||'', sol:s.solubilidade||'',
+      dens:s.densidade||'', misc:s.miscibilidade||'' }));
+}
+// Ordem de mistura: só quando há fundamentação (texto do fabricante ou formulações).
+function recomendarOrdem(sel){
+  for(const s of sel){
+    for(const campo of ['cuidadosMistura', 'restricoes', 'obs']){
+      const txt = s[campo];
+      if(!txt) continue;
+      const frases = String(txt).split(/(?<=[.;])\s+|\n+/);
+      for(const f of frases){
+        if(ORDEM_RE.test(normTxt(f))){
+          return { base:'fabricante',
+            texto: 'Orientação registrada em "' + s.nome + '" (' + campo + '): "' + f.trim() + '"' };
+        }
+      }
+    }
+  }
+  function grau(s){
+    if(normTxt(s.categoria).includes('adjuvante')) return 5;
+    const F = String(s.formula || '').toUpperCase();
+    if(/\b(WP|WDG|WG|SP|SG|GR)\b/.test(F) || /P[ÓO]WDER|P[ÓO]\b/.test(F)) return 1;
+    if(/\b(SC|SE|FS)\b/.test(F)) return 2;
+    if(/\b(SL|LS|AS)\b/.test(F)) return 3;
+    if(/\b(EC|ME|OD|EO)\b/.test(F)) return 4;
+    return 0;
+  }
+  const graus = sel.map(s => ({ s, g: grau(s) }));
+  const semFormula = graus.filter(x => !x.g).map(x => x.s.nome);
+  if(semFormula.length){
+    return { base:'nenhuma',
+      texto:'Formulação de ' + semFormula.map(n => '"' + n + '"').join(', ') +
+        ' não identificada — sem fundamentação para recomendar ordem de adição.' };
+  }
+  const seq = graus.slice().sort((x, y) => x.g - y.g).map(x => x.s.nome);
+  const atual = sel.map(s => s.nome);
+  const igual = atual.length === seq.length && atual.every((n, i) => n === seq[i]);
+  if(igual){
+    return { base:'formula', sequencia: seq,
+      texto:'A ordem atual já segue a sequência por formulação (pós → suspensão → solução → emulsível → adjuvante).' };
+  }
+  return { base:'formula', sequencia: seq,
+    texto:'Sequência sugerida pelas formulações dos produtos (base técnica, não substitui a bula):' };
+}
 function analisarCalda(){
   const sel = selProdutos.map(s => {
     const rec = resolverProduto(s.chave);
-    return { nome: rec.nome || s.nome, ingredienteAtivo: rec.ingredienteAtivo || '',
+    return {
+      nome: rec.nome || s.nome, ingredienteAtivo: rec.ingredienteAtivo || '',
+      composicao: rec.composicao || '', fabricante: rec.fabricante || '',
+      formula: rec.formula || '', categoria: rec.categoria || '',
       restricoes: rec.restricoes || '', compatDocs: rec.compatDocs || '',
-      composicao: rec.composicao || '', dose: s.dose || '' };
+      incompatibilidades: rec.incompatibilidades || '', miscibilidade: rec.miscibilidade || '',
+      cuidadosMistura: rec.cuidadosMistura || '', obs: rec.obs || '',
+      ph: rec.ph || '', naturezaFisica: rec.naturezaFisica || '',
+      solubilidade: rec.solubilidade || '', densidade: rec.densidade || '',
+      dose: s.dose || '', unidade: s.unidade || ''
+    };
   });
   const motivos = [];
   const alertas = [];
   if(sel.length < 2){
     return { classe:'SEM INFORMAÇÃO', klass:'unk',
-      motivos:['Selecione ao menos 2 produtos para analisar a mistura.'], alertas:[] };
+      motivos:['Selecione ao menos 2 produtos para analisar a mistura.'],
+      alertas:[], pares:[], faltantes:[], fisico:[], ordem:null };
   }
   const nomes = sel.map(s => s.nome);
-  let incompat = '';
-  let incompatDe = '';
-  // 1) restrições registradas entre pares
-  for(let i = 0; i < sel.length && !incompat; i++){
-    for(let j = 0; j < sel.length; j++){
-      if(i === j) continue;
-      const r = parIncompativel(sel[i], sel[j]);
-      if(r){ incompat = r; incompatDe = sel[i].nome + ' → ' + sel[j].nome; break; }
+  // 1) par a par
+  const pares = [];
+  let algumIncompat = null;
+  for(let i = 0; i < sel.length; i++){
+    for(let j = i + 1; j < sel.length; j++){
+      const r = avaliarPar(sel[i], sel[j]);
+      const par = { a: sel[i].nome, b: sel[j].nome, classe: r.classe, evidencia: r.evidencia };
+      pares.push(par);
+      if(r.classe === 'INCOMPATIBILIDADE' && !algumIncompat) algumIncompat = par;
     }
   }
-  if(incompat){
-    motivos.push('Restrição registrada (' + incompatDe + '): "' + incompat + '"');
+  if(algumIncompat){
+    motivos.push('Par incompatível (' + algumIncompat.a + ' × ' + algumIncompat.b + '): ' + algumIncompat.evidencia);
   }
   // 2) histórico idêntico de teste do copo
   const k = chaveCalda(nomes);
@@ -3388,42 +3617,45 @@ function analisarCalda(){
   const histIncomp = histId.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat'));
   const histCompat = histId.find(t => String(t.resultado||'').toLowerCase().startsWith('compat'));
   if(histIncomp){
-    if(!incompat) incompat = 'histórico';
     motivos.push('Teste do copo anterior com resultado INCOMPATÍVEL' +
       (histIncomp.dataTeste ? ' em ' + fmtData(histIncomp.dataTeste) : '') + '.');
   }
-  // 3) compatibilidade documentada citando TODOS os produtos
+  // 3) compatibilidade documentada citando TODOS os produtos da mistura
   let docOk = '';
-  if(!incompat){
-    for(const s of sel){
-      if(compatDocsCita(s.compatDocs, nomes)){
-        const d = chave(s.compatDocs);
-        if(d.includes('incompat') || d.includes('naomisturar') || d.includes('naoassociar')){
-          incompat = 'docs';
-          motivos.push('Compatibilidade documentada registra INCOMPATIBILIDADE para esta combinação.');
-          break;
-        }
-        docOk = s.compatDocs;
-        break;
-      }
+  let docNeg = '';
+  for(const s of sel){
+    if(!compatDocsCita(s.compatDocs, nomes)) continue;
+    if(NEG_RE.test(normTxt(s.compatDocs))){
+      docNeg = s.compatDocs; break;
     }
+    docOk = s.compatDocs; break;
+  }
+  if(docNeg && !algumIncompat){
+    motivos.push('Compatibilidade documentada registra INCOMPATIBILIDADE para esta combinação: "' + String(docNeg).trim() + '"');
+    algumIncompat = { a:'documentação', b:'' };
   }
   // 4) restrições genéricas (sem par específico) viram alerta, não classificação
   for(const s of sel){
     const rest = chave(s.restricoes || '');
     if(!rest) continue;
     if(!/naomisturar|incompat|naoassociar|evitarmistura/.test(rest)) continue;
-    const temPar = sel.some(o => o !== s && parIncompativel(s, o));
+    const temPar = pares.some(p => (p.a === s.nome || p.b === s.nome) && p.classe === 'INCOMPATIBILIDADE');
     if(!temPar){
       alertas.push('Restrição registrada em "' + s.nome + '": "' + (s.restricoes||'').trim() +
         '" — confira se vale para os parceiros escolhidos.');
     }
   }
-  // 5) histórico semelhante (mesmos produtos, parcial) → só nota
+  // 5) histórico semelhante (mesmos produtos, parcial) → nota/alerta
   const histSemelhante = testes.filter(t => t.chave !== k && t.chave &&
     t.chave.split('|').some(p => k.split('|').includes(p)));
-  if(histSemelhante.length){
-    alertas.push('Existe teste anterior com produtos semelhantes (combinação não idêntica).');
+  for(const t of histSemelhante){
+    if(String(t.resultado||'').toLowerCase().startsWith('incompat')){
+      alertas.push('Teste anterior com resultado INCOMPATÍVEL envolvendo produtos semelhantes' +
+        (t.dataTeste ? ' (' + fmtData(t.dataTeste) + ')' : '') + '.');
+    }else{
+      alertas.push('Existe teste anterior com produtos semelhantes (combinação não idêntica).');
+      break;
+    }
   }
   // 6) alerta de mudança de composição desde o último teste idêntico
   if(histId.length){
@@ -3441,31 +3673,87 @@ function analisarCalda(){
       }
     }catch(e){ /* produtos em formato antigo: ignora */ }
   }
-  if(histCompat && !incompat && !docOk){
-    motivos.push('Teste do copo idêntico registrado como compatível (não substitui documentação oficial).');
-  }
-  if(incompat){
-    return { classe:'INCOMPATIBILIDADE', klass:'bad', motivos, alertas };
+  // 7) pares todos OK ≠ mistura segura
+  const todosParesOk = pares.length > 0 && pares.every(p => p.classe !== 'SEM INFORMAÇÃO' && p.classe !== 'INCOMPATIBILIDADE');
+  const base = {
+    pares,
+    faltantes: dadosFaltantes(sel),
+    fisico: dadosFisicos(sel),
+    ordem: recomendarOrdem(sel),
+    alertas
+  };
+  if(algumIncompat){
+    return Object.assign(base, { classe:'INCOMPATIBILIDADE', klass:'bad', motivos });
   }
   if(docOk){
-    motivos.push('Compatibilidade documentada: "' + docOk + '"');
-    return { classe:'DOCUMENTADA', klass:'ok', motivos, alertas };
+    motivos.push('Compatibilidade documentada para a mistura completa: "' + String(docOk).trim() + '"');
+    return Object.assign(base, { classe:'DOCUMENTADA', klass:'ok', motivos });
+  }
+  if(histCompat){
+    motivos.push('Teste do copo idêntico registrado como compatível em ' +
+      (histCompat.dataTeste ? fmtData(histCompat.dataTeste) : 'data não informada') +
+      ' — vale só para a compatibilidade física no momento do preparo; não substitui a bula nem garante eficácia/segurança em campo.');
+    return Object.assign(base, { classe:'FÍSICA – TESTE DO COPO', klass:'fis', motivos });
+  }
+  if(todosParesOk){
+    motivos.push('Todos os pares têm registro individual, mas não há documentação nem teste do copo para a MISTURA COMPLETA — pares compatíveis isoladamente não tornam a mistura segura.');
   }
   if(!motivos.length){
     motivos.push('Sem informação registrada: não há restrição, compatibilidade documentada nem teste do copo para esta combinação.');
   }
-  return { classe:'SEM INFORMAÇÃO', klass:'unk', motivos, alertas };
+  return Object.assign(base, { classe:'SEM INFORMAÇÃO', klass:'unk', motivos });
 }
+function tagCompat(c){
+  const t = String(c || '');
+  if(t.toUpperCase().startsWith('INCOMPAT')) return '<span class="mtag ruim">Incompatível</span>';
+  if(t.toUpperCase().startsWith('DOCUMENT')) return '<span class="mtag ok">Documentada</span>';
+  if(t.toUpperCase().startsWith('F')) return '<span class="mtag fis">Física (copo)</span>';
+  return '<span class="mtag none">Sem informação</span>';
+}
+const DISCLAIMER_ANALISE = 'Análise baseada apenas nos dados registrados no app. Ausência de informação não é compatibilidade. ' +
+  'Compatibilidade física observada em teste do copo não garante segurança química, eficácia nem ausência de fitotoxicidade. ' +
+  'Confira a bula antes de aplicar.';
 function analisarUI(silencioso){
   analise = analisarCalda();
   const box = document.getElementById('resBox');
   box.hidden = false;
   box.className = 'res-box ' + analise.klass;
-  box.innerHTML =
-    '<span class="res-tag">Compatibilidade: ' + escapeHtml(analise.classe) + '</span>' +
-    '<ul>' + analise.motivos.map(m => '<li>' + escapeHtml(m) + '</li>').join('') + '</ul>' +
-    (analise.alertas.length ? '<div class="res-warn">⚠ ' + analise.alertas.map(a => escapeHtml(a)).join('<br>⚠ ') + '</div>' : '') +
-    '<div class="res-note">Análise baseada apenas nos dados registrados no app. Confira a bula antes de aplicar.</div>';
+  let html = '<span class="res-tag">Compatibilidade: ' + escapeHtml(analise.classe) + '</span>' +
+    '<ul>' + analise.motivos.map(m => '<li>' + escapeHtml(m) + '</li>').join('') + '</ul>';
+  if(analise.pares && analise.pares.length){
+    html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Análise par a par</div>' +
+      '<table class="par-table"><tr><th>Par</th><th>Classe</th><th>Evidência / limitação</th></tr>' +
+      analise.pares.map(p =>
+        '<tr><td><b>' + escapeHtml(p.a) + ' × ' + escapeHtml(p.b) + '</b></td><td>' +
+        tagCompat(p.classe) + '</td><td>' + escapeHtml(p.evidencia) + '</td></tr>').join('') +
+      '</table>';
+  }
+  if(analise.faltantes && analise.faltantes.length){
+    html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Dados faltantes (o que limita a análise)</div>' +
+      '<div class="falta-list">' + analise.faltantes.map(f =>
+        '<div><b>' + escapeHtml(f.nome) + '</b>: falta ' +
+        f.campos.map(c => escapeHtml(c.c) + ' <span class="lim">(' + escapeHtml(c.l) + ')</span>').join('; ') +
+        '</div>').join('') + '</div>';
+  }
+  if(analise.fisico && analise.fisico.length){
+    html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Dados físicos registrados (só leitura, sem inferência)</div>' +
+      '<table class="fis-table"><tr><th>Produto</th><th>pH</th><th>Natureza</th><th>Solubilidade</th><th>Densidade</th></tr>' +
+      analise.fisico.map(f =>
+        '<tr><td><b>' + escapeHtml(f.nome) + '</b></td><td>' + escapeHtml(f.ph || '—') + '</td><td>' +
+        escapeHtml(f.natureza || '—') + '</td><td>' + escapeHtml(f.sol || '—') + '</td><td>' +
+        escapeHtml(f.dens || '—') + '</td></tr>').join('') + '</table>';
+  }
+  if(analise.ordem && analise.ordem.texto){
+    html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Ordem de mistura</div>' +
+      '<div class="ordem-box">' + escapeHtml(analise.ordem.texto) +
+      (analise.ordem.sequencia ? '<span class="seq">' + analise.ordem.sequencia.map((n, i) => (i + 1) + '. ' + escapeHtml(n)).join(' → ') + '</span>' : '') +
+      '<br>Não há ordem universal para todos os produtos — confira a bula.</div>';
+  }
+  if(analise.alertas.length){
+    html += '<div class="res-warn">⚠ ' + analise.alertas.map(a => escapeHtml(a)).join('<br>⚠ ') + '</div>';
+  }
+  html += '<div class="res-note">' + escapeHtml(DISCLAIMER_ANALISE) + '</div>';
+  box.innerHTML = html;
   if(!silencioso) box.scrollIntoView({ behavior:'smooth', block:'nearest' });
   return analise;
 }
@@ -3474,9 +3762,11 @@ function analisarUI(silencioso){
 function abrirTeste(){
   if(selProdutos.length < 2){ alert('Selecione ao menos 2 produtos para o teste do copo.'); return; }
   document.getElementById('tLista').innerHTML = '<small>Produtos (na ordem do copo)</small><b>' +
-    selProdutos.map(s => escapeHtml(s.nome) + (s.dose ? ' (' + escapeHtml(s.dose) + ')' : '')).join(' + ') + '</b>';
+    selProdutos.map(s => escapeHtml(s.nome) +
+      (s.dose ? ' (' + escapeHtml(s.dose) + (s.unidade ? ' ' + escapeHtml(s.unidade) : '') + ')' : '')).join(' + ') + '</b>';
   document.getElementById('tAgua').value = '';
   document.getElementById('tData').value = hojeISO();
+  document.getElementById('tOrdem').value = selProdutos.map(s => s.nome).join(' > ');
   document.getElementById('tObs').value = '';
   document.getElementById('tRes').value = 'compativel';
   document.querySelectorAll('#dlgTeste .sinais input').forEach(cb => { cb.checked = false; });
@@ -3485,14 +3775,16 @@ function abrirTeste(){
 async function salvarTeste(){
   if(selProdutos.length < 2){ alert('Selecione ao menos 2 produtos.'); return; }
   const sinais = [...document.querySelectorAll('#dlgTeste .sinais input')].filter(cb => cb.checked).map(cb => cb.value);
+  const ordemUsada = (document.getElementById('tOrdem').value || '').trim() ||
+    selProdutos.map(s => s.nome).join(' > ');
   const dados = {
     chave: chaveCalda(selProdutos.map(s => s.nome)),
     produtos: JSON.stringify(selProdutos.map(s => {
       const rec = resolverProduto(s.chave);
       return { nome: rec.nome || s.nome, ingredienteAtivo: rec.ingredienteAtivo || '' };
     })),
-    proporcoes: selProdutos.map(s => s.dose || '').join(' | '),
-    ordem: selProdutos.map(s => s.nome).join(' > '),
+    proporcoes: selProdutos.map(s => s.dose ? s.dose + (s.unidade ? ' ' + s.unidade : '') : '').join(' | '),
+    ordem: ordemUsada,
     agua: document.getElementById('tAgua').value.trim(),
     sinais: sinais.join(', '),
     dataTeste: document.getElementById('tData').value || hojeISO(),
@@ -3505,6 +3797,8 @@ async function salvarTeste(){
     testes.push(dados);
     document.getElementById('dlgTeste').close();
     analisarUI(true);
+    renderTestes();
+    renderKpis();
     alert('Teste do copo registrado.');
   }else{
     alert('Erro ao salvar: ' + ((res && res.error) || 'falha'));
@@ -3512,6 +3806,7 @@ async function salvarTeste(){
 }
 
 // ---- Salvar calda ----
+// Salvar calda NÃO move estoque. Só pulverização registrada (em Pulverizações) movimenta estoque.
 async function salvarCalda(){
   if(selProdutos.length < 1){ alert('Selecione ao menos 1 produto.'); return; }
   const nome = document.getElementById('mNome').value.trim();
@@ -3523,24 +3818,28 @@ async function salvarCalda(){
     alvo: document.getElementById('mAlvo').value.trim(),
     produtos: JSON.stringify(selProdutos.map(s => {
       const rec = resolverProduto(s.chave);
-      return { nome: rec.nome || s.nome, dose: s.dose || '' };
+      return { nome: rec.nome || s.nome, dose: s.dose || '', unidade: s.unidade || '' };
     })),
     agua: document.getElementById('mAgua').value.trim(),
     ordem: selProdutos.map(s => s.nome).join(' > '),
     estufas: document.getElementById('mEstufas').value,
     condicoes: document.getElementById('mCond').value.trim(),
     obs: document.getElementById('mObs').value.trim(),
+    data: document.getElementById('mData').value || '',
+    qtdPlantas: document.getElementById('mQtd').value.trim(),
+    compatibilidade: a.classe,
     resultado: '',
     sintomas: '', periodoAval: '', avaliacaoObs: '',
-    atualizadoEm: hojeISO(),
-    compatibilidade: a.classe
+    atualizadoEm: hojeISO()
   };
   const res = await apiPost({ tipo:'caldas', action:'add', data: dados });
   if(res && res.ok){
     dados.id = res.id;
     caldas.push(dados);
-    renderKpis(); renderCaldas();
-    alert('Calda "' + nome + '" salva na biblioteca.');
+    renderKpis();
+    if(!document.getElementById('secBiblio').hidden) renderCaldas();
+    alert('Calda "' + nome + '" salva na biblioteca.\nCompatibilidade na época do salvamento: ' + a.classe +
+      '\n\nSalvar não movimenta estoque — a aplicação só baixa estoque quando registrada em Pulverizações.');
   }else{
     alert('Erro ao salvar: ' + ((res && res.error) || 'falha'));
   }
@@ -3590,6 +3889,7 @@ function renderCaldas(){
     <div class="hrow" id="cal-${escapeHtml(c.id||'')}">
       <div class="hrow-top">
         <b>${escapeHtml(c.nome)}</b>
+        ${c.compatibilidade ? tagCompat(c.compatibilidade) : ''}
         ${tagResultado(c.resultado)}
       </div>
       <div class="hrow-sub">
@@ -3597,8 +3897,10 @@ function renderCaldas(){
         ${c.alvo ? ' · Alvo: <b>'+escapeHtml(c.alvo)+'</b>' : ''}
         ${c.agua ? ' · Água: <b>'+escapeHtml(c.agua)+' L</b>' : ''}
         ${c.estufas ? ' · Estufas: <b>'+escapeHtml(c.estufas)+'</b>' : ''}
+        ${c.data ? ' · Data: <b>'+escapeHtml(fmtData(c.data))+'</b>' : ''}
+        ${c.qtdPlantas ? ' · Plantas/área: <b>'+escapeHtml(c.qtdPlantas)+'</b>' : ''}
       </div>
-      <div class="hrow-sub">Produtos: <b>${escapeHtml(prods.map(p => p.nome + (p.dose ? ' ('+p.dose+')' : '')).join(' + '))}</b></div>
+      <div class="hrow-sub">Produtos: <b>${escapeHtml(prods.map(p => p.nome + (p.dose ? ' ('+p.dose+(p.unidade ? ' '+p.unidade : '')+')' : '')).join(' + '))}</b></div>
       ${c.condicoes ? '<small>Condições: '+escapeHtml(c.condicoes)+'</small>' : ''}
       ${c.sintomas ? '<small>Sintomas: '+escapeHtml(c.sintomas)+'</small>' : ''}
       ${c.periodoAval ? '<small>Período avaliado: '+escapeHtml(c.periodoAval)+'</small>' : ''}
@@ -3616,7 +3918,8 @@ function renderCaldas(){
 function abrirCaldaMontar(id){
   const c = caldas.find(x => x.id === id);
   if(!c) return;
-  selProdutos = produtosDaCalda(c).map(p => ({ chave: chave(p.nome), nome: p.nome, dose: p.dose || '' }));
+  selProdutos = produtosDaCalda(c).map(p => ({ chave: chave(p.nome), nome: p.nome,
+    dose: p.dose || '', unidade: p.unidade || '' }));
   document.getElementById('mNome').value = c.nome || '';
   document.getElementById('mCultura').value = c.cultura || '';
   document.getElementById('mAlvo').value = c.alvo || '';
@@ -3624,6 +3927,8 @@ function abrirCaldaMontar(id){
   document.getElementById('mEstufas').value = c.estufas || '';
   document.getElementById('mCond').value = c.condicoes || '';
   document.getElementById('mObs').value = c.obs || '';
+  document.getElementById('mData').value = c.data || '';
+  document.getElementById('mQtd').value = c.qtdPlantas || '';
   analise = null;
   document.getElementById('resBox').hidden = true;
   renderSel(); renderCatalogo();
@@ -3662,6 +3967,37 @@ async function excluirCalda(id){
   caldas = caldas.filter(x => x.id !== id);
   renderCaldas(); renderKpis();
   await apiPost({ tipo:'caldas', action:'delete', id });
+}
+
+// ---- Testes do copo (lista na Biblioteca) ----
+function renderTestes(){
+  const box = document.getElementById('listTestes');
+  if(!box) return;
+  const itens = testes.slice().sort((a, b) =>
+    String(b.dataTeste || b.dataCriacao || '').localeCompare(String(a.dataTeste || a.dataCriacao || ''))).slice(0, 20);
+  if(!itens.length){ box.innerHTML = '<div class="empty">Nenhum teste do copo registrado.</div>'; return; }
+  box.innerHTML = itens.map(t => {
+    let prods = [];
+    try{ prods = JSON.parse(t.produtos || '[]'); }catch(e){}
+    if(!Array.isArray(prods)) prods = [];
+    const r = String(t.resultado || '');
+    const rt = r.toLowerCase().startsWith('incompat') ? '<span class="mtag ruim">Incompatível</span>'
+      : r.toLowerCase().startsWith('compat') ? '<span class="mtag fis">Compatível</span>'
+      : '<span class="mtag none">Inconclusivo</span>';
+    const nomes = prods.map(p => (p && p.nome) ? p.nome : String(p)).filter(Boolean).join(' + ');
+    return `
+    <div class="hrow">
+      <div class="hrow-top"><b>${escapeHtml(nomes || t.ordem || 'Mistura')}</b>${rt}</div>
+      ${t.ordem ? '<div class="hrow-sub">Ordem: <b>' + escapeHtml(t.ordem) + '</b></div>' : ''}
+      <div class="hrow-sub">
+        ${t.proporcoes ? 'Proporções: <b>' + escapeHtml(t.proporcoes) + '</b>' : ''}
+        ${t.agua ? ' · Água: <b>' + escapeHtml(t.agua) + '</b>' : ''}
+        ${t.sinais ? ' · Sinais: <b>' + escapeHtml(t.sinais) + '</b>' : ''}
+      </div>
+      ${t.obs ? '<small>Obs: ' + escapeHtml(t.obs) + '</small>' : ''}
+      <small>Testado em ${escapeHtml(fmtData(t.dataTeste || t.dataCriacao))}</small>
+    </div>`;
+  }).join('');
 }
 
 // ---- Init ----

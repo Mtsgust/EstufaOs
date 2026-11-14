@@ -31,7 +31,8 @@ var SHEETS = {
   },
   caldas: {
     name: 'Caldas',
-    headers: ['id', 'dataCriacao', 'nome', 'cultura', 'alvo', 'produtos', 'agua', 'ordem', 'estufas', 'condicoes', 'obs', 'resultado', 'sintomas', 'periodoAval', 'avaliacaoObs', 'atualizadoEm']
+    // +3 colunas do Montador de Caldas (migração automática no 1º acesso após o deploy)
+    headers: ['id', 'dataCriacao', 'nome', 'cultura', 'alvo', 'produtos', 'agua', 'ordem', 'estufas', 'condicoes', 'obs', 'resultado', 'sintomas', 'periodoAval', 'avaliacaoObs', 'atualizadoEm', 'data', 'qtdPlantas', 'compatibilidade']
   },
   testesCopo: {
     name: 'TestesCopo',

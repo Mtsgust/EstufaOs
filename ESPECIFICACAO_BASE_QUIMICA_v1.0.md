@@ -1,7 +1,7 @@
 # Especificação Técnica — Base Química v1.0
 
 **Projeto:** EstufaOS · **Módulo:** Base Química (camada de conhecimento químico)
-**Versão do documento:** 1.0 · **Data:** 2026-11-14 · **Status:** revisada — P1/P2/P3/P5 resolvidas; restam **P4 e P6** antes da Fase 1
+**Versão do documento:** 1.0 · **Data:** 2026-11-14 · **Status:** **P1–P6 todas resolvidas** — especificação fechada, pronta para implementação da Fase 1
 **Próxima ação do OpenCode:** implementar a Fase 1 conforme §17, com testes (§14) antes de qualquer publicação.
 
 ---
@@ -14,14 +14,14 @@ Construir uma base de conhecimento químico **normalizada, rastreável e auditá
 
 | # | Entrega |
 |---|---------|
-| 1 | 13 planilhas `Q_*` com IDs estáveis (§7) |
-| 2 | API de leitura e gravação em `Code.gs` (§10) |
-| 3 | Cadastro de **evidências** e **documentos** com procedência obrigatória (§8) |
-| 4 | Interface inicial `basequimica.html` com as 9 seções do plano (§13) |
-| 5 | Integração de **leitura** com Bulário/Estoque/InsumosInfo via vínculos (§12) |
-| 6 | Rotina de importação **AGROFIT** com fila e modo simulação (§11) |
+| 1 | 13 planilhas `Q_*` com IDs estáveis (§6) |
+| 2 | API de leitura e gravação em `Code.gs` (§9) |
+| 3 | Cadastro de **evidências** e **documentos** com procedência obrigatória (§7) |
+| 4 | **Camada interna de serviços** no backend — sem interface visível (§12) |
+| 5 | Integração de **leitura** com Bulário/Estoque/InsumosInfo via vínculos (§11) |
+| 6 | Rotina de importação **AGROFIT** com fila e modo simulação (§10) |
 | 7 | Testes automatizados + proteção dos dados existentes (§13, §14) |
-| 8 | Lote piloto de 20–30 produtos reais (§17) |
+| 8 | Lote piloto de 20–30 produtos reais (§16) |
 
 ### 1.2 NÃO entra na v1.0 (explícito)
 
@@ -29,19 +29,21 @@ Construir uma base de conhecimento químico **normalizada, rastreável e auditá
 - Nenhuma gravação em estoque, doses, cadastros originais ou biblioteca de caldas.
 - Nenhuma importação em massa das autorizações AGROFIT (279 mil linhas — fora de escala do Sheets; ver §10.4).
 - Nenhuma regra automatizada tipo "cobre não mistura com fosfato" (§8.4).
+- **Nenhuma interface nova** (decisão P4, §19): sem `basequimica.html`, sem item no `sidebar.js`, sem seção/página visível — infraestrutura interna (§12). As interfaces existentes permanecem intactas.
+- Nenhum endpoint administrativo (importação, fila, validação) é referenciado pelo frontend público na v1 (§12).
 
 ---
 
 ## 2. Princípios inegociáveis
 
 1. **Procedência obrigatória:** nenhum dado técnico relevante entra sem evidência (§8). Valores nulos são intencionais — **o sistema nunca inventa valores para preencher lacunas**.
-2. **IA pesquisa, extrai e organiza — mas não transforma inferência em fato.** Nível de automação máximo da v1 é D (§9.3); decisões críticas são E (humano).
-3. **Documentos originais permanecem acessíveis** (`url`/`arquivoDriveId` em `Q_Documentos`; links exibidos na UI).
+2. **IA pesquisa, extrai e organiza — mas não transforma inferência em fato.** Nível de automação máximo da v1 é D (§8.3); decisões críticas são E (humano).
+3. **Documentos originais permanecem acessíveis** (`url`/`arquivoDriveId` em `Q_Documentos`) — na v1 via planilha/campo; sem tela própria (§12).
 4. **Atualização não apaga histórico:** toda mudança gera linha em `Q_Historico` (append-only); nova versão de bula é nova linha em `Q_Documentos` com campo `substitui` apontando a anterior.
 5. **A Base Química não altera estoque, doses nem cadastros originais** sem ação explícita do usuário — e na v1.0 **não altera nunca** (guarda de código, §9.2).
-6. **Indicação de última atualização** de cada informação visível na UI (`atualizadoEm`, `dataColeta`, `conferidoEm`).
+6. **Indicação de última atualização** de cada informação obrigatória nos dados (`atualizadoEm`, `dataColeta`, `conferidoEm`) — exibição em tela só quando existir (§12).
 7. **Divergência é registrada, não resolvida por conveniência** — duas fontes discordantes geram duas evidências e o status `divergente` (§8.3).
-8. **IDs estáveis, sem dependência de posição de linha** — pré-requisito para migração futura do Sheets para PostgreSQL (§19).
+8. **IDs estáveis, sem dependência de posição de linha** — pré-requisito para migração futura do Sheets para PostgreSQL (§18).
 
 ---
 
@@ -71,8 +73,8 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 | Armazenamento | Google Sheets, uma planilha por tabela `Q_*` em **pasta privada e independente** no Drive (decisão P5): **não** misturar com as planilhas operacionais; sem compartilhamento público; sem expor estrutura/links do Drive na interface (site vê **só a API**); acesso exclusivamente pelo Apps Script (pasta em Script Properties `BQ_FOLDER_ID`; se vazia, cria na 1ª execução) |
 | API | `Code.gs` atual — apenas **adição** de tipos `bq*` (nenhuma alteração dos tipos existentes) |
 | Cache | estender o padrão `cacheLer_`/`cacheSalvar_`/`cacheLimpar_` (Code.gs L226–238) aos tipos `bq*` |
-| Frontend | nova página **`basequimica.html`** + item no `sidebar.js` (§13) — o padrão do repo é multipágina (`estoque.html`, `nutricao.html` …); `bulario.html` já tem ~4000 linhas e não cresce na v1 |
-| Service worker | **nenhuma alteração** em `sw.js`: HTML é *network-first* (L44) e a API é *network-first* (L32) — página nova funciona sem mudar cache de assets |
+| Frontend | **nenhuma página nova** (decisão P4): sem `basequimica.html`, `sidebar.js` intocado; a base serve dados pelo backend existente quando o motor passar a consultá-la (fase 6) — **nenhuma página consome tipos `bq*` na v1** (§12) |
+| Service worker | **nenhuma alteração** em `sw.js` — não há página nova; HTML e API já são *network-first* (L44, L32) |
 | Busca em lote | usar o endpoint existente `?tipos=a,b,c` (`doGet` L256, `config.js` `buscarLote`) para carregar as 13 tabelas de uma vez |
 | Texto vs número | colunas de valor **texto** recebem `setNumberFormat('@')` na criação da planilha (§5.3) |
 | Migração futura | todo acesso passa pelo repositório `bqRepo_` (§10.4) — único ponto a trocar por PostgreSQL |
@@ -112,7 +114,7 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 
 **c) AGROFIT consulta pública:** `https://agrofit.agricultura.gov.br/agrofit_cons/principal_agrofit_cons` (verificação humana pontual; não é API).
 
-> **Distinção obrigatória (registrada na UI):** AGROFIT é referência de **identidade e registro** (produto, ingrediente, concentração, formulação, titular, culturas autorizadas, documentos). **Não é base de compatibilidade de misturas.** Nunca citar AGROFIT como evidência de interação.
+> **Distinção obrigatória:** AGROFIT é referência de **identidade e registro** (produto, ingrediente, concentração, formulação, titular, culturas autorizadas, documentos). **Não é base de compatibilidade de misturas.** Nunca citar AGROFIT como evidência de interação — regra registrada nos dados (`fonteTipo=registro_mapa` só em blocos de identidade).
 
 ### 4.2 Outras fontes (seeds de `Q_Documentos`, §6.7)
 
@@ -137,7 +139,7 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 - Geração: `Utilities.getUuid()` (mesmo padrão do `doPost` atual, L402).
 - IDs **nunca são reutilizados**; exclusão é *soft delete* (§10.3).
 - Nomes normalizados usam a mesma regra do sistema: `chave_()`/`norm_()` (Code.gs L145, L190) — `Q_Produtos.nomeNormalizado` e `Q_Ingredientes.nomeNormalizado` seguem essa normalização para deduplicação.
-- Datas: gravadas como `Date` do Sheets (padrão atual) e exibidas com `fmtData`; `dataColeta`/`atualizadoEm` sempre presentes nas telas.
+- Datas: gravadas como `Date` do Sheets (padrão atual); `dataColeta`/`atualizadoEm` sempre preenchidos (princípio 6 do §2 — valem para a exibição futura, §12).
 - Colunas de controle presentes em **todas** as tabelas `Q_*`: `id`, `dataCriacao`, `excluido` (`true`/`''`), `obs`.
 
 ### 5.2 Tipos de dados
@@ -260,7 +262,7 @@ Um ingrediente é a **substância** ("mancozeb", "abamectina", "ácido acético"
 | status | enum | ✓ | `pendente` `aprovado` `divergente` `rejeitado` |
 | evidenciaId | id | ✓ | evidência **principal** (§8.1) |
 | dataColeta | data | ✓ | |
-| atualizadoEm | data | ✓ | última alteração (exibir na UI) |
+| atualizadoEm | data | ✓ | última alteração (princípio 6 do §2) |
 | excluido | bool | ✓ | |
 | obs | texto | | |
 
@@ -457,7 +459,7 @@ Importação automática (AGROFIT) pode criar evidências já em `aprovado` para
 1. Nova evidência recebe `status=divergente`.
 2. A `Q_Propriedades` correspondente muda para `status=divergente` — **o valor atual não é sobrescrito silenciosamente**.
 3. `Q_Historico` recebe `acao=divergencia` com os dois valores.
-4. UI exibe as duas evidências lado a lado; decisão humana grava `aprovar`/`rejeitar` (nível E).
+4. Decisão humana grava `aprovar`/`rejeitar` (nível E) — consulta pelas próprias planilhas `Q_*` ou por chamada interna; sem tela na v1 (§12).
 
 ### 7.4 Pesos de evidência (`grauConfianca` / `confiabilidade`)
 
@@ -469,7 +471,7 @@ Importação automática (AGROFIT) pode criar evidências já em `aprovado` para
 | **Conhecimento teórico** sobre possível reação | `teorico` |
 | Texto de bula/fabricante sobre cuidado de mistura (não é estudo) | `media`/`alta` para **restrição**; `media` para efeito de eficácia |
 
-Regra de UI: exibir a **situação da evidência** sempre ao lado da conclusão (ex.: "compatível — só parcial: estudo com ativos isolados").
+Regra de exibição (para qualquer consumidor futuro): a **situação da evidência** sempre ao lado da conclusão (ex.: "compatível — só parcial: estudo com ativos isolados").
 
 ---
 
@@ -526,7 +528,7 @@ bqIntComponentes, bqHistorico, bqPesquisas
 
 - `?tipo=bqProdutos` → lista (serializer atual `sheetToJSON_`).
 - `?tipos=bqProdutos,bqIngredientes,…` → lote em 1 chamada (já suportado, L256).
-- `?tipo=bqVisao&id=<QPROD_…>` → **endpoint agregado** (novo, handler especial): produto + ingredientes + propriedades + evidências + restrições + culturas + interações onde participa + documentos. É o que a UI usa no painel de detalhe.
+- `?tipo=bqVisao&id=<QPROD_…>` → **endpoint agregado** (novo, handler especial): produto + ingredientes + propriedades + evidências + restrições + culturas + interações onde participa + documentos. Na v1 é **ferramenta de consulta interna/teste**; consumidores de frontend só a partir da fase 6 (§12).
 
 ### 9.2 Gravação — `doPost` com guarda
 
@@ -581,7 +583,7 @@ Toda função nova conversa **só** com `bqRepo_` (`bqRepo_.ler(tipo)`, `bqRepo_
 ### 10.3 Execução (limites respeitados)
 
 - **Fila:** itens em `Q_Pesquisas`; `bqFilaProcessar` com `limite` (default 20) e **orçamento** de `UrlFetchApp` (ex.: ≤ 150 chamadas/execução) — a execução termina deixando o restante `pendente`.
-- **Modo simulação:** `simular:true` devolve `{ok:true, plano:[…]}` com o que seria escrito **sem gravar nada** — usado em teste (§14.3) e como "conferir antes de importar" na UI.
+- **Modo simulação:** `simular:true` devolve `{ok:true, plano:[…]}` com o que seria escrito **sem gravar nada** — usado em teste (§14.3) e como conferência prévia por chamada interna (sem UI, §12).
 - **Deduplicação:** match por `registroMAPA` primeiro; depois `nomeNormalizado + titularRegistro`; conflito com produto já `validado` → cria evidência `divergente`, **não sobrescreve**.
 - **Reprocessamento:** mesma importação de novo atualiza apenas campos com evidência nova mais recente e registra `Q_Historico(acao=importar)` — idempotente.
 
@@ -602,48 +604,33 @@ Bulário · Estoque · InsumosInfo · Montador de Caldas · Biblioteca de caldas
 ### 11.2 Vínculos (leitura)
 
 - `Q_Produtos.origemEstoqueId` / `origemInfoId` apontam para linhas existentes (`estoque.id`, `insumosInfo.id`).
-- Ao criar/importar produto, oferecer match automático por `nomeNormalizado` (+ fabricante) — ação `bqVincular` (§9.3) ou sugestão na UI ("vincular a 'Phosfik Cu4' no InsumosInfo?").
+- Ao criar/importar produto, oferecer match automático por `nomeNormalizado` (+ fabricante) — ação `bqVincular` (§9.3), executada por chamada interna; sem sugestão em tela na v1 (§12).
 - **O caminho inverso não existe na v1:** nenhum campo de `estoque`/`bulario`/`insumosInfo` passa a ser preenchido pela Base Química.
 
 ### 11.3 Consulta pelos módulos (futura, fase 6)
 
 Hoje o Montador lê só os três cadastros. Na fase 6 (após o motor maduro), `analisarPar` poderá consultar `bqInteracoes`/`bqPropriedades` **como mais uma fonte**, mantendo as 4 classes atuais e o teto "SEM INFORMAÇÃO" — mudança de motor só com testes novos de regressão (§14.4).
 
-### 11.4 UI de ponte
+### 11.4 Sem ponte de interface na v1
 
-Na v1: link "Ver na Base Química" a partir do detalhe do produto no `bulario.html` (1 linha, opcional) e seção "Vínculos com cadastros existentes" na `basequimica.html`. Nenhum dado é escrito de volta.
+Nenhum link, seção ou endereço da Base Química é exposto nas páginas existentes (`bulario.html`, `sidebar.js`, etc.) — decisão P4 (§19). Quando o motor passar a consultar a base (fase 6, §17), os dados chegarão **silenciosamente pelo backend** (`?tipo=bq*`), sem revelar estrutura de planilhas nem pasta do Drive. Nenhum dado é escrito de volta aos cadastros existentes.
 
 ---
 
-## 12. Interface — `basequimica.html`
+## 12. Camada interna de serviços (sem interface própria)
 
-### 12.1 Navegação
+**Decisão P4 (§19):** a Base Química é **exclusivamente infraestrutura interna** do EstufaOS.
 
-- Novo item no `sidebar.js` logo **após Bulário**, grupo `manejo`: `['basequimica.html', 'Base Química', 'basequimica', <ícone SVG>, 'manejo']`.
-- Detecção de página ativa: incluir `f.indexOf('baseq') === 0 ? 'basequimica'` na cadeia do `page` (sidebar.js L31–40) **ou** usar `data-page="basequimica"` no `<body>` (método preferido, já suportado).
-- Estilos: reutilizar `theme.css`/`sidebar.css` + padrão premium do `bulario.html` (badges, `.kpi-row`, tabelas `.par-table`).
-- Carregamento: `buscarLote([...13 tipos bq…])` + fallback individual (`config.js`), cache local automático.
+- **Não existe** `basequimica.html`, item no `sidebar.js`, seção nova ou qualquer página/elemento visível no site.
+- As 13 planilhas `Q_*` vivem na pasta privada do Drive (§3.1) e são acessadas **somente pelo Apps Script**.
+- A base **serve dados** ao Bulário e ao Montador de Caldas pelo **backend existente** — na v1 nenhum frontend consume tipos `bq*` (o motor só passa a consultá-la na fase 6, §17).
+- **Endpoints administrativos não são expostos ao frontend:** nenhuma página referencia `bq*`; importação, fila e validação (§9.3) são executadas por chamadas internas (script/ferramenta/editor do Apps Script), sem UI.
+- **Administração na v1:** pelas próprias planilhas `Q_*` (uso pessoal no Drive) e por funções `bq*` chamadas diretamente — sem tela no site.
+- **Interfaces existentes preservadas:** nenhum `*.html`, `sidebar.js` ou CSS é alterado na v1.0.
 
-### 12.2 Seções (as 9 do plano)
+**As 9 seções do plano** (Visão geral · Produtos e ingredientes · Propriedades físico-químicas · Formulações · Interações · Evidências · Documentos · Pesquisas pendentes · Histórico de validação) ficam registradas aqui como **especificação de painel futuro**, fora do escopo v1 — se um dia existir, será superfície administrativa protegida, nunca uma aba pública.
 
-| Seção | Conteúdo | Origem dos dados |
-|---|---|---|
-| Visão geral | KPIs: **Produtos validados · Ingredientes cadastrados · Interações documentadas · Documentos indexados** + "última atualização" geral | contagens dos 13 tipos |
-| Produtos e ingredientes | tabela com busca/filtro (categoria, status, fabricante); painel de detalhe com ingredientes+concentrações e **vínculos** (§11.2) | `bqProdutos`, `bqProdIngredientes`, `bqIngredientes`, `bqVisao` |
-| Propriedades físico-químicas | por produto/ingrediente; valor + unidade + condição + **status + evidência + atualizadoEm**; nulos exibidos como "desconhecido" | `bqPropriedades`, `bqEvidencias` |
-| Formulações | dicionário `Q_Formulacoes` (leitura) | `bqFormulacoes` |
-| Interações | lista com tipo, componentes (N), grau de confiança, validação; **selo "não é mistura segura"** se derivado só de pares — texto fixo do disclaimer | `bqInteracoes`, `bqIntComponentes` |
-| Evidências | auditoria: fonte, documento, trecho, datas, confiabilidade | `bqEvidencias` |
-| Documentos | índice com link original preservado, versão, `substitui` | `bqDocumentos` |
-| Pesquisas pendentes | fila com estado/prioridade + botões "processar lote" e "simular importação" | `bqPesquisas` + POST §9.3 |
-| Histórico de validação | timeline append-only com autor/ação | `bqHistorico` |
-
-### 12.3 Sinais visuais obrigatórios
-
-- Badge de `statusValidacao`/`status` em todas as linhas.
-- **Nulo ≠ zero:** célula vazia renderiza "—" + tooltip "sem informação registrada".
-- Toda informação exibe `atualizadoEm`/`dataColeta` (princípio 6 do §2).
-- Divergências em destaque (amarelo) com as duas fontes.
+**Nota de segurança herdada:** a API atual (`?tipo=`/POST) não tem autenticação para **nenhum** tipo — comportamento já existente. A v1 mantém o mesmo modelo; o "não expor" da P4 se cumpre por **não haver consumidor** (esta seção). Um segredo específico para tipos `bq*` pode ser avaliado depois sem quebrar o contrato dos tipos antigos.
 
 ---
 
@@ -659,7 +646,7 @@ Na v1: link "Ver na Base Química" a partir do detalhe do produto no `bulario.ht
 
 ### 13.2 Rollback
 
-Como a v1 não toca nada existente, rollback = remover `basequimica.html` + item do sidebar + blocos `bq*` do `Code.gs` (commits separados por entrega facilitam `git revert`). Planilhas `Q_*` podem ficar ouvir descartadas sem efeito colateral.
+Como a v1 não toca nada existente nem cria páginas, rollback = remover os blocos `bq*` do `Code.gs` (commits separados por entrega facilitam `git revert`). Planilhas `Q_*` podem ficar ou ser descartadas sem efeito colateral.
 
 ---
 
@@ -721,10 +708,12 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 | 2 | Ingredientes e concentrações verificáveis | cada `QPI` tem `evidenciaId` → documento com trecho/URL |
 | 3 | Propriedades com fonte rastreável | 100% de `Q_Propriedades` com `evidenciaId` (teste automatizado) |
 | 4 | Interações sustentadas por evidências | `QINT` sem `evidenciaId` impossível pela API |
-| 5 | Separação fatos × hipóteses × desconhecidos | nulos visíveis como "desconhecido"; `grauConfianca` sempre exibido |
-| 6 | Ausência de conclusão de compatibilidade sem fundamento | nenhum registro `validado` sem revisão humana (teste 7.3/8.3) |
+| 5 | Separação fatos × hipóteses × desconhecidos | nulos **preservados** como vazios (nunca preenchidos); `grauConfianca`/`status` registrados em cada linha |
+| 6 | Ausência de conclusão de compatibilidade sem fundamento | nenhum registro `validado` sem revisão humana (teto do §8.3 + §14.1) |
 | 7 | Histórico de atualizações e documentos | `Q_Historico` append-only; `Q_Documentos.substitui` em cadeia |
-| 8 | Última atualização visível | `atualizadoEm`/`dataColeta` em toda tela (revisão de UI) |
+| 8 | Última atualização registrada | `atualizadoEm`/`dataColeta` preenchidos nos dados (sem UI na v1 — §12; exibição vale para tela futura) |
+
+> Critérios 5 e 8 referem-se a exibição: sem interface na v1, verificam-se **nos dados** e passam a valer visualmente quando/ se existir painel administrativo (§12).
 
 ---
 
@@ -757,7 +746,7 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 | **6 — Integração** | montador consulta a base (motor muda **só aqui**, com testes novos) | §11.3 (motor inalterado até lá) | Final |
 
 **Ordem de implementação da Fase 1 (primeira entrega ao OpenCode):**
-1. `SHEETS` + criação das 13 planilhas com formato texto (§5.3) → 2. `bqRepo_` + handlers `doGet`/`doPost` (§9) → 3. seeds (`Q_Formulacoes`) → 4. testes Node (§14.1–14.2) → 5. `basequimica.html` + `sidebar.js` (§12) → 6. smoke + regressão (§14.3–14.4) → 7. `clasp deploy` → 8. commit/push → 9. relatório de implementações e limitações.
+1. `SHEETS` + criação das 13 planilhas com formato texto na pasta privada (§5.3, §3.1) → 2. `bqRepo_` + handlers `doGet`/`doPost` (§9) → 3. seeds (`Q_Formulacoes`) → 4. testes Node (§14.1–14.2) → 5. camada interna sem UI — endpoints `bq*` não referenciados por nenhuma página (§12) → 6. smoke + regressão (§14.3–14.4) → 7. `clasp deploy` → 8. commit/push → 9. relatório de implementações e limitações.
 
 ---
 
@@ -775,16 +764,16 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 
 ---
 
-## 19. Pendências e decisões em aberto
+## 19. Decisões (P1–P6 — todas resolvidas)
 
 | # | Item | Situação |
 |---|---|---|
 | P1 | Chave/cadastro na **AgroAPI Embrapa** | **RESOLVIDA (2026-11-14):** Access Token obtido e testado (`/versao`, `/produtos-formulados` → 200). Guardar em Script Properties (`AGROAPI_TOKEN`); cópia local `agroapi.local.key` **fora do repositório**; nunca commitar. Em caso de 401 futuro: renovar no portal ou migrar p/ `client_credentials` (§4.1a) |
 | P2 | Os **6 fungicidas** do lote piloto | **RESOLVIDA:** Elatus, Score, Amistar Top, Cabrio Top, Bravonil 720, Infinito (§16) |
 | P3 | URLs exatas das fontes | **RESOLVIDA:** 11 links confirmados em §4.2/§20 — única exceção: manual de mistura em tanque 2021 segue sem link |
-| P4 | Decisão de UI: página nova `basequimica.html` (recomendado, §3.1) vs. seção dentro do `bulario.html` | **EM ABERTO — usuário** |
+| P4 | Interface da Base Química | **RESOLVIDA:** **interna e invisível** — sem `basequimica.html`, sem item no sidebar, sem seção visível; camada de dados/serviços que alimenta Bulário e Montador pelo backend existente; estrutura/planilhas/endpoints administrativos **não expostos** ao frontend (§12) |
 | P5 | Pasta das 13 planilhas `Q_*` | **RESOLVIDA:** pasta **privada e independente** no Drive (§3.1) — não misturar com operacionais, sem exposição no site/sidebar/Drive, acesso só via Apps Script |
-| P6 | Aprovar a 13ª tabela `Q_Interacoes_Componentes` (desvio do plano original, justificado em §6.11) | **EM ABERTO — usuário** |
+| P6 | Aprovar a 13ª tabela `Q_Interacoes_Componentes` (desvio do plano original, justificado em §6.11) | **RESOLVIDA:** tabela separada **aprovada** (§6.11) |
 
 ---
 

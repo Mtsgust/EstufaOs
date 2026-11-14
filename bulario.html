@@ -3927,7 +3927,7 @@ function abrirCaldaMontar(id){
   document.getElementById('mEstufas').value = c.estufas || '';
   document.getElementById('mCond').value = c.condicoes || '';
   document.getElementById('mObs').value = c.obs || '';
-  document.getElementById('mData').value = c.data || '';
+  document.getElementById('mData').value = String(c.data || '').slice(0, 10);
   document.getElementById('mQtd').value = c.qtdPlantas || '';
   analise = null;
   document.getElementById('resBox').hidden = true;

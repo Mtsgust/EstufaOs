@@ -1122,7 +1122,8 @@ function bqPrimeiro_(v) {
   return bqNormalizar_(v);
 }
 
-/* tipo_documento AGROFIT → enum de Q_Documentos (§6.7); '' = desconhecido. */
+/* tipo_documento AGROFIT → enum de Q_Documentos (§6.7); '' = desconhecido.
+   "Certificado" (de registro MAPA/ANVISA/IBAMA) → 'registro'. */
 function bqDocTipo_(texto) {
   var t = chave_(texto);
   if (!t) return '';
@@ -1131,6 +1132,7 @@ function bqDocTipo_(texto) {
   if (t.indexOf('ficha') > -1) return 'ficha_tecnica';
   if (t.indexOf('manual') > -1) return 'manual';
   if (t.indexOf('estudo') > -1) return 'estudo';
+  if (t.indexOf('certificado') > -1) return 'registro';
   if (t.indexOf('registro') > -1) return 'registro';
   if (t.indexOf('especifica') > -1) return 'especificacao';
   return '';
@@ -1173,8 +1175,8 @@ function bqImportPlano_(detalhe, atuais) {
     formula: formula,
     categoria: classeBruta ? bqCategoriaDaClasse_(classeBruta) : '',
     produtoBiologico: (d.produto_biologico === undefined || d.produto_biologico === null) ? '' : d.produto_biologico,
-    classeToxicologica: bqNormalizar_(d.classe_toxicologica),
-    classeAmbiental: bqNormalizar_(d.classe_ambiental)
+    classeToxicologica: bqNormalizar_(d.classe_toxicologica || d.classificacao_toxicologica),
+    classeAmbiental: bqNormalizar_(d.classe_ambiental || d.classificacao_ambiental)
   };
 
   var match = (registro || (nomeNorm && titular))
@@ -1242,10 +1244,13 @@ function bqImportPlano_(detalhe, atuais) {
   });
 
   // Documentos: dedup por URL (também dentro do próprio payload); mesma
-  // identidade (tipo+título) com URL nova → cadeia substitui
+  // identidade (tipo+título) com URL nova → cadeia substitui.
+  // Payload real da API usa `documento_cadastrado` (§4.1a).
   var documentos = [];
   var urlsVistos = [];
-  (Array.isArray(d.documentos) ? d.documentos : []).forEach(function (doc) {
+  var docsLista = Array.isArray(d.documentos) ? d.documentos
+    : (Array.isArray(d.documento_cadastrado) ? d.documento_cadastrado : []);
+  docsLista.forEach(function (doc) {
     var url = bqNormalizar_(doc.url);
     if (!url) return;
     var titulo = bqNormalizar_(doc.descricao);
@@ -1276,18 +1281,27 @@ function bqImportPlano_(detalhe, atuais) {
     });
   });
 
-  // Culturas: só quando o payload do detalhe as trouxer (§10.2)
+  // Culturas: só quando o payload do detalhe as trouxer (§10.2). O payload
+  // real traz `indicacao_uso` ({cultura, praga...}) — dedup por
+  // cultura+estadio+dose (mesma cultura com pragas diferentes vira 1 linha).
   var culturas = [];
-  var listaCulturas = d.culturas_autorizadas || d.culturas || d.indicacoes_cultura || d.culturas_uso;
+  var vistasCult = {};
+  var listaCulturas = d.culturas_autorizadas || d.culturas || d.indicacoes_cultura ||
+    d.culturas_uso || d.indicacao_uso;
   if (Array.isArray(listaCulturas)) {
     listaCulturas.forEach(function (c) {
       var obj = (typeof c === 'object' && c !== null) ? c : { cultura: String(c === undefined || c === null ? '' : c) };
       var nomeC = bqNormalizar_(obj.cultura || obj.nome_cultura || obj.nome);
       if (!nomeC) return;
+      var estadio = bqNormalizar_(obj.estadio || obj.estagio);
+      var dose = bqNormalizar_(obj.dose_referencia || obj.dose);
+      var chaveC = chave_(nomeC) + '|' + chave_(estadio) + '|' + chave_(dose);
+      if (vistasCult[chaveC]) return;
+      vistasCult[chaveC] = true;
       culturas.push({
         cultura: nomeC,
-        estadio: bqNormalizar_(obj.estadio || obj.estagio),
-        doseReferencia: bqNormalizar_(obj.dose_referencia || obj.dose),
+        estadio: estadio,
+        doseReferencia: dose,
         condicao: bqNormalizar_(obj.condicao || obj.condicoes)
       });
     });

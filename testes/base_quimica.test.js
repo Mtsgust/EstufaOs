@@ -680,6 +680,46 @@ const planSub = ctx.bqImportPlano_(FIX, {
 ok(planSub.documentos[0].acao === 'criar' && planSub.documentos[0].substitui === 'QDOC_old',
   'doc com mesmo tipo+título e URL nova → substitui o anterior');
 
+/* Payload REAL da API (captura ao vivo Elatus 2414, 2026-11-15): campos
+   documento_cadastrado / indicacao_uso / classificacao_toxicologica. */
+const FIXREAL = {
+  numero_registro: '2414',
+  marca_comercial: ['Elatus'],
+  titular_registro: 'Syngenta Proteção de Cultivos Ltda.',
+  classe_categoria_agronomica: ['Fungicida'],
+  formulacao: 'WG - Gránulos Dispersíveis em Água',
+  ingrediente_ativo_detalhado: [
+    { ingrediente_ativo: 'Azoxistrobina', grupo_quimico: 'estrobilurina', concentracao: '300', unidade_medida: 'Gramas por Kilogramas', percentual: '30' }
+  ],
+  produto_biologico: false,
+  classificacao_toxicologica: 'IV - Produto Pouco Tóxico',
+  classificacao_ambiental: 'II - Produto Muito Perigoso ao Meio Ambiente',
+  url_agrofit: 'https://agrofit.agricultura.gov.br/detalhe/2414',
+  documento_cadastrado: [
+    { descricao: 'ELATUS_BulaCompleta_09.01.2026', tipo_documento: 'Bula', data_inclusao: '09/01/2026 17:15:49', url: 'https://agrofit/bula/2414.pdf', origem: 'Bula, Rótulo e Certificado' },
+    { descricao: 'emitido em 30/04/2014', tipo_documento: 'Certificado', data_inclusao: '27/05/2014 16:05:41', url: 'https://agrofit/cert/2414.pdf', origem: 'Ministério da Agricultura' },
+    { descricao: 'ELATUS_RótuloCompleto_09.01.2026', tipo_documento: 'Rótulo', data_inclusao: '09/01/2026 17:15:59', url: 'https://agrofit/rot/2414.pdf', origem: 'Bula, Rótulo e Certificado' }
+  ],
+  indicacao_uso: [
+    { cultura: 'Soja', praga_nome_cientifico: 'Phakopsora pachyrhizi', praga_nome_comum: ['Ferrugem-asiática'] },
+    { cultura: 'Soja', praga_nome_cientifico: 'Corynespora cassiicola', praga_nome_comum: ['Mancha-alvo'] },
+    { cultura: 'Milho', praga_nome_cientifico: 'Puccinia polysora', praga_nome_comum: ['Ferrugem'] }
+  ]
+};
+ok(ctx.bqDocTipo_('Certificado') === 'registro', '"Certificado" (MAPA) → enum registro (não é desconhecido)');
+const planR = ctx.bqImportPlano_(FIXREAL, atuaisVazio);
+ok(planR.produto.campos.classeToxicologica === 'IV - Produto Pouco Tóxico' &&
+   planR.produto.campos.classeAmbiental === 'II - Produto Muito Perigoso ao Meio Ambiente',
+  'classificacao_toxicologica/_ambiental (payload real) → campos do produto');
+ok(planR.documentos.length === 3 && planR.documentos.every((d) => d.acao === 'criar') &&
+   planR.documentos.filter((d) => d.tipo === 'registro').length === 1,
+  'documento_cadastrado: bula+certificado(registro)+rotulo → 3 docs criáveis');
+ok(planR.documentos[0].dataDocumento === '09/01/2026', 'data_inclusao dd/MM/yyyy → dataDocumento');
+ok(planR.culturas.length === 2 && planR.culturas.some((c) => c.cultura === 'Soja') &&
+   planR.culturas.some((c) => c.cultura === 'Milho'),
+  'indicacao_uso: Soja×2+Milho → 2 culturas (dedup por cultura+estadio+dose)');
+ok(planR.faltantes.length === 0, 'payload real sem campos obrigatórios faltantes');
+
 // --- simulação (§14.3(4)): NÃO escreve em nenhuma planilha bq ---
 function totalLinhasBq() {
   return ['bqProdutos', 'bqIngredientes', 'bqProdIngredientes', 'bqDocumentos', 'bqCulturas',

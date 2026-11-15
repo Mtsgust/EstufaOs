@@ -732,6 +732,13 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 
 > Critério de "pronto" do lote: **não** é ter 30 produtos — é os 8 critérios da §15 passando nesses produtos.
 
+**Resultado do piloto (2026-11-15, decisão do usuário — fase AGROFIT encerrada):**
+
+- **① Fungicidas: CONCLUÍDO** — 6/6 importados, conferidos contra o AGROFIT ao vivo e `validado` (Elatus 2414, Score 2894, Amistar Top 3809, Cabrio Top 1303, Bravonil 720 6300, Infinito 18308).
+- **② Inseticidas: CONCLUÍDO** — 18/18 importados, conferidos e `validado` (com overrides por registro: Lanate→Bazuka 216 SL reg 3010; Abamectina→Abamex reg 3801).
+- **③–⑤ (fertilizantes, cobre, adjuvantes): SEM COBERTURA AGROFIT — fora do escopo da fonte.** Evidências: (a) spec oficial da API define AGROFIT como "defensivos agrícolas, agrotóxicos, produtos fitossanitários e afins" para controle de pragas; (b) `GET /classes-categorias-agronomicas` retorna **21 classes** (fungicida, inseticida, herbicida, acaricida, nematicida, bactericida, regulador de crescimento, biológicos…) — **nenhuma Fertilizante/Adjuvante/Condicionador**; (c) sondagem `testes/piloto3_fertilizantes.js` (10/11 só falsos positivos) e buscas por marca e titular = 0 para Nutrilife, Biolchim, Yara, Biovita, Potent, Soil, Reviv, Booster, Verno, Nordox, Phosfik, Glucona, Aminon, Fluxxor, Cleanup, Thyper.
+- **Total importado na fase AGROFIT: 24 produtos, 24 `validado`, 0 `pendente`.** Os lotes ③–⑤ passam para a **Fase 4** (fontes ficha técnica/fabricante, §4.2/§6.5), com vínculo explícito (§9.3) quando houver cadastro existente.
+
 ---
 
 ## 17. Cronograma (6 fases do plano)
@@ -739,7 +746,7 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 | Fase | Escopo | Entregas desta spec | Prioridade |
 |---|---|---|---|
 | **1 — Estrutura** | 13 planilhas, IDs, evidências, API, testes, guarda não-destrutiva | §§5–7, 9, 13, 14 | **Máxima** |
-| **2 — AGROFIT** | importação com fila/simulação + lote piloto ① | §§10, 16 | **Máxima** |
+| **2 — AGROFIT** | importação com fila/simulação + lotes piloto ①–② (③–⑤ sem cobertura AGROFIT → Fase 4, §16) | §§10, 16 | **Máxima** |
 | **3 — Documentos** | extração de bulas/fichas (pipeline PDF), `Q_Documentos` completo | fase 2 (§1.2) | Alta |
 | **4 — Propriedades** | popula `Q_Propriedades` com fontes (ficha, fabricante) | estrutura pronta (§6.5) | Alta |
 | **5 — Interações** | `Q_Interacoes` com evidência humana (nível E) | estrutura pronta (§6.10–6.11) | Alta |

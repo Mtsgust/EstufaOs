@@ -212,6 +212,11 @@ var BQ_TRANSICOES = {
 
 /* Chaves do payload que nunca vão para a planilha (reservadas). */
 var BQ_PAYLOAD_RESERVADAS = ['evidencia', 'componentes', 'autor', 'origem', 'motivo'];
+/* Chaves de update que NÃO são campo técnico (passam sem evidência em tabelas
+   com evidenciaObrigatoria): status segue fluxo (action 'revisar'), obs é nota,
+   excluido/carimbos são mecânicos. */
+var BQ_UPDATE_SEM_EVIDENCIA_ = ['status', 'validacao', 'obs', 'excluido', 'statusValidacao', 'atualizadoEm',
+  'dataAtualizacao', 'ultimaRevisao', 'dataColeta', 'revisadoPor', 'revisadoEm', 'conferidoEm'];
 
 // ---------------------------------------------------------------------------
 // Identificadores e utilidades puras (testáveis em Node)
@@ -396,6 +401,19 @@ function bqValidarPayload_(tipo, data, modo, atual) {
   if (data.evidenciaId !== undefined && String(data.evidenciaId).trim() === '' && modo === 'update') {
     return { ok: false, error: 'evidencia_obrigatoria' };
   }
+  // Update em tabela de evidência obrigatória: qualquer campo técnico alterado
+  // exige evidência (§7.1). status/obs/excluido/carimbos são operação interna
+  // (status segue fluxo via action 'revisar', §9.3) e passam sem evidência.
+  if (cfg.evidenciaObrigatoria && modo === 'update') {
+    var temEv = temInline || (data.evidenciaId !== undefined && String(data.evidenciaId).trim() !== '');
+    if (!temEv) {
+      var tecnicas = chaves.filter(function (k) {
+        if (BQ_PAYLOAD_RESERVADAS.indexOf(k) > -1) return false;
+        return BQ_UPDATE_SEM_EVIDENCIA_.indexOf(k) === -1;
+      });
+      if (tecnicas.length) return { ok: false, error: 'evidencia_obrigatoria', campo: tecnicas[0] };
+    }
+  }
   if (tipo === 'bqProdutos' && cfg.criticos) {
     for (var p = 0; p < cfg.criticos.length; p++) {
       var crit = cfg.criticos[p];
@@ -430,6 +448,183 @@ function bqStatusEvidenciaInicial_(data) {
   var f = String(data.fonteTipo || '');
   return (f === 'registro_mapa' || f === 'importacao') ? 'aprovado' : 'pendente';
 }
+
+// ---------------------------------------------------------------------------
+// Fase 4 — propriedades físico-químicas a partir de ficha/fabricante (§6.5/§4.2)
+// ---------------------------------------------------------------------------
+
+/* Campos de Q_Propriedades extraídos do cadastro InsumosInfo (coluna → enum §6.5). */
+var BQ_FICHA_CAMPOS_ = ['ph', 'densidade', 'solubilidade', 'naturezaFisica', 'miscibilidade'];
+
+/* Unidades reconhecidas na separação valor/unidade (mais longas primeiro).
+   O que não casar fica dentro do valor — nunca se arranca texto por chute. */
+var BQ_FICHA_UNIDADES_ = ['g/cm³', 'g/cm3', 'g/mL', 'g/l', 'kg/l', 'kg/m³', 'ms/cm', '°c', 'ºc', 'g/kg', 'mg/l', 'ufc/ml', 'ppm', '%'];
+
+/* Classificação de categoria quando o texto do cadastro não bate em nenhuma
+   regra (§16: lotes ③–⑤ sem keyword própria). Fonte = decisão documentada
+   na spec, não inventada aqui. */
+var BQ_FICHA_CATEGORIA_FORCADAS_ = {
+  'greenmix': 'Adjuvante', 'cleanup': 'Adjuvante', 'fluxxor': 'Adjuvante',
+  'flexox': 'Adjuvante', 'plantreviv': 'Bioestimulante', 'potentactive': 'Bioestimulante'
+};
+
+/* Campo de evidência de uma propriedade: com condição, a chave da evidência
+   carrega a condição — senão duas propriedades do mesmo campo em condições
+   diferentes disputariam o mesmo espaço de divergência (§6.5 chave lógica). */
+function bqCampoEvidenciaProp_(campo, condicao) {
+  var c = bqNormalizar_(campo);
+  var cond = bqNormalizar_(condicao);
+  return cond ? c + ' (' + cond + ')' : c;
+}
+
+/* Separa "número + unidade conhecida" quando o texto começa por número.
+   Sem número ou com sobra de texto → valor null (o chamador preserva o bruto).
+   Unidades comparadas pela chave tolerante (chave_ remove /, ³, °…). */
+function bqParseNumeroUnidade_(s) {
+  s = bqNormalizar_(s);
+  if (!s) return { valor: null, unidade: '' };
+  var m = /^([-+]?\d+(?:[.,]\d+)?)\s*(.*)$/.exec(s);
+  if (!m) return { valor: null, unidade: '' };
+  var resto = bqNormalizar_(m[2]);
+  if (!resto) return { valor: m[1], unidade: '' };
+  var restoChave = chave_(resto);
+  for (var i = 0; i < BQ_FICHA_UNIDADES_.length; i++) {
+    if (restoChave === chave_(BQ_FICHA_UNIDADES_[i])) return { valor: m[1], unidade: m[2] };
+  }
+  return { valor: null, unidade: '' };
+}
+
+/* Texto do cadastro → campos da §6.5 (puro). Regras, nesta ordem:
+   1 parêntese com ° guarda a condição; 2 "mínimo/máximo" vira valorMin/Max;
+   3 intervalo "A–B" vira valorMin+valorMax; 4 número+unidade conhecida separa;
+   5 qualquer outra coisa vira valor bruto (nada é inventado, nada se perde).
+   Retorna null para vazio (nunca grava propriedade sem valor). */
+function bqParseValorProp_(texto) {
+  var bruto = bqNormalizar_(texto);
+  if (!bruto) return null;
+  var s = bruto, condicao = '';
+  var mc = /\(([^()]*[°º][^()]*)\)/.exec(s);
+  if (mc) {
+    condicao = bqNormalizar_(mc[1]);
+    s = bqNormalizar_((s.slice(0, mc.index) + ' ' + s.slice(mc.index + mc[0].length)));
+  }
+  var mm = /^(m[íi]n(?:imo)?|m[áa]x(?:imo)?)\.?\s+(.+)$/i.exec(s);
+  if (mm) {
+    var pmm = bqParseNumeroUnidade_(mm[2]);
+    if (pmm.valor !== null) {
+      return { valor: '', valorMin: /^m[íi]n/i.test(mm[1]) ? pmm.valor : '',
+        valorMax: /^m[íi]n/i.test(mm[1]) ? '' : pmm.valor,
+        unidade: pmm.unidade, condicao: condicao };
+    }
+    return { valor: bruto, valorMin: '', valorMax: '', unidade: '', condicao: condicao };
+  }
+  var rg = /^(\d+(?:[.,]\d+)?)\s*[–—−]\s*(\d+(?:[.,]\d+)?)\s*(.*)$/.exec(s);
+  if (rg) {
+    var uni = bqNormalizar_(rg[3]);
+    if (/\d/.test(uni)) uni = '';   // cauda com número não é unidade
+    return { valor: '', valorMin: rg[1], valorMax: rg[2], unidade: uni, condicao: condicao };
+  }
+  var p = bqParseNumeroUnidade_(s);
+  if (p.valor !== null) return { valor: p.valor, valorMin: '', valorMax: '', unidade: p.unidade, condicao: condicao };
+  return { valor: bruto, valorMin: '', valorMax: '', unidade: '', condicao: condicao };
+}
+
+/* Categoria enum (§6.1) a partir do texto do cadastro — regras determinísticas
+   sobre categoria/finalidade/formula; sem keyword → '' (nunca adivinha). */
+function bqCategoriaFicha_(linha) {
+  linha = linha || {};
+  var forcada = BQ_FICHA_CATEGORIA_FORCADAS_[chave_(linha.nome)];
+  if (forcada) return forcada;
+  var texto = chave_([linha.categoria, linha.finalidade, linha.formula, linha.categoriaExtra].join(' '));
+  if (!texto) return '';
+  if (texto.indexOf('adjuvante') > -1 || texto.indexOf('espalhante') > -1) return 'Adjuvante';
+  if (texto.indexOf('biologic') > -1 || texto.indexOf('agente biologico') > -1 || texto.indexOf('inoculante') > -1) return 'Biológico';
+  if (texto.indexOf('bioestimul') > -1 || texto.indexOf('aminoacid') > -1 || texto.indexOf('estimul') > -1) return 'Bioestimulante';
+  if (texto.indexOf('condicionador') > -1 || texto.indexOf('corretivo') > -1 || texto.indexOf('calcario') > -1) return 'Condicionador';
+  if (texto.indexOf('fertiliz') > -1 || texto.indexOf('nutrient') > -1 || texto.indexOf('quelat') > -1 ||
+      texto.indexOf('potass') > -1 || texto.indexOf('calcio') > -1 || texto.indexOf('boro') > -1 ||
+      texto.indexOf('nitrogen') > -1 || texto.indexOf('enxofre') > -1 || texto.indexOf('micronutrient') > -1 ||
+      texto === 'camg' || texto.indexOf('camg') > -1) return 'Fertilizante';
+  return '';
+}
+
+/* Fonte da propriedade (§4.2 linha "Fabricantes"): tipo/fonteNome/url/confiabilidade.
+   origemDado='nao_encontrada' e sem URL/informação → null (sem fonte, sem props). */
+function bqFonteFicha_(linha) {
+  linha = linha || {};
+  var origem = chave_(linha.origemDado);
+  var url = bqNormalizar_(linha.fonteUrl) || bqNormalizar_(linha.fichaLink) || bqNormalizar_(linha.bulaLink);
+  var fonteInfo = bqNormalizar_(linha.fonteInfo);
+  if (!origem && !url && !fonteInfo) return null;
+  if (origem === 'naoencontrada' && !url && !fonteInfo) return null;
+  var fonteTipo = origem === 'rotulo' ? 'rotulo'
+    : origem === 'bula' ? 'bula'
+    : origem === 'usuario' ? 'usuario'
+    : origem === 'fichatecnica' ? 'ficha_tecnica'
+    : 'ficha_tecnica';   // 'fabricante' e afins: o cadastro aponta ficha oficial
+  var fonteNome = fonteInfo || ('Ficha oficial – ' +
+    (bqNormalizar_(linha.fabricante) || bqNormalizar_(linha.nome) || 'sem identificação'));
+  // Valor transcrito do cadastro ainda não foi conferido contra o PDF (Fase 3):
+  // conservador em 'media' — humano sobe na revisão (§7.4).
+  return { fonteTipo: fonteTipo, fonteNome: fonteNome, url: url, confiabilidade: 'media' };
+}
+
+/* Acha a propriedade existente pela chave lógica (§6.5):
+   (entidadeTipo, entidadeId, campo, condicao) — excluídos ignorados. */
+function bqPropriedadeExistente_(lista, data) {
+  var et = String((data || {}).entidadeTipo || '');
+  var eid = String((data || {}).entidadeId || '');
+  var campo = String((data || {}).campo || '');
+  var cond = String((data || {}).condicao || '');
+  var l = lista || [];
+  for (var i = 0; i < l.length; i++) {
+    var r = l[i];
+    if (r.excluido) continue;
+    if (String(r.entidadeTipo) === et && String(r.entidadeId) === eid &&
+        String(r.campo) === campo && String(r.condicao || '') === cond) return r;
+  }
+  return null;
+}
+
+/* Os campos de valor DECLARADOS no payload divergem da linha existente?
+   Campo ausente no payload = não declarado (não é divergência). */
+function bqPropriedadeDiverge_(atual, novo) {
+  var campos = ['valor', 'valorMin', 'valorMax', 'unidade'];
+  for (var i = 0; i < campos.length; i++) {
+    var c = campos[i];
+    if (novo[c] === undefined) continue;
+    if (bqDivergente_(atual[c], novo[c])) return true;
+  }
+  return false;
+}
+
+/* Produto do cadastro InsumosInfo → linha de Q_Produtos (§11.2 vínculo):
+   origemInfoId primeiro; depois nome normalizado; excluído nunca é reativado. */
+function bqFichaAcharProduto_(produtos, linha) {
+  var infoId = bqNormalizar_(linha.id);
+  var nome = chave_(linha.nome);
+  var lista = produtos || [];
+  var i, p;
+  if (infoId) {
+    for (i = 0; i < lista.length; i++) {
+      if (bqNormalizar_(lista[i].origemInfoId) === infoId) return { produto: lista[i], criterio: 'origemInfoId' };
+    }
+  }
+  if (nome) {
+    for (i = 0; i < lista.length; i++) {
+      if (!lista[i].excluido && chave_(lista[i].nomeNormalizado || lista[i].nomeComercial) === nome) {
+        return { produto: lista[i], criterio: 'nomeNormalizado' };
+      }
+    }
+    for (i = 0; i < lista.length; i++) {
+      if (lista[i].excluido && chave_(lista[i].nomeNormalizado || lista[i].nomeComercial) === nome) {
+        return { produto: lista[i], criterio: 'nomeNormalizado', excluido: true };
+      }
+    }
+  }
+  return null;
+}
+
 
 // ---------------------------------------------------------------------------
 // Armazenamento: pasta privada + planilha própria (§3.1 / decisão P5)
@@ -789,6 +984,9 @@ function bqDoPost_(body) {
     if (action === 'agrofit' && tipo === 'bqPesquisas') return bqAgrofitSync_(body);
     if (action === 'processar' && tipo === 'bqPesquisas') return bqFilaProcessar_(body);
     if (action === 'vincular' && tipo === 'bqProdutos') return bqVincular_(body);
+    // Ações especiais da §9.3 (Fase 4 — ficha/fabricante + revisão de propriedade)
+    if (action === 'ficha' && tipo === 'bqPropriedades') return bqFichaImport_(body);
+    if (action === 'revisar' && tipo === 'bqPropriedades') return bqRevisar_(body);
     return { ok: false, error: 'ação inválida' };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -822,6 +1020,17 @@ function bqAdd_(tipo, body) {
   var refs = bqRefsOk_(tipo, data, 'add', null);
   if (!refs.ok) return refs;
 
+  // Q_Propriedades: entidade apontada precisa existir (§6.5 FK) — também antes
+  // da evidência, pelo mesmo motivo (payload inválido não deixa rastro).
+  if (tipo === 'bqPropriedades') {
+    if (!bqExisteId_(String(data.entidadeTipo) === 'ingrediente' ? 'bqIngredientes' : 'bqProdutos', data.entidadeId)) {
+      return { ok: false, error: 'referencia_invalida', campo: 'entidadeId' };
+    }
+    // Chave lógica (§6.5): nunca 3ª linha para o mesmo (entidade, campo, condição).
+    var colisao = bqPropriedadeExistente_(bqDadosTipo_('bqPropriedades'), data);
+    if (colisao) return bqPropriedadeColisao_(colisao, data, body);
+  }
+
   // Evidência: criar inline ANTES da linha quando exigida (a evidência aponta
   // para o id que vamos gravar — id gerado primeiro).
   var prefixo = cfg.prefixo;
@@ -830,7 +1039,9 @@ function bqAdd_(tipo, body) {
 
   if (data.evidencia || (cfg.evidenciaObrigatoria && !data.evidenciaId)) {
     var ev = data.evidencia || {};
-    var campoPadrao = ev.campo || (cfg.criticos ? cfg.criticos[0] : tipo.replace(/^bq/, ''));
+    var campoPadrao = ev.campo || (tipo === 'bqPropriedades'
+      ? bqCampoEvidenciaProp_(data.campo, data.condicao)
+      : (cfg.criticos ? cfg.criticos[0] : tipo.replace(/^bq/, '')));
     var entidadeTipo = ev.entidadeTipo || bqEntidadePadrao_(tipo, data);
     var entidadeId = ev.entidadeId || bqEntidadeIdPadrao_(tipo, data, id);
     var rEv = bqCriarEvidenciaInline_(ev, entidadeTipo, entidadeId, campoPadrao, autor, origem);
@@ -902,6 +1113,15 @@ function bqUpdate_(tipo, body) {
 
   var v = bqValidarPayload_(tipo, data, 'update', achado.obj);
   if (!v.ok) return v;
+
+  // Q_Propriedades: apontar para entidade inexistente é proibido (§6.5 FK).
+  if (tipo === 'bqPropriedades' && (data.entidadeId !== undefined || data.entidadeTipo !== undefined)) {
+    var etUp = data.entidadeTipo !== undefined ? String(data.entidadeTipo) : String(achado.obj.entidadeTipo);
+    var eidUp = data.entidadeId !== undefined ? String(data.entidadeId) : String(achado.obj.entidadeId);
+    if (!bqExisteId_(etUp === 'ingrediente' ? 'bqIngredientes' : 'bqProdutos', eidUp)) {
+      return { ok: false, error: 'referencia_invalida', campo: 'entidadeId' };
+    }
+  }
 
   var autor = String(body.autor || data.autor || 'api');
   var origem = String(body.origem || data.origem || 'api');
@@ -1716,4 +1936,361 @@ function bqVincular_(body) {
     autor: String(body.autor || 'api'), origem: String(body.origem || 'api'),
     motivo: body.motivo || 'vínculo com cadastro existente (§16)'
   });
+}
+
+// ---------------------------------------------------------------------------
+// Fase 4 — chave lógica de Q_Propriedades, revisão e importação da ficha
+// ---------------------------------------------------------------------------
+
+/* Mesma chave lógica já existe (§6.5): NUNCA grava 3ª linha.
+   Mesmo valor → reusado (a evidência nova fica registrada como suporte).
+   Valor diferente → status do existente vira 'divergente' (§7.3), o VALOR
+   preservado é o da linha — nunca se sobrescreve dado técnico aqui. */
+function bqPropriedadeColisao_(colisao, data, body) {
+  var autor = String(body.autor || data.autor || 'api');
+  var origem = String(body.origem || data.origem || 'api');
+  var nomeTabela = SHEETS_BQ.bqPropriedades.name;
+
+  var evidenciaId = '';
+  var rEv = null;
+  if (data.evidencia) {
+    var ev = data.evidencia;
+    rEv = bqCriarEvidenciaInline_(ev,
+      ev.entidadeTipo || String(data.entidadeTipo) || 'produto',
+      ev.entidadeId || String(data.entidadeId),
+      ev.campo || bqCampoEvidenciaProp_(data.campo, data.condicao),
+      autor, origem);
+    if (!rEv.ok) return rEv;
+    evidenciaId = rEv.id;
+  } else if (data.evidenciaId) {
+    evidenciaId = String(data.evidenciaId);
+  }
+
+  var divergiu = bqPropriedadeDiverge_(colisao, data);
+  var acaoHist = (body.historicoAcao && bqEnumValido_('bqHistorico', 'acao', body.historicoAcao))
+    ? String(body.historicoAcao) : 'criar';
+
+  if (divergiu) {
+    if (String(colisao.status) !== 'divergente') {
+      var ach = bqAcharId_('bqPropriedades', colisao.id);
+      if (ach) {
+        var sheet = bqSheet_('bqPropriedades');
+        bqSetCelula_(sheet, ach.rowIdx, ach.idx.status + 1, 'divergente', false);
+        var agora = new Date();
+        if (ach.idx.atualizadoEm !== undefined) sheet.getRange(ach.rowIdx, ach.idx.atualizadoEm + 1).setValue(agora);
+        cacheLimpar_('bqPropriedades');
+        bqHistorico_(nomeTabela, colisao.id, 'status', colisao.status || '', 'divergente',
+          'divergencia', autor, origem, 'nova fonte divergente na mesma chave lógica (§7.3)');
+      }
+    }
+    if (!(rEv && rEv.divergente)) {
+      bqHistorico_(nomeTabela, colisao.id, String(data.campo),
+        bqResumo_(colisao.valor || colisao.valorMin || colisao.valorMax || ''),
+        bqResumo_(data.valor || data.valorMin || data.valorMax || ''),
+        'divergencia', autor, origem, 'valores divergentes na mesma chave lógica (§6.5/§7.3)');
+    }
+    return { ok: true, id: colisao.id, reusado: false, divergente: true, evidenciaId: evidenciaId };
+  }
+
+  bqHistorico_(nomeTabela, colisao.id, String(data.campo), '',
+    bqResumo_(data.valor || data.valorMin || data.valorMax || ''),
+    acaoHist, autor, origem, 'chave lógica já existente — nova fonte registrada como evidência (§6.5)');
+  return { ok: true, id: colisao.id, reusado: true, divergente: false, evidenciaId: evidenciaId };
+}
+
+/* POST {tipo:'bqPropriedades', action:'revisar'} (§9.3): revisão humana de
+   nível E. aprovar/rejeitar muda o status da propriedade E da evidência
+   vinculada, carimba revisadoPor/revisadoEm e grava histórico — o VALOR nunca
+   é alterado nem apagado (§7.4). autor padrão: 'usuario'. */
+function bqRevisar_(body) {
+  var data = body.data || {};
+  var id = String(body.id || data.id || '').trim();
+  var decisao = String(body.decisao || data.decisao || '').trim();
+  if (!id) return { ok: false, error: 'campo_obrigatorio', campo: 'id' };
+  if (decisao !== 'aprovar' && decisao !== 'rejeitar') {
+    return { ok: false, error: 'enum_invalido', campo: 'decisao', valor: decisao };
+  }
+  var achado = bqAcharId_('bqPropriedades', id);
+  if (!achado || achado.obj.excluido) return { ok: false, error: 'id não encontrado' };
+
+  var novoStatus = decisao === 'aprovar' ? 'aprovado' : 'rejeitado';
+  var autor = String(body.autor || data.autor || 'usuario');
+  var origem = String(body.origem || data.origem || 'api');
+  var motivo = String(body.motivo || data.motivo || '');
+  var agora = new Date();
+
+  var sheet = bqSheet_('bqPropriedades');
+  var statusAntigo = String(achado.obj.status || '');
+  bqSetCelula_(sheet, achado.rowIdx, achado.idx.status + 1, novoStatus, false);
+  if (achado.idx.atualizadoEm !== undefined) sheet.getRange(achado.rowIdx, achado.idx.atualizadoEm + 1).setValue(agora);
+  if (data.obs !== undefined && achado.idx.obs !== undefined) {
+    bqSetCelula_(sheet, achado.rowIdx, achado.idx.obs + 1, String(data.obs), true);
+  }
+  cacheLimpar_('bqPropriedades');
+
+  var evidenciaId = String(achado.obj.evidenciaId || '');
+  if (evidenciaId) {
+    var achEv = bqAcharId_('bqEvidencias', evidenciaId);
+    if (achEv && !achEv.obj.excluido) {
+      var sheetEv = bqSheet_('bqEvidencias');
+      if (achEv.idx.status !== undefined) bqSetCelula_(sheetEv, achEv.rowIdx, achEv.idx.status + 1, novoStatus, false);
+      if (achEv.idx.revisadoPor !== undefined) bqSetCelula_(sheetEv, achEv.rowIdx, achEv.idx.revisadoPor + 1, autor, true);
+      if (achEv.idx.revisadoEm !== undefined) bqSetCelula_(sheetEv, achEv.rowIdx, achEv.idx.revisadoEm + 1, agora, false);
+      cacheLimpar_('bqEvidencias');
+    }
+  }
+
+  bqHistorico_(SHEETS_BQ.bqPropriedades.name, id, 'status', statusAntigo, novoStatus,
+    decisao, autor, origem, motivo || 'revisão humana da propriedade (§7.4)');
+  return { ok: true, id: id, status: novoStatus, evidenciaId: evidenciaId, revisadoPor: autor };
+}
+
+/* POST {tipo:'bqPropriedades', action:'ficha'} (§9.3 — Fase 4):
+   importa produtos + documentos + propriedades físico-químicas a partir das
+   linhas do cadastro InsumosInfo enviadas NO PAYLOAD (o servidor NUNCA lê a
+   aba InsumosInfo — §14.5/§9.4). data.linhas[] = linhas cruas; simular:true só
+   planeja (§10.1, nada é gravado). Sem fonte utilizável → o produto é criado/
+   vinculado mas nenhuma propriedade nasce (§4.2: sem fonte, sem dado).
+   Idempotente (§10.3): produto por origemInfoId, documento por URL, propriedade
+   por chave lógica e evidência idêntica pulada — re-execução não duplica nada. */
+function bqFichaImport_(body) {
+  try {
+    var data = body.data || {};
+    var simular = data.simular === true || data.simular === 'true';
+    var linhas = data.linhas;
+    if (!Array.isArray(linhas) || !linhas.length) {
+      return { ok: false, error: 'campo_obrigatorio', campo: 'linhas' };
+    }
+    var limite = Number(data.limite) || 0;
+    if (limite > 0) linhas = linhas.slice(0, limite);
+
+    var estado = {
+      executar: !simular,
+      autor: String(body.autor || 'ia:import_ficha'),
+      origem: 'api',
+      produtos: bqDadosTipo_('bqProdutos'),
+      documentos: bqDadosTipo_('bqDocumentos'),
+      propriedades: bqDadosTipo_('bqPropriedades'),
+      evidencias: bqDadosTipo_('bqEvidencias'),
+      plano: [],
+      resumo: { linhas: 0, ignoradas: 0, produtosCriados: 0, produtosVinculados: 0,
+        produtosExistentes: 0, produtosIgnorados: 0, documentosCriados: 0, documentosReusados: 0,
+        propriedadesCriadas: 0, propriedadesConfirmadas: 0, propriedadesIdenticas: 0,
+        propriedadesDivergentes: 0, semFonte: 0, erros: [] }
+    };
+
+    for (var i = 0; i < linhas.length; i++) {
+      var linha = linhas[i];
+      if (!linha || !bqNormalizar_(linha.nome)) { estado.resumo.ignoradas++; continue; }
+      estado.resumo.linhas++;
+      try {
+        bqFichaProcessarLinha_(linha, estado);
+      } catch (err) {
+        estado.resumo.erros.push({
+          origemInfoId: bqNormalizar_(linha.id), nome: bqNormalizar_(linha.nome),
+          etapa: 'linha', error: err.message
+        });
+      }
+    }
+    return { ok: true, simular: simular, plano: estado.plano, resumo: estado.resumo };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/* Uma linha do cadastro → plano/gravação. Ordem por linha: documento (dedup por
+   URL) → produto (criar/vincular/ignorar) → propriedades (só com fonte).
+   Contadores: em simular contam a decisão; em executo contam o sucesso. */
+function bqFichaProcessarLinha_(linha, estado) {
+  var exec = estado.executar;
+  var fonte = bqFonteFicha_(linha);
+  var infoId = bqNormalizar_(linha.id);
+  var nome = bqNormalizar_(linha.nome);
+  var achou = bqFichaAcharProduto_(estado.produtos, linha);
+  var entrada = { origemInfoId: infoId, nome: nome, fabricante: bqNormalizar_(linha.fabricante),
+    produto: null, documento: null, fonte: fonte, propriedades: [] };
+
+  // ---- Produto -----------------------------------------------------------
+  if (achou && achou.excluido) {
+    // Exclusão respeitada: nada é reativado nem recriado (§10.3).
+    entrada.produto = { acao: 'ignorado_excluido', id: achou.produto.id, criterio: achou.criterio };
+    estado.plano.push(entrada);
+    estado.resumo.produtosIgnorados++;
+    return;
+  }
+
+  var produto = achou ? achou.produto : null;
+  var docId = '';
+
+  // ---- Documento (dedup por URL) — vem antes p/ a evidência de identidade
+  if (fonte && fonte.url) {
+    var achadoDoc = null;
+    for (var d = 0; d < estado.documentos.length; d++) {
+      var doc = estado.documentos[d];
+      if (!doc.excluido && bqNormalizar_(doc.url) === fonte.url) { achadoDoc = doc; break; }
+    }
+    if (achadoDoc) {
+      docId = achadoDoc.id;
+      entrada.documento = { acao: 'reusar', id: docId, url: fonte.url };
+      estado.resumo.documentosReusados++;
+    } else {
+      entrada.documento = { acao: 'criar', url: fonte.url };
+      if (exec) {
+        var rDoc = bqAdd_('bqDocumentos', {
+          tipo: 'bqDocumentos',
+          data: { tipo: 'ficha_tecnica', titulo: fonte.fonteNome,
+            autorFabricante: entrada.fabricante, url: fonte.url, fonte: 'fabricante',
+            obs: 'Fase 4 — fonte das propriedades (origemInfoId=' + infoId + ')' },
+          autor: estado.autor, origem: estado.origem, historicoAcao: 'importar'
+        });
+        if (!rDoc.ok) throw new Error('criar documento: ' + (rDoc.error || 'falhou'));
+        docId = rDoc.id;
+        estado.documentos.push({ id: docId, url: fonte.url, excluido: '' });
+        entrada.documento.id = docId;
+        estado.resumo.documentosCriados++;
+      } else {
+        estado.resumo.documentosCriados++;
+        // Placeholder na simulação: linhas do mesmo lote com a mesma URL
+        // preveem 'reusar' (espelha a execução, §10.1).
+        estado.documentos.push({ id: '', url: fonte.url, excluido: '' });
+      }
+    }
+  } else {
+    entrada.documento = { acao: 'nenhum' };
+    estado.resumo.semFonte++;
+  }
+
+  if (produto) {
+    var acaoProduto = 'existente';
+    var camposLink = {};
+    if (!bqNormalizar_(produto.origemInfoId) && infoId) camposLink.origemInfoId = infoId;
+    var estoqueId = bqNormalizar_(linha.estoqueId);
+    if (!bqNormalizar_(produto.origemEstoqueId) && estoqueId) camposLink.origemEstoqueId = estoqueId;
+    if (Object.keys(camposLink).length) {
+      acaoProduto = 'vincular';
+      if (exec) {
+        var rUpd = bqUpdate_('bqProdutos', {
+          tipo: 'bqProdutos', id: produto.id, data: camposLink,
+          autor: estado.autor, origem: estado.origem,
+          motivo: 'vínculo Fase 4 — cadastro InsumosInfo (§11.2)'
+        });
+        if (!rUpd.ok) throw new Error('vincular produto: ' + (rUpd.error || 'falhou'));
+        Object.keys(camposLink).forEach(function (k) { produto[k] = camposLink[k]; });
+        estado.resumo.produtosVinculados++;
+      } else {
+        estado.resumo.produtosVinculados++;
+      }
+    } else {
+      estado.resumo.produtosExistentes++;
+    }
+    entrada.produto = { acao: acaoProduto, id: produto.id, criterio: achou ? achou.criterio : '' };
+  } else {
+    // Produto novo: identidade vem do cadastro (origem do vínculo, §11.2);
+    // categoria só pelo mapeamento documentado (§16) — nunca adivinhada.
+    var categoria = bqCategoriaFicha_(linha);
+    var novo = { nomeComercial: nome, fabricante: entrada.fabricante, categoria: categoria,
+      produtoBiologico: categoria === 'Biológico' ? true : '',
+      origemInfoId: infoId, origemEstoqueId: bqNormalizar_(linha.estoqueId),
+      obs: 'Fase 4 — importado do cadastro InsumosInfo' };
+    entrada.produto = { acao: 'criar', campos: novo };
+    if (exec) {
+      var rCriar = bqAdd_('bqProdutos', {
+        tipo: 'bqProdutos',
+        data: Object.assign({}, novo, { evidencia: {
+          campo: 'identidade',
+          valor: nome + ' | ' + entrada.fabricante + ' | ' + (fonte ? fonte.fonteNome : ''),
+          fonteTipo: fonte ? fonte.fonteTipo : 'usuario',
+          fonteNome: fonte ? fonte.fonteNome : 'cadastro InsumosInfo (origem do vínculo)',
+          documentoId: docId, documentoUrl: fonte ? fonte.url : '',
+          confiabilidade: fonte ? fonte.confiabilidade : '',
+          obs: 'identidade do cadastro InsumosInfo (id ' + infoId + ') — revisar contra a ficha (§7.4)'
+        } }),
+        autor: estado.autor, origem: estado.origem, historicoAcao: 'importar'
+      });
+      if (!rCriar.ok) throw new Error('criar produto: ' + (rCriar.error || 'falhou'));
+      produto = { id: rCriar.id, nomeComercial: nome, nomeNormalizado: chave_(nome),
+        origemInfoId: infoId, origemEstoqueId: novo.origemEstoqueId, excluido: '' };
+      estado.produtos.push(produto);
+      entrada.produto.id = rCriar.id;
+      estado.resumo.produtosCriados++;
+    } else {
+      // Placeholder p/ simulação: linhas repetidas no mesmo lote não planejam 2 criações.
+      estado.produtos.push({ id: '', nomeNormalizado: chave_(nome), origemInfoId: infoId, excluido: '' });
+      estado.resumo.produtosCriados++;
+    }
+  }
+  entrada.produto.id = entrada.produto.id || (produto ? produto.id : '');
+
+  // ---- Propriedades (só com fonte; §4.2/§6.5) ----------------------------
+  if (fonte) {
+    var temId = !!(produto && produto.id);
+    for (var ci = 0; ci < BQ_FICHA_CAMPOS_.length; ci++) {
+      var campo = BQ_FICHA_CAMPOS_[ci];
+      var bruto = bqNormalizar_(linha[campo]);
+      var parsed = bqParseValorProp_(bruto);
+      if (!parsed) continue;                       // vazio → propriedade não existe
+      var camposProp = { entidadeTipo: 'produto', entidadeId: temId ? produto.id : '',
+        campo: campo, valor: parsed.valor, valorMin: parsed.valorMin, valorMax: parsed.valorMax,
+        unidade: parsed.unidade, condicao: parsed.condicao,
+        obs: 'transcrito do cadastro insumosInfo (id ' + infoId + ')' };
+      var evCampo = bqCampoEvidenciaProp_(campo, parsed.condicao);
+      var evidencia = { campo: evCampo, valor: bruto, unidade: parsed.unidade,
+        fonteTipo: fonte.fonteTipo, fonteNome: fonte.fonteNome,
+        documentoId: docId, documentoUrl: fonte.url, trechoOriginal: bruto,
+        confiabilidade: fonte.confiabilidade,
+        obs: 'transcrito do cadastro insumosInfo (id ' + infoId + ')' };
+
+      var acao = 'criar';
+      if (temId) {
+        var identica = estado.evidencias.some(function (e) {
+          return !e.excluido && e.status !== 'rejeitado' &&
+            String(e.entidadeId) === String(produto.id) &&
+            String(e.campo) === evCampo &&
+            !bqDivergente_(e.valor, bruto) &&
+            String(e.fonteNome) === fonte.fonteNome;
+        });
+        if (identica) acao = 'identica';
+        else {
+          var col = bqPropriedadeExistente_(estado.propriedades, camposProp);
+          if (col) acao = bqPropriedadeDiverge_(col, camposProp) ? 'divergente' : 'confirmar';
+        }
+      }
+      entrada.propriedades.push({ campo: campo, condicao: parsed.condicao, acao: acao,
+        valor: parsed.valor, valorMin: parsed.valorMin, valorMax: parsed.valorMax,
+        unidade: parsed.unidade });
+
+      if (acao === 'identica') { estado.resumo.propriedadesIdenticas++; continue; }
+      if (exec) {
+        var rProp = bqAdd_('bqPropriedades', {
+          tipo: 'bqPropriedades',
+          data: Object.assign({}, camposProp, { evidencia: evidencia }),
+          autor: estado.autor, origem: estado.origem, historicoAcao: 'importar'
+        });
+        if (!rProp.ok) throw new Error('propriedade ' + campo + ': ' + (rProp.error || 'falhou'));
+        if (rProp.evidenciaId) {
+          estado.evidencias.push({ id: rProp.evidenciaId, entidadeId: camposProp.entidadeId,
+            campo: evCampo, valor: bruto, fonteNome: fonte.fonteNome, status: 'pendente', excluido: '' });
+        }
+        if (rProp.reusado) {
+          estado.resumo.propriedadesConfirmadas++;
+        } else if (rProp.divergente) {
+          estado.resumo.propriedadesDivergentes++;
+          var col2 = bqPropriedadeExistente_(estado.propriedades, camposProp);
+          if (col2) col2.status = 'divergente';
+        } else {
+          estado.resumo.propriedadesCriadas++;
+          estado.propriedades.push({ id: rProp.id, entidadeTipo: 'produto',
+            entidadeId: camposProp.entidadeId, campo: campo, condicao: parsed.condicao,
+            valor: parsed.valor, valorMin: parsed.valorMin, valorMax: parsed.valorMax,
+            unidade: parsed.unidade, status: 'pendente', evidenciaId: rProp.evidenciaId, excluido: '' });
+        }
+      } else {
+        if (acao === 'criar') estado.resumo.propriedadesCriadas++;
+        else if (acao === 'confirmar') estado.resumo.propriedadesConfirmadas++;
+        else if (acao === 'divergente') estado.resumo.propriedadesDivergentes++;
+      }
+    }
+  }
+
+  estado.plano.push(entrada);
 }

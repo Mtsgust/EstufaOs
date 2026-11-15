@@ -360,9 +360,11 @@ ok(abaProp.colFmt[colValProp] === '@', 'coluna valor de Q_Propriedades criada co
 
 // (a) formato intacto: texto grava direto, sem regravação (atalho da escada)
 const fmtAntes = abaProp.formatos.length;
+const rProdCoag = post({ tipo: 'bqProdutos', action: 'add', data: { nomeComercial: 'Produto Coag' } });
+ok(rProdCoag.ok, 'produto real criado p/ fixtures de propriedade (FK §6.5)');
 const rA = post({
   tipo: 'bqPropriedades', action: 'add',
-  data: { entidadeTipo: 'produto', entidadeId: 'QPROD_coag', campo: 'densidade', valor: '3,5', unidade: 'g/mL' },
+  data: { entidadeTipo: 'produto', entidadeId: rProdCoag.id, campo: 'densidade', valor: '3,5', unidade: 'g/mL' },
   evidencia: { campo: 'densidade', valor: '3,5', fonteTipo: 'bula', fonteNome: 'Bula A' }
 });
 ok(rA.ok, 'propriedade "3,5" criada');
@@ -377,7 +379,7 @@ const colValEv = ctx.SHEETS_BQ.bqEvidencias.headers.indexOf('valor') + 1;
 delete abaEvid.colFmt[colValEv];
 const rB = post({
   tipo: 'bqPropriedades', action: 'add',
-  data: { entidadeTipo: 'produto', entidadeId: 'QPROD_coag', campo: 'solubilidade', valor: '1,410' },
+  data: { entidadeTipo: 'produto', entidadeId: rProdCoag.id, campo: 'solubilidade', valor: '1,410' },
   evidencia: { campo: 'solubilidade', valor: '1,410', fonteTipo: 'bula', fonteNome: 'Bula B' }
 });
 ok(rB.ok, 'propriedade "1,410" criada com formato perdido');
@@ -389,8 +391,8 @@ ok(typeof evB.valor === 'string' && evB.valor === '1,410', 'evidência também r
 
 // (c) update com coerção (formato limpo de novo) → zeros à esquerda preservados
 delete abaProp.cellFmt[achB.rowIdx + ',' + colValProp];
-const rUpdB = post({ tipo: 'bqPropriedades', action: 'update', id: rB.id, data: { valor: '01970123456' } });
-ok(rUpdB.ok, 'update de valor aceito');
+const rUpdB = post({ tipo: 'bqPropriedades', action: 'update', id: rB.id, data: { valor: '01970123456', evidenciaId: rB.evidenciaId } });
+ok(rUpdB.ok, 'update de valor aceito (com evidência — §7.1)');
 const linC = ctx.bqAcharId_('bqPropriedades', rB.id).linha;
 ok(typeof linC[colValProp - 1] === 'string' && linC[colValProp - 1] === '01970123456',
   'update preserva zeros à esquerda (got ' + JSON.stringify(linC[colValProp - 1]) + ')');
@@ -458,11 +460,11 @@ r = post({ tipo: 'bqPropriedades', action: 'add', data: { entidadeTipo: 'produto
 ok(!r.ok && r.error === 'referencia_invalida', 'evidenciaId inexistente → referencia_invalida');
 r = post({
   tipo: 'bqPropriedades', action: 'add',
-  data: { entidadeTipo: 'produto', entidadeId: 'QPROD_x', campo: 'ph', valor: '6,5', unidade: 'pH' },
+  data: { entidadeTipo: 'produto', entidadeId: rProdCoag.id, campo: 'ph', valor: '6,5', unidade: 'pH' },
   evidencia: { campo: 'ph', valor: '6,5', fonteTipo: 'ficha_tecnica', fonteNome: 'Ficha X', documentoUrl: 'https://invalid/ficha.pdf' }
 });
 ok(r.ok && !!r.evidenciaId, 'add com evidência inline aceito e evidência criada');
-const propsPh = ctx.bqDadosTipo_('bqPropriedades').filter((p) => p.entidadeId === 'QPROD_x');
+const propsPh = ctx.bqDadosTipo_('bqPropriedades').filter((p) => p.entidadeId === rProdCoag.id && p.campo === 'ph');
 ok(propsPh.length === 1 && String(propsPh[0].evidenciaId) === String(r.evidenciaId), 'linha liga à evidência criada');
 
 /* ==================== enums e transições de estado da fila ==================== */
@@ -870,6 +872,203 @@ ok(rV.ok && rV.alterados === 1, 'vínculo com origemInfoId aceito');
 ok(String(ctx.bqAcharId_('bqProdutos', rImp1.produtoId).obj.origemInfoId) === 'INFO1', 'origemInfoId gravado');
 ok(ctx.bqDadosTipo_('bqHistorico').some((h) => String(h.entidadeId) === String(rImp1.produtoId) && h.campo === 'origemInfoId'),
   'histórico registrou o vínculo');
+
+/* ================== Fase 4 — ficha/fabricante (§4.2/§6.5/§7.1/§9.3) ================== */
+secao('Fase 4 — parse de valores da ficha (puro, §6.5)');
+let pv = ctx.bqParseValorProp_('6,5');
+ok(pv && pv.valor === '6,5' && pv.unidade === '' && pv.condicao === '', 'ph simples → valor "6,5"');
+pv = ctx.bqParseValorProp_('9,5–10');
+ok(pv && pv.valor === '' && pv.valorMin === '9,5' && pv.valorMax === '10', 'intervalo "9,5–10" → valorMin+valorMax');
+pv = ctx.bqParseValorProp_('1,47 g/mL');
+ok(pv && pv.valor === '1,47' && pv.unidade === 'g/mL', 'número+unidade conhecida separados');
+pv = ctx.bqParseValorProp_('1,09 g/cm³');
+ok(pv && pv.valor === '1,09' && pv.unidade === 'g/cm³', 'g/cm³ reconhecido (chave tolerante)');
+pv = ctx.bqParseValorProp_('mínimo 1,32 g/cm³');
+ok(pv && pv.valorMin === '1,32' && pv.valorMax === '' && pv.unidade === 'g/cm³', '"mínimo …" → valorMin');
+pv = ctx.bqParseValorProp_('Solúvel em água');
+ok(pv && pv.valor === 'Solúvel em água' && pv.unidade === '', 'texto livre vira valor bruto (nada se perde)');
+pv = ctx.bqParseValorProp_('1,410 g/mL (20 °C)');
+ok(pv && pv.valor === '1,410' && pv.unidade === 'g/mL' && pv.condicao === '20 °C',
+  'parêntese com ° vira condição (chave da propriedade, §6.5)');
+ok(ctx.bqParseValorProp_('') === null, 'vazio → null (propriedade não é criada)');
+ok(ctx.bqCampoEvidenciaProp_('ph', '20 °C') === 'ph (20 °C)', 'evidência herda a condição no campo');
+ok(ctx.bqCampoEvidenciaProp_('ph', '') === 'ph', 'sem condição o campo fica limpo');
+
+secao('Fase 4 — categoria e fonte da ficha (§16/§4.2 — nunca adivinha)');
+ok(ctx.bqCategoriaFicha_({ nome: 'Nutrifert', categoria: 'Fertilizante foliar' }) === 'Fertilizante',
+  'keyword fertiliz → Fertilizante');
+ok(ctx.bqCategoriaFicha_({ nome: 'Spread', categoria: 'Adjuvante p/ glifosato' }) === 'Adjuvante',
+  'keyword adjuvante → Adjuvante');
+ok(ctx.bqCategoriaFicha_({ nome: 'Green Mix' }) === 'Adjuvante',
+  'override §16: Green Mix → Adjuvante');
+ok(ctx.bqCategoriaFicha_({ nome: 'Potent Active' }) === 'Bioestimulante',
+  'override §16: Potent Active → Bioestimulante');
+ok(ctx.bqCategoriaFicha_({ nome: 'Coisa Nova', categoria: 'Isso E Aquilo' }) === '',
+  'sem keyword → categoria vazia (nunca inventa)');
+const fonteF4 = ctx.bqFonteFicha_({ origemDado: 'fabricante', fabricante: 'Nutri Teste',
+  fonteInfo: 'Ficha oficial – Nutri Teste', fonteUrl: 'https://f.invalid/x.pdf' });
+ok(fonteF4 && fonteF4.fonteTipo === 'ficha_tecnica' && fonteF4.confiabilidade === 'media' &&
+   fonteF4.url === 'https://f.invalid/x.pdf', 'fabricante → ficha_tecnica (media, url)');
+ok(ctx.bqFonteFicha_({ origemDado: 'nao_encontrada' }) === null,
+  'sem fonte utilizável → null (sem propriedade sem fonte, §4.2)');
+ok(ctx.bqFonteFicha_({ origemDado: 'rotulo', fonteUrl: 'https://f.invalid/r.pdf' }).fonteTipo === 'rotulo',
+  'rotulo → fonteTipo rotulo');
+
+secao('Fase 4 — FK da propriedade e guarda de update (§6.5/§7.1)');
+let rFK = post({
+  tipo: 'bqPropriedades', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: 'QPROD_fantasma', campo: 'ph', valor: '7' },
+  evidencia: { campo: 'ph', valor: '7', fonteTipo: 'bula', fonteNome: 'Bula FK' }
+});
+ok(!rFK.ok && rFK.error === 'referencia_invalida' && rFK.campo === 'entidadeId',
+  'entidadeId inexistente → referencia_invalida (add)');
+rFK = post({ tipo: 'bqPropriedades', action: 'update', id: rB.id,
+  data: { entidadeId: 'QPROD_fantasma', evidenciaId: rB.evidenciaId } });
+ok(!rFK.ok && rFK.error === 'referencia_invalida' && rFK.campo === 'entidadeId',
+  'entidadeId inexistente → referencia_invalida (update)');
+
+const FIXF4 = {
+  id: 'F4_A1', nome: 'Nutrifert X', fabricante: 'Nutri Teste Ltda',
+  categoria: 'Fertilizante foliar', origemDado: 'fabricante',
+  fonteInfo: 'Ficha oficial – Nutri Teste Ltda',
+  fonteUrl: 'https://fabricante.invalid/fichas/nutrifert-x.pdf',
+  estoqueId: 'EST_F4A',
+  ph: '6,5–7,5', densidade: '1,47 g/mL', solubilidade: 'Solúvel em água',
+  naturezaFisica: 'Líquido', miscibilidade: ''
+};
+
+secao('Fase 4 — action ficha: simular (§10.1 — nada é gravado)');
+const cntAntes = {};
+['bqProdutos', 'bqDocumentos', 'bqPropriedades', 'bqEvidencias'].forEach((t) => {
+  cntAntes[t] = ctx.bqDadosTipo_(t).length;
+});
+let simF4 = post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: true, linhas: [FIXF4] } });
+ok(simF4.ok && simF4.simular === true, 'simular:true devolve plano');
+ok(simF4.plano.length === 1 && simF4.plano[0].produto.acao === 'criar' &&
+   simF4.plano[0].produto.campos.categoria === 'Fertilizante' &&
+   simF4.plano[0].produto.campos.origemInfoId === 'F4_A1',
+  'produto a criar com categoria mapeada e origemInfoId');
+ok(simF4.plano[0].documento && simF4.plano[0].documento.acao === 'criar' &&
+   simF4.plano[0].documento.url === FIXF4.fonteUrl, 'documento a criar (dedup por URL)');
+ok(simF4.plano[0].propriedades.length === 4,
+  '4 propriedades planejadas (miscibilidade vazia pulada)');
+const densPlan = simF4.plano[0].propriedades.find((p) => p.campo === 'densidade');
+ok(densPlan && densPlan.valor === '1,47' && densPlan.unidade === 'g/mL', 'densidade parseada no plano');
+ok(simF4.resumo.propriedadesCriadas === 4 && simF4.resumo.semFonte === 0, 'resumo do plano coerente');
+['bqProdutos', 'bqDocumentos', 'bqPropriedades', 'bqEvidencias'].forEach((t) => {
+  ok(ctx.bqDadosTipo_(t).length === cntAntes[t], 'simular não gravou em ' + t);
+});
+
+secao('Fase 4 — action ficha: executar + idempotência (§10.3)');
+let exF4 = post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [FIXF4] } });
+ok(exF4.ok && exF4.simular === false && exF4.resumo.erros.length === 0, 'execução sem erros');
+ok(exF4.resumo.produtosCriados === 1 && exF4.resumo.documentosCriados === 1 &&
+   exF4.resumo.propriedadesCriadas === 4, '1 produto + 1 documento + 4 propriedades criados');
+const prodF4 = exF4.plano[0].produto.id;
+ok(!!prodF4 && String(ctx.bqAcharId_('bqProdutos', prodF4).obj.origemInfoId) === 'F4_A1',
+  'produto gravado com origemInfoId (§11.2 vínculo)');
+const propsF4t = ctx.bqDadosTipo_('bqPropriedades').filter((p) => String(p.entidadeId) === String(prodF4) && !p.excluido);
+ok(propsF4t.length === 4 && propsF4t.every((p) => !!p.evidenciaId),
+  '4 linhas de propriedade, todas ligadas a evidência (§7.1)');
+ok(propsF4t.every((p) => String(p.status) === 'pendente'),
+  'propriedade de nível E nasce pendente (§7.2 — nunca auto-aprova)');
+const evIdF4 = ctx.bqDadosTipo_('bqEvidencias').find((e) => String(e.entidadeId) === String(prodF4) && e.campo === 'identidade');
+ok(evIdF4 && evIdF4.fonteTipo === 'ficha_tecnica' && !!evIdF4.documentoId,
+  'evidência de identidade aponta a ficha (documentoId)');
+const densEv = ctx.bqDadosTipo_('bqEvidencias').find((e) => String(e.entidadeId) === String(prodF4) && e.campo === 'densidade');
+ok(densEv && densEv.confiabilidade === 'media' && String(densEv.trechoOriginal) === '1,47 g/mL',
+  'evidência da propriedade: media + trecho original (transcrição, §7.4)');
+
+exF4 = post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [FIXF4] } });
+ok(exF4.ok && exF4.resumo.produtosCriados === 0 && exF4.resumo.documentosCriados === 0 &&
+   exF4.resumo.propriedadesCriadas === 0 && exF4.resumo.propriedadesIdenticas === 4,
+  're-execução: 0 criações, 4 evidências idênticas puladas');
+ok(exF4.resumo.produtosExistentes === 1 && exF4.resumo.documentosReusados === 1,
+  'produto casado por origemInfoId e documento reusado por URL');
+
+const SEMFONTE = { id: 'F4_B2', nome: 'Cad Sem Fonte', fabricante: 'X', origemDado: 'nao_encontrada', ph: '7,0' };
+exF4 = post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [SEMFONTE] } });
+ok(exF4.ok && exF4.resumo.produtosCriados === 1 && exF4.resumo.semFonte === 1 &&
+   exF4.resumo.propriedadesCriadas === 0,
+  'sem fonte → produto criado, NENHUMA propriedade (§4.2)');
+const prodSF = exF4.plano[0].produto.id;
+ok(ctx.bqDadosTipo_('bqPropriedades').filter((p) => String(p.entidadeId) === String(prodSF)).length === 0,
+  'nenhuma linha de propriedade para produto sem fonte');
+const evSF = ctx.bqDadosTipo_('bqEvidencias').find((e) => String(e.entidadeId) === String(prodSF) && e.campo === 'identidade');
+ok(evSF && evSF.fonteTipo === 'usuario', 'identidade sem fonte nasce como usuario (não finge ficha)');
+
+const VINC = { nomeComercial: 'Nome Vinc Teste' };
+const rPV = post({ tipo: 'bqProdutos', action: 'add', data: VINC });
+ok(rPV.ok, 'produto homônimo pré-existente criado');
+exF4 = post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [
+  { id: 'F4_C7', nome: 'Nome Vinc Teste', origemDado: 'fabricante', fonteUrl: 'https://f.invalid/vinc.pdf',
+    fonteInfo: 'Ficha oficial – Nome Vinc', ph: '7' } ] } });
+ok(exF4.ok && exF4.plano[0].produto.acao === 'vincular' && exF4.resumo.produtosVinculados === 1,
+  'homônimo → vínculo, nunca 2º produto (§11.2)');
+ok(String(ctx.bqAcharId_('bqProdutos', rPV.id).obj.origemInfoId) === 'F4_C7',
+  'origemInfoId preenchido no vínculo');
+
+secao('Fase 4 — chave lógica da propriedade (§6.5 — nunca uma 3ª linha)');
+let rCol1 = post({
+  tipo: 'bqPropriedades', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: prodF4, campo: 'densidade', valor: '1,47', unidade: 'g/mL' },
+  evidencia: { campo: 'densidade', valor: '1,47', fonteTipo: 'bula', fonteNome: 'Bula Repetida' }
+});
+ok(rCol1.ok && rCol1.reusado === true, 'mesma chave + mesmo valor → reusado');
+ok(ctx.bqDadosTipo_('bqPropriedades').filter((p) => String(p.entidadeId) === String(prodF4) && p.campo === 'densidade' && !p.excluido).length === 1,
+  'continua 1 linha de densidade');
+let rCol2 = post({
+  tipo: 'bqPropriedades', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: prodF4, campo: 'densidade', valor: '1,60', unidade: 'g/mL' },
+  evidencia: { campo: 'densidade', valor: '1,60', fonteTipo: 'ficha_tecnica', fonteNome: 'Outra Ficha Y' }
+});
+ok(rCol2.ok && rCol2.divergente === true, 'mesma chave + valor diferente → divergente');
+const densRow = ctx.bqDadosTipo_('bqPropriedades')
+  .find((p) => String(p.entidadeId) === String(prodF4) && p.campo === 'densidade' && !p.excluido);
+ok(densRow.status === 'divergente' && String(densRow.valor) === '1,47',
+  'status divergente com valor original preservado (§7.3)');
+ok(ctx.bqDadosTipo_('bqPropriedades').filter((p) => String(p.entidadeId) === String(prodF4) && p.campo === 'densidade' && !p.excluido).length === 1,
+  'ainda 1 linha (nunca uma 3ª)');
+let rCol3 = post({
+  tipo: 'bqPropriedades', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: prodF4, campo: 'densidade', valor: '1,40', unidade: 'g/mL', condicao: '40 °C' },
+  evidencia: { campo: 'densidade (40 °C)', valor: '1,40', fonteTipo: 'ficha_tecnica', fonteNome: 'Ficha 40C' }
+});
+ok(rCol3.ok && !rCol3.reusado, 'condicao diferente → linha nova (faz parte da chave)');
+ok(ctx.bqDadosTipo_('bqPropriedades').filter((p) => String(p.entidadeId) === String(prodF4) && p.campo === 'densidade' && !p.excluido).length === 2,
+  '2 linhas: uma por condição');
+
+secao('Fase 4 — guarda de update técnico (§7.1)');
+rFK = post({ tipo: 'bqPropriedades', action: 'update', id: densRow.id, data: { valor: '1,99' } });
+ok(!rFK.ok && rFK.error === 'evidencia_obrigatoria',
+  'update de valor sem evidência → evidencia_obrigatoria');
+rFK = post({ tipo: 'bqPropriedades', action: 'update', id: densRow.id, data: { obs: 'nota interna' } });
+ok(rFK.ok && rFK.alterados === 1, 'update de obs sem evidência aceito (operacional)');
+rFK = post({ tipo: 'bqPropriedades', action: 'update', id: densRow.id,
+  data: { valor: '1,50', evidenciaId: String(densRow.evidenciaId) } });
+ok(rFK.ok, 'update técnico COM evidência aceito');
+ok(String(ctx.bqAcharId_('bqPropriedades', densRow.id).obj.valor) === '1,50', 'valor atualizado com evidência');
+
+secao('Fase 4 — action revisar (§7.4 — revisão humana nunca altera valor)');
+const alvoRev = propsF4t.find((p) => p.campo === 'ph');
+let rv = post({ tipo: 'bqPropriedades', action: 'revisar',
+  data: { id: alvoRev.id, decisao: 'aprovar', motivo: 'conferido contra a ficha' } });
+ok(rv.ok && rv.status === 'aprovado', 'aprovar → status aprovado');
+const linhaRev = ctx.bqAcharId_('bqPropriedades', alvoRev.id).obj;
+ok(String(linhaRev.valor) === String(alvoRev.valor), 'valor intacto após revisão (§7.4)');
+const evRev = ctx.bqAcharId_('bqEvidencias', rv.evidenciaId).obj;
+ok(evRev.status === 'aprovado' && evRev.revisadoPor === 'usuario',
+  'evidência carimbada: status + revisadoPor=usuario');
+ok(ctx.bqDadosTipo_('bqHistorico').some((h) => String(h.entidadeId) === String(alvoRev.id) && h.acao === 'aprovar'),
+  'histórico registrou aprovação');
+rv = post({ tipo: 'bqPropriedades', action: 'revisar', data: { id: alvoRev.id, decisao: 'rejeitar' } });
+ok(rv.ok && rv.status === 'rejeitado', 'rejeitar → status rejeitado');
+rv = post({ tipo: 'bqPropriedades', action: 'revisar', data: { id: alvoRev.id, decisao: 'qualquer' } });
+ok(!rv.ok && rv.error === 'enum_invalido', 'decisão inválida → enum_invalido');
+rv = post({ tipo: 'bqPropriedades', action: 'revisar', data: { id: 'QPROP_zzz', decisao: 'aprovar' } });
+ok(!rv.ok && rv.error === 'id não encontrado', 'id inexistente → id não encontrado');
+rv = post({ tipo: 'bqPropriedades', action: 'revisar', data: { decisao: 'aprovar' } });
+ok(!rv.ok && rv.error === 'campo_obrigatorio', 'sem id → campo_obrigatorio');
 
 /* ============================ critério final ============================ */
 console.log('');

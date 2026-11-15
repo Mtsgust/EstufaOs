@@ -88,9 +88,19 @@ async function post(payload) {
 
   // Resíduo de deploy anterior (@43): linhas antigas gravadas como número 1.41
   // são reparadas via update (escada de reparo da §5.3 no caminho de update).
+  // Update de campo técnico exige evidência (§7.1): reaproveita a da linha ou
+  // registra evidência inline de reparo.
   const residuos = (await get('tipo=bqPropriedades')).data.filter((p) => typeof p.valor === 'number');
   for (const rd of residuos) {
-    const rp = await post({ tipo: 'bqPropriedades', action: 'update', id: rd.id, data: { valor: '1,410' } });
+    const dadosRep = { valor: '1,410' };
+    const corpoRep = { tipo: 'bqPropriedades', action: 'update', id: rd.id, data: dadosRep };
+    if (rd.evidenciaId) {
+      dadosRep.evidenciaId = rd.evidenciaId;
+    } else {
+      corpoRep.evidencia = { campo: rd.campo || 'densidade', valor: '1,410',
+        fonteTipo: 'usuario', fonteNome: 'reparo anti-coerção (smoke §5.3)' };
+    }
+    const rp = await post(corpoRep);
     ok(rp.ok, 'resíduo Q_Propriedades ' + rd.id + ' reparado' + (rp.ok ? '' : ' → ' + rp.error));
   }
   const residuosEv = (await get('tipo=bqEvidencias')).data.filter((e) => typeof e.valor === 'number');
@@ -215,6 +225,122 @@ async function post(payload) {
   ok(!j.ok && j.error === 'id não encontrado', 'vincular com produto inexistente → id não encontrado');
   j = await post({ tipo: 'bqProdutos', action: 'vincular', data: { produtoId: 'QPROD_x', extra: 1 } });
   ok(!j.ok && j.error === 'campo_desconhecido', 'vincular com campo desconhecido → campo_desconhecido');
+
+  /* ---------- 5) Fase 4: ficha (simular/executar), revisar, chave lógica ---------- */
+  secao('§14.3(5) — Fase 4: action ficha, revisar e guarda de chave lógica (§6.5/§7.4)');
+  const carimbo = Date.now();
+  const linhaFix = {
+    id: 'SMOKE_F4_' + carimbo, nome: '__teste__ f4 sim ' + carimbo,
+    fabricante: 'Ficha Teste Ltda', categoria: 'Fertilizante líquido',
+    origemDado: 'fabricante', fonteInfo: 'Ficha oficial – Ficha Teste Ltda',
+    fonteUrl: 'https://exemplo.invalid/ficha-f4-' + carimbo + '.pdf',
+    densidade: '1,20 g/cm³', ph: '6,5–7,5', solubilidade: '', naturezaFisica: '', miscibilidade: ''
+  };
+  const cF0 = await contagens();
+  let sf = await post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: true, linhas: [linhaFix] } });
+  ok(sf.ok === true && sf.simular === true, 'action ficha → simular:true');
+  ok(sf.plano && sf.plano.length === 1 && sf.plano[0].produto.acao === 'criar',
+    'plano devolvido com produto a criar');
+  ok(sf.plano[0].produto.campos.categoria === 'Fertilizante',
+    'categoria mapeada por regra documentada (§16), nunca adivinhada');
+  ok(Array.isArray(sf.plano[0].propriedades) && sf.plano[0].propriedades.length === 2,
+    'plano: 2 propriedades (densidade + ph) — vazias puladas');
+  const cF1 = await contagens();
+  ok(JSON.stringify(cF0) === JSON.stringify(cF1),
+    'ficha simular não escreveu em nenhuma das 13 planilhas');
+  j = await post({ tipo: 'bqPropriedades', action: 'ficha', data: {} });
+  ok(!j.ok && j.error === 'campo_obrigatorio', 'ficha sem linhas → campo_obrigatorio');
+  j = await post({ tipo: 'bqProdutos', action: 'ficha', data: { linhas: [linhaFix] } });
+  ok(!j.ok && j.error === 'ação inválida', 'ficha fora de bqPropriedades → ação inválida');
+  j = await post({
+    tipo: 'bqPropriedades', action: 'add',
+    data: { entidadeTipo: 'produto', entidadeId: 'QPROD_nao_existe_' + carimbo, campo: 'ph', valor: '7' },
+    evidencia: { campo: 'ph', valor: '7', fonteTipo: 'bula', fonteNome: 'Bula FK' }
+  });
+  ok(!j.ok && j.error === 'referencia_invalida' && j.campo === 'entidadeId',
+    'entidadeId inexistente → referencia_invalida (§6.5)');
+
+  // Executar de verdade (produto __teste__ … fica auditado; soft-deletado ao final)
+  const linhaExec = {
+    id: 'SMOKE_F4E_' + carimbo, nome: '__teste__ f4 exec ' + carimbo,
+    fabricante: 'Ficha Teste Ltda', origemDado: 'fabricante',
+    fonteInfo: 'Ficha oficial – Ficha Teste Ltda',
+    fonteUrl: 'https://exemplo.invalid/ficha-f4e-' + carimbo + '.pdf',
+    densidade: '1,410 g/mL', ph: '6,5'
+  };
+  let ex = await post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [linhaExec] } });
+  ok(ex.ok === true && ex.simular === false, 'ficha executado (simular:false)');
+  ok(ex.resumo.produtosCriados === 1 && ex.resumo.documentosCriados === 1,
+    'produto + documento criados (resumo ' + JSON.stringify(ex.resumo).slice(0, 180) + '…)');
+  ok(ex.resumo.propriedadesCriadas === 2, '2 propriedades criadas com evidência');
+  ok(ex.resumo.erros.length === 0, 'nenhum erro por linha');
+  const prodF4 = (await get('tipo=bqProdutos')).data
+    .find((p) => String(p.origemInfoId) === linhaExec.id && !p.excluido);
+  ok(!!prodF4, 'produto gravado com origemInfoId do cadastro (§11.2)');
+  const propsF4 = (await get('tipo=bqPropriedades')).data
+    .filter((p) => prodF4 && String(p.entidadeId) === String(prodF4.id) && !p.excluido);
+  ok(propsF4.length === 2 && propsF4.every((p) => !!p.evidenciaId),
+    'propriedades ligadas a evidência (§7.1)');
+  const densF4 = propsF4.find((p) => p.campo === 'densidade');
+  ok(densF4 && String(densF4.valor) === '1,410' && densF4.unidade === 'g/mL',
+    'densidade parseada: valor "1,410" + unidade g/mL (nunca 1.41)');
+
+  // Idempotência (§10.3): re-executar não duplica nada
+  ex = await post({ tipo: 'bqPropriedades', action: 'ficha', data: { simular: false, linhas: [linhaExec] } });
+  ok(ex.ok === true && ex.resumo.produtosCriados === 0 && ex.resumo.documentosCriados === 0 &&
+     ex.resumo.propriedadesCriadas === 0 && ex.resumo.propriedadesIdenticas === 2,
+    're-execução idempotente: 0 criações, 2 evidências idênticas puladas');
+  ok(ex.resumo.documentosReusados === 1 && ex.resumo.produtosExistentes === 1,
+    'documento reusado por URL e produto casado por origemInfoId');
+
+  // Chave lógica (§6.5): mesmo valor → reusado; valor diferente → divergente
+  const evBase = { campo: 'ph', fonteTipo: 'bula', fonteNome: 'Bula F4 ' + carimbo };
+  j = await post({
+    tipo: 'bqPropriedades', action: 'add',
+    data: { entidadeTipo: 'produto', entidadeId: prodF4.id, campo: 'ph', valor: '6,5' },
+    evidencia: Object.assign({}, evBase, { valor: '6,5' })
+  });
+  ok(j.ok === true && j.reusado === true, 'mesma chave + mesmo valor → reusado (sem 3ª linha)');
+  j = await post({
+    tipo: 'bqPropriedades', action: 'add',
+    data: { entidadeTipo: 'produto', entidadeId: prodF4.id, campo: 'ph', valor: '7,8' },
+    evidencia: Object.assign({}, evBase, { valor: '7,8', fonteNome: 'Outra Ficha ' + carimbo })
+  });
+  ok(j.ok === true && j.divergente === true, 'mesma chave + valor diferente → divergente (sem 3ª linha)');
+  const phF4 = (await get('tipo=bqPropriedades')).data
+    .filter((p) => prodF4 && String(p.entidadeId) === String(prodF4.id) && p.campo === 'ph' && !p.excluido);
+  ok(phF4.length === 1, 'continua exatamente 1 linha de ph (nunca uma 3ª)');
+  ok(phF4[0].status === 'divergente' && String(phF4[0].valor) === '6,5',
+    'status virou divergente com o VALOR original preservado (§7.3)');
+
+  // Revisão humana (§7.4/§9.3): aprovar carimba propriedade + evidência
+  const rv = await post({ tipo: 'bqPropriedades', action: 'revisar',
+    data: { id: phF4[0].id, decisao: 'aprovar', motivo: 'smoke §7.4' } });
+  ok(rv.ok === true && rv.status === 'aprovado', 'revisar aprovar → status aprovado');
+  const evRv = (await get('tipo=bqEvidencias')).data.find((e) => String(e.id) === String(rv.evidenciaId));
+  ok(evRv && evRv.status === 'aprovado' && evRv.revisadoPor === 'usuario',
+    'evidência vinculada carimbada (revisadoPor=usuario, status aprovado)');
+  const phDepois = (await get('tipo=bqPropriedades')).data.find((p) => String(p.id) === String(phF4[0].id));
+  ok(String(phDepois.valor) === '6,5', 'revisão NUNCA altera o valor (§7.4)');
+  j = await post({ tipo: 'bqPropriedades', action: 'revisar', data: { id: phF4[0].id, decisao: 'chute' } });
+  ok(!j.ok && j.error === 'enum_invalido', 'decisão fora de aprovar|rejeitar → enum_invalido');
+  j = await post({ tipo: 'bqPropriedades', action: 'revisar', data: { id: 'QPROP_nao_existe', decisao: 'aprovar' } });
+  ok(!j.ok && j.error === 'id não encontrado', 'revisar id inexistente → id não encontrado');
+
+  // Update de campo técnico exige evidência (§7.1); obs é operacional
+  j = await post({ tipo: 'bqPropriedades', action: 'update', id: phF4[0].id, data: { valor: '8,0' } });
+  ok(!j.ok && j.error === 'evidencia_obrigatoria',
+    'update técnico sem evidência → evidencia_obrigatoria (§7.1)');
+  j = await post({ tipo: 'bqPropriedades', action: 'update', id: phF4[0].id, data: { obs: 'nota livre' } });
+  ok(j.ok === true, 'update de obs sem evidência aceito (não é campo técnico)');
+
+  // Limpeza: soft delete dos resíduos desta execução (auditoria preservada)
+  await post({ tipo: 'bqPropriedades', action: 'delete', id: phF4[0].id });
+  if (densF4) await post({ tipo: 'bqPropriedades', action: 'delete', id: densF4.id });
+  await post({ tipo: 'bqProdutos', action: 'delete', id: prodF4.id });
+  const docsLimpar = ex.plano.map((e) => e.documento).filter((d) => d && d.id);
+  for (const d of docsLimpar) await post({ tipo: 'bqDocumentos', action: 'delete', id: d.id });
+  ok(true, 'limpeza: produto/propriedades/documentos de teste soft-deletados');
 
   console.log('');
   console.log((total - falhas) + '/' + total + ' asserções passaram.');

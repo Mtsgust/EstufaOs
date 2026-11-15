@@ -537,13 +537,14 @@ Mantém o contrato `{tipo, action:'add'|'update'|'delete', id?, data:{}}`. Regra
 | Regra | Comportamento |
 |---|---|
 | Guarda de escopo | handlers `bq*` só abrem planilhas com nome iniciado em `Q_` — função `bqSheet_(nome)` lança erro caso contrário (§14.5) |
-| Evidência obrigatória | `add`/`update` de campo crítico sem `evidenciaId` válido → `{ok:false, error:'evidencia_obrigatoria'}` (§7.1) |
+| Evidência obrigatória | `add` sem `evidenciaId` válido → `{ok:false, error:'evidencia_obrigatoria'}` (§7.1); em tabelas de evidência obrigatória, `update` de **campo técnico** (qualquer chave fora de `status`/`validacao`/`obs`/`excluido`/carimbos) também exige `evidenciaId` ou `evidencia` inline — `status` muda via `revisar`, `obs` é livre |
 | Enum | valor fora do conjunto fechado → `{ok:false, error:'enum_invalido', campo, valor}` |
 | Duplicata | `QPI` com `(produtoId, ingredienteId)` repetido → `{ok:false, error:'duplicata'}` |
+| Chave lógica de propriedade | `add` em `Q_Propriedades` com `(entidadeTipo, entidadeId, campo, condicao)` já existente **nunca** cria 3ª linha: mesmo valor → `{ok:true, reusado:true}` (evidência nova registrada como suporte); valor diferente → `{ok:true, divergente:true}` com status da linha existente → `divergente` e **valor preservado** (§6.5/§7.3) |
 | Histórico | cada `update` grava `Q_Historico` (por campo alterado) automaticamente; `add` grava `acao=criar` |
 | Soft delete | `delete` em `Q_*` = `excluido=true` + histórico `acao=excluir`; **nunca** `sheet.deleteRow` |
 | Histórico protegido | `tipo='bqHistorico'` com qualquer `action` → `{ok:false, error:'somente_leitura'}` |
-| Integridade referencial | `produtoId`/`ingredienteId`/`evidenciaId` inexistentes → erro (nunca linha órfã) |
+| Integridade referencial | `produtoId`/`ingredienteId`/`evidenciaId` inexistentes → erro (nunca linha órfã); `Q_Propriedades.entidadeId` precisa apontar para produto/ingrediente **não excluído** → `{error:'referencia_invalida', campo:'entidadeId'}` (add e update) |
 | Enum de transição | `Q_Pesquisas.estado` só aceita transições da §8.2 |
 | Cota de escrita | `update` em `Q_Historico` nunca é `force` — não existe `force` na v1 |
 
@@ -554,6 +555,8 @@ Mantém o contrato `{tipo, action:'add'|'update'|'delete', id?, data:{}}`. Regra
 | `bqAgrofitSync` | `{tipo:'bqPesquisas', action:'agrofit', data:{numeroRegistro?, nome?, simular:true?}}` | monta `QPESQ` e, se `simular:false`, executa o lote (§10.3) |
 | `bqFilaProcessar` | `{tipo:'bqPesquisas', action:'processar', data:{limite:20}}` | processa até N itens da fila respeitando tempo/cota (§10.3) |
 | `bqVincular` | `{tipo:'bqProdutos', action:'vincular', data:{produtoId, origemEstoqueId?, origemInfoId?}}` | cria vínculo com cadastro existente + histórico |
+| `bqFichaImport` (Fase 4) | `{tipo:'bqPropriedades', action:'ficha', data:{linhas:[…], simular:true?, limite?}}` | importa produto + documento (dedup por URL) + propriedades físico-químicas (§6.5) a partir das **linhas do cadastro enviadas no payload** — o servidor nunca lê a aba de origem (§14.5); sem fonte utilizável não nasce propriedade (§4.2); re-execução idempotente (§10.3): produto por `origemInfoId`/nome, evidência idêntica pulada |
+| `bqRevisar` (Fase 4) | `{tipo:'bqPropriedades', action:'revisar', data:{id, decisao:'aprovar'\|'rejeitar', motivo?, obs?}}` | revisão humana de nível E: status da propriedade **e** da evidência vinculada + carimbos `revisadoPor`(padrão `usuario`)/`revisadoEm` + histórico `aprovar`/`rejeitar` — o **valor nunca é alterado** (§7.4) |
 
 ### 9.4 Camada de acesso `bqRepo_`
 
@@ -739,6 +742,16 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 - **③–⑤ (fertilizantes, cobre, adjuvantes): SEM COBERTURA AGROFIT — fora do escopo da fonte.** Evidências: (a) spec oficial da API define AGROFIT como "defensivos agrícolas, agrotóxicos, produtos fitossanitários e afins" para controle de pragas; (b) `GET /classes-categorias-agronomicas` retorna **21 classes** (fungicida, inseticida, herbicida, acaricida, nematicida, bactericida, regulador de crescimento, biológicos…) — **nenhuma Fertilizante/Adjuvante/Condicionador**; (c) sondagem `testes/piloto3_fertilizantes.js` (10/11 só falsos positivos) e buscas por marca e titular = 0 para Nutrilife, Biolchim, Yara, Biovita, Potent, Soil, Reviv, Booster, Verno, Nordox, Phosfik, Glucona, Aminon, Fluxxor, Cleanup, Thyper.
 - **Total importado na fase AGROFIT: 24 produtos, 24 `validado`, 0 `pendente`.** Os lotes ③–⑤ passam para a **Fase 4** (fontes ficha técnica/fabricante, §4.2/§6.5), com vínculo explícito (§9.3) quando houver cadastro existente.
 
+**Resultado da Fase 4 (2026-11-15, execução real via `testes/fase4_propriedades.js`, deploy @49):**
+
+- **29/29 produtos do cadastro `insumosInfo` vinculados** (`origemInfoId` preenchido, §11.2): os 19 dos lotes ③–⑤ presentes no cadastro + 10 extras (Carbos, Plenan Cab MG, Previne, Top Lime, Fitofos K, Insector K, Soberano, Larvax, Clorashield, Vandal). Verno/Nordox não estão no cadastro (fila `Q_Pesquisas` continua como pendência, §17 Fase 3).
+- **21 fontes → 17 `Q_Documentos` criados + 4 URLs compartilhadas reusadas** (dedup por URL, §10.3).
+- **36 `Q_Propriedades` criadas** (densidade 11, naturezaFisica 11, solubilidade 10, ph 4) — **100% com `evidenciaId`, 100% `pendente`** (nível E nunca auto-aprova, §7.2; revisão humana pela `action revisar`, §7.4). Valores parseados por campo (ex.: `1,47 g/mL`, intervalo `6,5–7,5`), unidade preservada, nada numérico (anti-coerção §5.3).
+- **8 linhas sem fonte utilizável → 0 propriedades** (§4.2 — sem fonte, sem dado; produto mesmo assim vinculado).
+- **Categorias só por regra/override da §16** (Green Mix/Cleanup/Fluxxor/Flex Ox→Adjuvante; Potent Active/Plant Reviv→Bioestimulante; sem keyword → vazia — nunca adivinhada).
+- **Re-execução idempotente comprovada:** 0 criações, 29 existentes, 36 evidências idênticas puladas (§10.3).
+- Gates verdes: `base_quimica.test.js` **259/259**, `api_smoke.test.js` **81/81** (produção), `regressao_existente.js` **27/27**, `bulario_check.js` **36/36**.
+
 ---
 
 ## 17. Cronograma (6 fases do plano)
@@ -748,7 +761,7 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 | **1 — Estrutura** | 13 planilhas, IDs, evidências, API, testes, guarda não-destrutiva | §§5–7, 9, 13, 14 | **Máxima** |
 | **2 — AGROFIT** | importação com fila/simulação + lotes piloto ①–② (③–⑤ sem cobertura AGROFIT → Fase 4, §16) | §§10, 16 | **Máxima** |
 | **3 — Documentos** | extração de bulas/fichas (pipeline PDF), `Q_Documentos` completo | fase 2 (§1.2) | Alta |
-| **4 — Propriedades** | popula `Q_Propriedades` com fontes (ficha, fabricante) | estrutura pronta (§6.5) | Alta |
+| **4 — Propriedades** | popula `Q_Propriedades` com fontes (ficha, fabricante) | **CONCLUÍDA (2026-11-15)** — `action ficha`/`revisar` (§9.3), 29 vínculos + 36 propriedades com evidência (§16); revisão humana das 36 pendentes é operação contínua | Alta |
 | **5 — Interações** | `Q_Interacoes` com evidência humana (nível E) | estrutura pronta (§6.10–6.11) | Alta |
 | **6 — Integração** | montador consulta a base (motor muda **só aqui**, com testes novos) | §11.3 (motor inalterado até lá) | Final |
 

@@ -7,8 +7,9 @@
    autorizacao).
 
    Uso:
-     node testes/conferencia_piloto1.js           → relatório (nada grava)
-     node testes/conferencia_piloto1.js --aprovar  → só com relatório limpo:
+     node testes/conferencia_piloto1.js [Nome] [Nome2 …]  → relatório
+        (sem nomes = lote piloto ①; nada grava)
+     node testes/conferencia_piloto1.js … --aprovar       → só com relatório limpo:
         grava statusValidacao=validado + ultimaRevisao com autor humano (§8.3)
 
    Rede: sim. Sai com 0 = limpo, 3 = divergências, 1 = erro. */
@@ -16,7 +17,12 @@
 'use strict';
 
 const API = 'https://script.google.com/macros/s/AKfycbyoAG7x4S3xdpUg4_ECL7qx4TpYYi13Q66ah-loeK7CDVNAW9air7nXg6V6GqVrqchKgA/exec';
-const PRODUTOS = ['Elatus', 'Score', 'Amistar Top', 'Cabrio Top', 'Bravonil 720', 'Infinito'];
+const nomesArgs = process.argv.slice(2).filter((a) => a.indexOf('--') !== 0);
+const PRODUTOS = nomesArgs.length ? nomesArgs
+  : ['Elatus', 'Score', 'Amistar Top', 'Cabrio Top', 'Bravonil 720', 'Infinito'];
+/* Ajustes de busca do piloto ② (2026-11-15): nomes que a busca por nome
+   resolveria errado → número de registro (mesmos do piloto2_inseticidas.js). */
+const REGISTROS = { 'Lanate': '3010', 'Abamectina': '3801' };
 const APROVAR = process.argv.indexOf('--aprovar') > -1;
 
 async function post(payload) {
@@ -56,19 +62,23 @@ const norm = (s) => String(s === undefined || s === null ? '' : s)
 
   let divergencias = 0;
   const linhas = [];
+  const achados = new Map();
   const falhar = (msg) => { divergencias++; linhas.push('    ✗ ' + msg); };
   const ok = (msg) => linhas.push('    ✓ ' + msg);
 
   for (const nome of PRODUTOS) {
     linhas.push('--- ' + nome);
-    const prd = produtos.find((p) => p.nomeComercial === nome);
-    if (!prd) { falhar('produto ausente da Q_Produtos'); continue; }
-    const id = String(prd.id);
 
     // 1) identidade: plano ao vivo (busca + detalhe no AGROFIT) vs linha atual
-    const sim = await post({ tipo: 'bqPesquisas', action: 'agrofit', data: { nome: nome } });
+    const busca = REGISTROS[nome] ? { numeroRegistro: REGISTROS[nome] } : { nome: nome };
+    const sim = await post({ tipo: 'bqPesquisas', action: 'agrofit', data: busca });
     if (!sim.ok) { falhar('simular falhou: ' + sim.error); continue; }
     const plano = sim.plano;
+    const prd = produtos.find((p) => String(p.registroMAPA) === String(plano.registro)) ||
+      produtos.find((p) => p.nomeComercial === nome);
+    if (!prd) { falhar('produto ausente da Q_Produtos (reg ' + plano.registro + ')'); continue; }
+    achados.set(nome, prd);
+    const id = String(prd.id);
     if (plano.produto.acao === 'identico') {
       ok('identidade idêntica ao AGROFIT (registro ' + plano.registro + ', status ' + prd.statusValidacao + ')');
     } else if (plano.produto.acao === 'atualizar') {
@@ -133,10 +143,16 @@ const norm = (s) => String(s === undefined || s === null ? '' : s)
       if (sobra.length) falhar('culturas na planilha fora do AGROFIT: ' + sobra.join(' ; '));
     }
 
-    // 4) documentos do plano presentes (URL global)
-    const docsFaltando = plano.documentos.filter((d) => !urlDocs.has(norm(d.url)));
-    if (!docsFaltando.length) ok('documentos: ' + plano.documentos.length + ' do AGROFIT presentes em Q_Documentos');
-    else falhar('documentos ausentes: ' + docsFaltando.map((d) => d.titulo).join(' ; '));
+    // 4) documentos do plano presentes (URL global). Docs com tipo fora do
+    //    enum §6.7 (ex.: 'Ofício') são pulados por design na importação —
+    //    não entram na exigência de presença.
+    const docsEsperados = plano.documentos.filter((d) => d.acao === 'criar' || d.motivo === 'url_existente');
+    const docsForaEnum = plano.documentos.filter((d) => d.acao !== 'criar' && d.motivo !== 'url_existente');
+    const docsFaltando = docsEsperados.filter((d) => !urlDocs.has(norm(d.url)));
+    if (!docsFaltando.length) {
+      ok('documentos: ' + docsEsperados.length + ' do AGROFIT presentes em Q_Documentos' +
+        (docsForaEnum.length ? ' (' + docsForaEnum.length + ' com tipo fora do enum §6.7, pulados por design)' : ''));
+    } else falhar('documentos ausentes: ' + docsFaltando.map((d) => d.titulo).join(' ; '));
 
     // 5) blocos de evidência da importação
     const blocos = new Set(evs.filter((e) => String(e.entidadeId) === id)
@@ -168,7 +184,7 @@ const norm = (s) => String(s === undefined || s === null ? '' : s)
   const agora = new Date().toISOString();
   let falhas = 0;
   for (const nome of PRODUTOS) {
-    const prd = produtos.find((p) => p.nomeComercial === nome);
+    const prd = achados.get(nome);
     const r = await post({
       tipo: 'bqProdutos', action: 'update', id: prd.id,
       data: { statusValidacao: 'validado', ultimaRevisao: agora },

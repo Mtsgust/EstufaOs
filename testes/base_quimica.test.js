@@ -601,6 +601,236 @@ ok(!out.ok && out.error === 'ação inválida', 'ação desconhecida em bq* → 
 out = JSON.parse(ctx.doGet({ parameter: { tipo: 'tiposInvalido' } }).getContent());
 ok(!out.ok, 'tipo desconhecido antigo continua com erro controlado');
 
+/* ============ Fase 2 — importação AGROFIT (§9.3/§10/§14.3) ============ */
+secao('Fase 2 — AGROFIT: plano, simulação, execução, fila e vínculo (§10)');
+
+/* Fixture offline do payload de detalhe (§14.3(4) — nunca chama rede). */
+const FIX = {
+  numero_registro: '99991',
+  marca_comercial: ['Fungix 999'],
+  titular_registro: 'Coagri Teste Ltda',
+  classe_categoria_agronomica: ['Fungicida'],
+  formulacao: 'Suspensão Concentrada (SC)',
+  ingrediente_ativo: ['Mancozebe', 'Tebuconazol'],
+  ingrediente_ativo_detalhado: [
+    { ingrediente_ativo: 'Mancozebe', grupo_quimico: 'Ditiocarbamatos', concentracao: '640', unidade_medida: 'g/L', percentual: '' },
+    { ingrediente_ativo: 'Tebuconazol', grupo_quimico: 'Triazol', concentracao: '200', unidade_medida: 'g/L', percentual: '' },
+    { ingrediente_ativo: 'Mancozebe', grupo_quimico: 'Ditiocarbamatos', concentracao: '640', unidade_medida: 'g/L', percentual: '' }
+  ],
+  produto_biologico: false,
+  url_agrofit: 'https://agrofit.agricultura.gov.br/detalhe/99991',
+  documentos: [
+    { descricao: 'Bula Fungix 999', tipo_documento: 'Bula', data_inclusao: '2024-05-01', url: 'https://agrofit/bula/99991.pdf' },
+    { descricao: 'Bula Fungix 999', tipo_documento: 'Bula', data_inclusao: '2024-06-01', url: 'https://agrofit/bula/99991-v2.pdf' },
+    { descricao: 'Bula Fungix 999', tipo_documento: 'Bula', url: 'https://agrofit/bula/99991.pdf' },
+    { descricao: 'Ato administrativo', tipo_documento: 'Ato', url: 'https://agrofit/ato/99991.pdf' }
+  ],
+  culturas_autorizadas: [
+    { cultura: 'Soja', estadio: 'V4-V6', dose_referencia: '300 mL/ha', condicao: '' }
+  ]
+};
+
+// --- helpers puros ---
+ok(ctx.bqDocTipo_('Bula') === 'bula' && ctx.bqDocTipo_('ficha técnica') === 'ficha_tecnica',
+  'bqDocTipo_ mapeia tipo_documento AGROFIT → enum Q_Documentos');
+ok(ctx.bqDocTipo_('Ato') === '', 'tipo_documento desconhecido → vazio (pula, não inventa)');
+ok(ctx.bqCategoriaDaClasse_('Fungicida') === 'Fungicida' && ctx.bqCategoriaDaClasse_('Inseticida') === 'Inseticida',
+  'classe AGROFIT → categoria enum');
+ok(ctx.bqCategoriaDaClasse_('') === '' && ctx.bqCategoriaDaClasse_('Coisa da Natureza') === 'Outros',
+  'classe vazia → vazio; fora do padrão → Outros (nunca inventa)');
+const detEnv = ctx.bqAgrofitExtrair_({ results: { content: [FIX] } });
+ok(detEnv && detEnv.numero_registro === '99991', 'bqAgrofitExtrair_ desaninha envelope results.content');
+ok(Array.isArray(ctx.bqAgrofitLista_({ results: [{ numero_registro: '1', marca_comercial: ['A'] }] })) &&
+   ctx.bqAgrofitLista_({ results: [{ numero_registro: '1' }] }).length === 1,
+  'bqAgrofitLista_ aceita envelope results[]');
+ok(ctx.bqAgrofitLista_({ content: [] }).length === 0, 'lista vazia em envelope desconhecido → []');
+
+// --- plano puro (nada é escrito) ---
+const atuaisVazio = { produtos: [], ingredientes: [], documentos: [] };
+const plan0 = ctx.bqImportPlano_(FIX, atuaisVazio);
+ok(plan0.produto.acao === 'criar' && plan0.registro === '99991', 'produto novo → acao criar');
+ok(plan0.produto.campos.categoria === 'Fungicida' && plan0.produto.campos.nomeNormalizado === 'fungix999',
+  'campos derivados (categoria, nomeNormalizado) preenchidos');
+ok(plan0.produto.campos.formula === 'Suspensão Concentrada (SC)', 'formula preservada com acento');
+ok(plan0.ingredientes.length === 2 && plan0.relacoes.length === 2,
+  'dedup de ingrediente (3 linhas → 2) e par único QPI (2 relações)');
+ok(plan0.ingredientes[0].nome === 'Mancozebe' && plan0.ingredientes[1].nome === 'Tebuconazol',
+  'ordem do payload preservada');
+ok(plan0.documentos.filter((d) => d.acao === 'criar').length === 2 &&
+   plan0.documentos.filter((d) => d.motivo === 'url_existente').length === 1 &&
+   plan0.documentos.filter((d) => d.motivo === 'tipo_desconhecido').length === 1,
+  'docs: 2 criáveis, 1 URL duplicada no payload pula, 1 tipo desconhecido pula');
+ok(plan0.culturas.length === 1 && plan0.culturas[0].cultura === 'Soja', 'cultura extraída do payload');
+ok(plan0.faltantes.length === 0, 'fixture sem campos obrigatórios faltantes');
+const planSemNome = ctx.bqImportPlano_(
+  { numero_registro: '99992', marca_comercial: [], classe_categoria_agronomica: ['Fungicida'] }, atuaisVazio);
+ok(planSemNome.produto.acao === 'impossivel' && planSemNome.faltantes.indexOf('marca_comercial') > -1,
+  'marca_comercial ausente → impossivel + faltantes');
+const planExcluido = ctx.bqImportPlano_(FIX, {
+  produtos: [{ id: 'QPROD_ex', registroMAPA: '99991', excluido: true }], ingredientes: [], documentos: []
+});
+ok(planExcluido.produto.acao === 'ignorado_excluido' && planExcluido.produto.id === 'QPROD_ex',
+  'registro igual a produto excluído → ignorado_excluido (não reativa)');
+
+// --- substitui: identidade existente com URL nova ---
+const planSub = ctx.bqImportPlano_(FIX, {
+  produtos: [], ingredientes: [],
+  documentos: [{ id: 'QDOC_old', tipo: 'bula', titulo: 'Bula Fungix 999', url: 'https://agrofit/bula/antiga.pdf', excluido: '' }]
+});
+ok(planSub.documentos[0].acao === 'criar' && planSub.documentos[0].substitui === 'QDOC_old',
+  'doc com mesmo tipo+título e URL nova → substitui o anterior');
+
+// --- simulação (§14.3(4)): NÃO escreve em nenhuma planilha bq ---
+function totalLinhasBq() {
+  return ['bqProdutos', 'bqIngredientes', 'bqProdIngredientes', 'bqDocumentos', 'bqCulturas',
+    'bqPesquisas', 'bqEvidencias', 'bqHistorico']
+    .reduce((s, t) => s + ctx.bqDadosTipo_(t).length, 0);
+}
+const lin0 = totalLinhasBq();
+const rSim = post({ tipo: 'bqPesquisas', action: 'agrofit', data: { numeroRegistro: '99991', detalhe: FIX } });
+ok(rSim.ok && rSim.simular === true, 'action agrofit com simular default → simular:true');
+ok(rSim.plano && rSim.plano.produto.acao === 'criar', 'simular devolve o plano');
+ok(totalLinhasBq() === lin0, 'simular não escreve em nenhuma planilha bq');
+const rSimSem = post({ tipo: 'bqPesquisas', action: 'agrofit', data: { detalhe: { numero_registro: '99992', marca_comercial: [] } } });
+ok(rSimSem.ok && rSimSem.plano.produto.acao === 'impossivel',
+  'simular expõe payload impossível em vez de exceção');
+const rSemCampo = post({ tipo: 'bqPesquisas', action: 'agrofit', data: {} });
+ok(!rSemCampo.ok && rSemCampo.error === 'campo_obrigatorio' && rSemCampo.campo === 'numeroRegistro|nome',
+  'agrofit sem numeroRegistro|nome → campo_obrigatorio');
+ok(post({ tipo: 'bqProdutos', action: 'agrofit', data: {} }).error === 'ação inválida',
+  'action agrofit só existe em bqPesquisas (§9.3)');
+
+// --- execução real (simular:false) com fixture offline ---
+const rImp1 = post({ tipo: 'bqPesquisas', action: 'agrofit',
+  data: { numeroRegistro: '99991', detalhe: FIX, simular: false } });
+ok(rImp1.ok && rImp1.simular === false, 'execução aceita com fixture offline');
+ok(!!rImp1.produtoId && !!rImp1.filaId, 'produto e fila criados');
+const fila1 = ctx.bqAcharId_('bqPesquisas', rImp1.filaId).obj;
+ok(String(fila1.estado) === 'concluido' && String(fila1.execucaoPor) === 'ia:import_agrofit',
+  'fila concluída com carimbo import_agrofit');
+ok(String(fila1.resumoResultado).indexOf('produto criado') === 0, 'resumo da fila: produto criado');
+const prod1 = ctx.bqAcharId_('bqProdutos', rImp1.produtoId).obj;
+ok(prod1.nomeComercial === 'Fungix 999' && prod1.registroMAPA === '99991',
+  'produto criado com registro em texto');
+ok(String(prod1.categoria) === 'Fungicida' && String(prod1.statusValidacao) === 'pendente',
+  'categoria enum + statusValidacao default');
+ok(!!rImp1.evidenciaId, 'add respondeu com o id da evidência do bloco identidade');
+const evIdent = ctx.bqDadosTipo_('bqEvidencias').filter((e) => e.campo === 'identidade' && String(e.entidadeId) === String(rImp1.produtoId));
+ok(evIdent.length === 1 && evIdent[0].fonteTipo === 'registro_mapa' &&
+   evIdent[0].revisadoPor === 'ia:import_agrofit' && evIdent[0].status === 'aprovado',
+  'evidência identidade: fonte oficial, carimbo ia, status aprovado');
+const hImp = ctx.bqDadosTipo_('bqHistorico').filter((h) => h.acao === 'importar' && String(h.entidadeId) === String(rImp1.produtoId));
+ok(hImp.length >= 1, 'histórico registrou acao=importar no produto');
+const ingsNovos = ctx.bqDadosTipo_('bqIngredientes').filter((i) => !i.excluido && (i.nome === 'Mancozebe' || i.nome === 'Tebuconazol'));
+ok(ingsNovos.length === 2, '2 ingredientes criados');
+const pis1 = ctx.bqDadosTipo_('bqProdIngredientes').filter((p) => !p.excluido && String(p.produtoId) === String(rImp1.produtoId));
+ok(pis1.length === 2 && pis1.every((p) => !!p.evidenciaId), '2 relações criadas (par único), todas com evidenciaId');
+const evComp = ctx.bqDadosTipo_('bqEvidencias').filter((e) => e.campo === 'composicao' && String(e.entidadeId) === String(rImp1.produtoId));
+ok(evComp.length === 1 && evComp[0].status === 'aprovado', '1 evidência do bloco composicao (sob demanda)');
+const docs1 = ctx.bqDadosTipo_('bqDocumentos').filter((d) => !d.excluido && String(d.url).indexOf('99991') > -1);
+ok(docs1.length === 2 && docs1.every((d) => String(d.fonte) === 'agrofit'), '2 documentos agrofit (URL dup e tipo desconhecido pulados)');
+ok(rImp1.resultado.pulados.indexOf('documento_url_existente') > -1 &&
+   rImp1.resultado.pulados.indexOf('documento_tipo_desconhecido') > -1,
+  'pulados registram url_existente e tipo_desconhecido');
+const cults1 = ctx.bqDadosTipo_('bqCulturas').filter((c) => String(c.produtoId) === String(rImp1.produtoId));
+ok(cults1.length === 1 && cults1[0].cultura === 'Soja' && !!cults1[0].evidenciaId, 'cultura criada com evidência');
+ok(!!ctx.bqDadosTipo_('bqEvidencias').find((e) => e.campo === 'autorizacao' && String(e.entidadeId) === String(rImp1.produtoId)),
+  'evidência do bloco autorizacao criada');
+ok(rImp1.resultado.evidencias === 2, 'resumo: 2 evidências de bloco (composicao + autorizacao)');
+
+// --- idempotência: reimportar o mesmo payload não duplica nada ---
+const rImp2 = post({ tipo: 'bqPesquisas', action: 'agrofit',
+  data: { numeroRegistro: '99991', detalhe: FIX, simular: false } });
+ok(rImp2.ok && rImp2.produtoId === rImp1.produtoId, 'reimport casa o mesmo produto (registroMAPA)');
+ok(rImp2.reusado === true && rImp2.filaId === rImp1.filaId, 'fila com mesma consulta é reusada');
+ok(ctx.bqDadosTipo_('bqProdutos').filter((p) => !p.excluido && p.registroMAPA === '99991').length === 1,
+  'produto não duplicou');
+ok(ctx.bqDadosTipo_('bqIngredientes').filter((i) => !i.excluido && i.nome === 'Mancozebe').length === 1,
+  'ingrediente não duplicou');
+ok(ctx.bqDadosTipo_('bqProdIngredientes').filter((p) => !p.excluido && String(p.produtoId) === String(rImp1.produtoId)).length === 2,
+  'relações não duplicaram');
+ok(rImp2.resultado.documentos === 0 && rImp2.resultado.culturas === 0 &&
+   rImp2.resultado.ingredientes === 0 && rImp2.resultado.relacoes === 0,
+  'reimport: 0 criações (tudo idêntico)');
+ok(rImp2.resumo.indexOf('produto conferido') === 0, 'reimport: resumo "produto conferido"');
+
+// --- divergente: produto validado não é sobrescrito (§10.3) ---
+ok(post({ tipo: 'bqProdutos', action: 'update', id: rImp1.produtoId,
+  data: { statusValidacao: 'validado' } }).ok, 'produto marcado como validado');
+const FIX_DIV = Object.assign({}, FIX, { formulacao: 'Emulsão Concentrada (EC)' });
+const rImpDiv = post({ tipo: 'bqPesquisas', action: 'agrofit',
+  data: { numeroRegistro: '99991', detalhe: FIX_DIV, simular: false } });
+ok(rImpDiv.ok && rImpDiv.plano.produto.acao === 'divergente', 'plano marca divergente (validado + conflito)');
+ok(String(ctx.bqAcharId_('bqProdutos', rImp1.produtoId).obj.formula) === 'Suspensão Concentrada (SC)',
+  'divergente NÃO sobrescreve a formula');
+ok(rImpDiv.resumo.indexOf('produto conferido') === 0 && rImpDiv.resultado.ingredientes === 0,
+  'divergente: resto da importação ignorado (pulado produto_divergente)');
+ok(rImpDiv.resultado.pulados.indexOf('produto_divergente') > -1, 'pulados registram produto_divergente');
+const evIdent2 = ctx.bqDadosTipo_('bqEvidencias').filter((e) => e.campo === 'identidade' && String(e.entidadeId) === String(rImp1.produtoId));
+ok(evIdent2.length === 2 && evIdent2[1].status === 'divergente',
+  'evidência divergente coexiste com a anterior (valor anterior preservado)');
+
+// --- ignorado_excluido na execução ---
+const rDelEx = post({ tipo: 'bqProdutos', action: 'add',
+  data: { nomeComercial: 'Excl Teste', registroMAPA: '99992' },
+  evidencia: { campo: 'registroMAPA', valor: '99992', fonteTipo: 'registro_mapa', fonteNome: 'MAPA' } });
+ok(rDelEx.ok, 'produto com registro 99992 criado para o teste');
+post({ tipo: 'bqProdutos', action: 'delete', id: rDelEx.id });
+const rImpEx = post({ tipo: 'bqPesquisas', action: 'agrofit',
+  data: { numeroRegistro: '99992', detalhe: Object.assign({}, FIX, { numero_registro: '99992', marca_comercial: ['Excl Teste'] }), simular: false } });
+ok(rImpEx.ok && rImpEx.aviso === 'produto_excluido', 'import de registro excluído → aviso, sem exceção');
+ok(ctx.bqAcharId_('bqProdutos', rDelEx.id).obj.excluido, 'produto segue excluído (não reativado)');
+ok(ctx.bqDadosTipo_('bqPesquisas').filter((q) => String(q.consulta) === '99992').length === 0,
+  'nenhuma fila criada para produto excluído');
+
+// --- processar (§10.3): sem token, com falha de rede, com orçamento ---
+const rQ = post({ tipo: 'bqPesquisas', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: rImp1.produtoId, consulta: '123456', fonteAlvo: 'agrofit' } });
+ok(rQ.ok && String(ctx.bqAcharId_('bqPesquisas', rQ.id).obj.estado) === 'pendente',
+  'item de fila pendente criado');
+ok(!mundo.props.has('AGROAPI_TOKEN'), 'nenhum token nas propriedades no teste');
+let rProc = post({ tipo: 'bqPesquisas', action: 'processar', data: {} });
+ok(!rProc.ok && rProc.error === 'agrofit_token_ausente', 'processar sem token → agrofit_token_ausente');
+ok(String(ctx.bqAcharId_('bqPesquisas', rQ.id).obj.estado) === 'pendente',
+  'token ausente deixa o item pendente (não vira erro)');
+ok(ctx.bqConfigurarAgrofitToken('') === 'vazio', 'bootstrap com token vazio → vazio');
+ok(ctx.bqConfigurarAgrofitToken('tok-abc') === 'ok:7' && mundo.props.get('AGROAPI_TOKEN') === 'tok-abc',
+  'bootstrap grava AGROAPI_TOKEN nas Script Properties');
+ok(ctx.bqAgrofitToken_() === 'tok-abc', 'bqAgrofitToken_ lê o token gravado');
+mundo.props.delete('AGROAPI_TOKEN');
+mundo.props.set('AGROAPI_TOKEN', 'tok-teste');
+rProc = post({ tipo: 'bqPesquisas', action: 'processar', data: { limite: 1 } });
+ok(rProc.ok && rProc.processados === 1 && rProc.falhas === 1, 'com token e sem rede → falha controlada, 1 processado');
+const filaErr = ctx.bqAcharId_('bqPesquisas', rQ.id).obj;
+ok(String(filaErr.estado) === 'erro' && /fetch_falhou/.test(String(filaErr.ultimoErro)),
+  'item de erro com ultimoErro registrado');
+mundo.props.delete('AGROAPI_TOKEN');
+ok(ctx.bqFilaProcessar_({ data: { limite: 0 } }).ok, 'processar com limite inválido usa default (sem pendentes)');
+ctx.BQ_FETCH_CONTADOR_ = 150;
+const rQ3 = post({ tipo: 'bqPesquisas', action: 'add',
+  data: { entidadeTipo: 'produto', entidadeId: rImp1.produtoId, consulta: '99991', fonteAlvo: 'agrofit' } });
+rProc = post({ tipo: 'bqPesquisas', action: 'processar', data: {} });
+ok(!rProc.ok && rProc.error === 'agrofit_orcamento_excedido', 'orçamento excedido → agrofit_orcamento_excedido');
+ok(String(ctx.bqAcharId_('bqPesquisas', rQ3.id).obj.estado) === 'pendente',
+  'orçamento excedido deixa o item pendente');
+ctx.BQ_FETCH_CONTADOR_ = 0;
+
+// --- vincular (§9.3/§16) ---
+ok(post({ tipo: 'bqProdutos', action: 'vincular', data: {} }).error === 'campo_obrigatorio',
+  'vincular sem produtoId → campo_obrigatorio');
+ok(post({ tipo: 'bqProdutos', action: 'vincular', data: { produtoId: 'QPROD_nao', origemEstoqueId: 'E1' } }).error === 'id não encontrado',
+  'vincular com produto inexistente → id não encontrado');
+ok(post({ tipo: 'bqProdutos', action: 'vincular', data: { produtoId: rImp1.produtoId, extra: 'x' } }).error === 'campo_desconhecido',
+  'vincular com campo desconhecido → campo_desconhecido');
+ok(post({ tipo: 'bqProdutos', action: 'vincular', data: { produtoId: rImp1.produtoId } }).error === 'campo_obrigatorio',
+  'vincular sem origem → campo_obrigatorio');
+const rV = post({ tipo: 'bqProdutos', action: 'vincular',
+  data: { produtoId: rImp1.produtoId, origemInfoId: 'INFO1' } });
+ok(rV.ok && rV.alterados === 1, 'vínculo com origemInfoId aceito');
+ok(String(ctx.bqAcharId_('bqProdutos', rImp1.produtoId).obj.origemInfoId) === 'INFO1', 'origemInfoId gravado');
+ok(ctx.bqDadosTipo_('bqHistorico').some((h) => String(h.entidadeId) === String(rImp1.produtoId) && h.campo === 'origemInfoId'),
+  'histórico registrou o vínculo');
+
 /* ============================ critério final ============================ */
 console.log('');
 console.log((total - falhas) + '/' + total + ' asserções passaram.');

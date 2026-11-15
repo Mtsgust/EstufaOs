@@ -518,7 +518,7 @@ function bqParseValorProp_(texto) {
     }
     return { valor: bruto, valorMin: '', valorMax: '', unidade: '', condicao: condicao };
   }
-  var rg = /^(\d+(?:[.,]\d+)?)\s*[–—−]\s*(\d+(?:[.,]\d+)?)\s*(.*)$/.exec(s);
+  var rg = /^(\d+(?:[.,]\d+)?)\s*[–—−-]\s*(\d+(?:[.,]\d+)?)\s*(.*)$/.exec(s);
   if (rg) {
     var uni = bqNormalizar_(rg[3]);
     if (/\d/.test(uni)) uni = '';   // cauda com número não é unidade
@@ -2232,13 +2232,15 @@ function bqFichaProcessarLinha_(linha, estado) {
       var camposProp = { entidadeTipo: 'produto', entidadeId: temId ? produto.id : '',
         campo: campo, valor: parsed.valor, valorMin: parsed.valorMin, valorMax: parsed.valorMax,
         unidade: parsed.unidade, condicao: parsed.condicao,
-        obs: 'transcrito do cadastro insumosInfo (id ' + infoId + ')' };
+        obs: infoId ? 'transcrito do cadastro insumosInfo (id ' + infoId + ')'
+          : 'extraído da fonte da evidência (§4.2)' };
       var evCampo = bqCampoEvidenciaProp_(campo, parsed.condicao);
       var evidencia = { campo: evCampo, valor: bruto, unidade: parsed.unidade,
         fonteTipo: fonte.fonteTipo, fonteNome: fonte.fonteNome,
         documentoId: docId, documentoUrl: fonte.url, trechoOriginal: bruto,
         confiabilidade: fonte.confiabilidade,
-        obs: 'transcrito do cadastro insumosInfo (id ' + infoId + ')' };
+        obs: infoId ? 'transcrito do cadastro insumosInfo (id ' + infoId + ')'
+          : 'extraído da fonte da evidência (§4.2)' };
 
       var acao = 'criar';
       if (temId) {

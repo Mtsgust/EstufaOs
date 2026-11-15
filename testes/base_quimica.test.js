@@ -891,6 +891,12 @@ pv = ctx.bqParseValorProp_('1,410 g/mL (20 °C)');
 ok(pv && pv.valor === '1,410' && pv.unidade === 'g/mL' && pv.condicao === '20 °C',
   'parêntese com ° vira condição (chave da propriedade, §6.5)');
 ok(ctx.bqParseValorProp_('') === null, 'vazio → null (propriedade não é criada)');
+pv = ctx.bqParseValorProp_('5,0 - 6,0');
+ok(pv && pv.valor === '' && pv.valorMin === '5,0' && pv.valorMax === '6,0' && pv.unidade === '',
+  'intervalo com hífen ASCII "5,0 - 6,0" (FDS) → valorMin+valorMax');
+pv = ctx.bqParseValorProp_('1,196 g/cm³ (20ºC)');
+ok(pv && pv.valor === '1,196' && pv.unidade === 'g/cm³' && pv.condicao === '20ºC',
+  'densidade da ficha com condição (20ºC) → valor+unidade+condição');
 ok(ctx.bqCampoEvidenciaProp_('ph', '20 °C') === 'ph (20 °C)', 'evidência herda a condição no campo');
 ok(ctx.bqCampoEvidenciaProp_('ph', '') === 'ph', 'sem condição o campo fica limpo');
 

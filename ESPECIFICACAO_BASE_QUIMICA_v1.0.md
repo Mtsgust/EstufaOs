@@ -752,6 +752,14 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 - **Re-execução idempotente comprovada:** 0 criações, 29 existentes, 36 evidências idênticas puladas (§10.3).
 - Gates verdes: `base_quimica.test.js` **259/259**, `api_smoke.test.js` **81/81** (produção), `regressao_existente.js` **27/27**, `bulario_check.js` **36/36**.
 
+**Complemento da Fase 4 (2026-11-15, deploy @50 — busca nas URLs já vinculadas):**
+
+- **Correções de parse:** intervalo com hífen ASCII (`5,0 - 6,0` do FDS) agora vira `valorMin`+`valorMax` (antes só aceitava `–—−`); `obs` da propriedade fica fiel à evidência quando o dado não veio do cadastro (`extraído da fonte da evidência (§4.2)` em vez de `transcrito do cadastro insumosInfo`).
+- **Busca nas 17 URLs distintas de `Q_Documentos`** (páginas de produto, PDFs, FDS, fichas) → **+7 `Q_Propriedades`** em 3 produtos existentes, **100% com evidência e `pendente`**: Aminon 25 (naturezaFisica `Fluído / Líquido` — página technes.com.br), Booster Pro (ph `5,0 - 6,0` como intervalo, solubilidade `Totalmente solúvel`, naturezaFisica `Líquido, fluido em solução` — FDS Agrichem Rev02) e Thyper S-50 (densidade `1,196 g/cm³ (20ºC)` com valor/unidade/condição parseados, solubilidade `Completa`, naturezaFisica `Líquido` — ficha no Google Drive). +2 `Q_Documentos` novos (FDS Booster Pro, ficha Thyper).
+- **Total da Fase 4: 43 `Q_Propriedades`** (densidade 12, naturezaFisica 14, solubilidade 12, ph 5) — 14/53 produtos com ≥1 propriedade; **todas `pendente` = revisão humana (§7.4), nenhuma auto-aprovada**. Sem dado nas fontes lidas (miscibilidade não aparece em nenhuma das 17): 24 AGROFIT, 8 sem fonte, Nutrisoil/Quimia inacessíveis — aguardam dados do usuário.
+- **Vazamento corrigido:** a seção roundtrip do smoke (§14.3(2)) deixava 1 densidade órfã por execução (produto soft-deletado, propriedade ativa) — 8 órfãs removidas em produção e limpeza da propriedade adicionada ao teste.
+- Gates verdes: `base_quimica.test.js` **261/261** (parse do hífen ASCII + condição `(20ºC)`), `api_smoke.test.js` **83/83** (produção, com anti-órfãs), `regressao_existente.js` **27/27**, `bulario_check.js` **36/36**.
+
 ---
 
 ## 17. Cronograma (6 fases do plano)
@@ -761,7 +769,7 @@ Varredura do `Code.gs`: nenhuma função iniciada com `bq` referencia `getSheet_
 | **1 — Estrutura** | 13 planilhas, IDs, evidências, API, testes, guarda não-destrutiva | §§5–7, 9, 13, 14 | **Máxima** |
 | **2 — AGROFIT** | importação com fila/simulação + lotes piloto ①–② (③–⑤ sem cobertura AGROFIT → Fase 4, §16) | §§10, 16 | **Máxima** |
 | **3 — Documentos** | extração de bulas/fichas (pipeline PDF), `Q_Documentos` completo | fase 2 (§1.2) | Alta |
-| **4 — Propriedades** | popula `Q_Propriedades` com fontes (ficha, fabricante) | **CONCLUÍDA (2026-11-15)** — `action ficha`/`revisar` (§9.3), 29 vínculos + 36 propriedades com evidência (§16); revisão humana das 36 pendentes é operação contínua | Alta |
+| **4 — Propriedades** | popula `Q_Propriedades` com fontes (ficha, fabricante) | **CONCLUÍDA (2026-11-15)** — `action ficha`/`revisar` (§9.3), 29 vínculos + 43 propriedades com evidência (§16); revisão humana das 43 pendentes é operação contínua | Alta |
 | **5 — Interações** | `Q_Interacoes` com evidência humana (nível E) | estrutura pronta (§6.10–6.11) | Alta |
 | **6 — Integração** | montador consulta a base (motor muda **só aqui**, com testes novos) | §11.3 (motor inalterado até lá) | Final |
 

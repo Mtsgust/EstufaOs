@@ -132,6 +132,14 @@ async function post(payload) {
   // Deixa o registro de teste excluído de vez (soft delete — auditoria preservada).
   const fim = await post({ tipo: 'bqProdutos', action: 'delete', id: criado.id });
   ok(fim.ok, 'delete final deixa __teste__ excluído');
+  // Propriedade criada nesta seção também é soft-deletada: sem isto, cada
+  // execução do smoke deixa 1 densidade órfã (produto excluído, linha ativa).
+  const delProp = await post({ tipo: 'bqPropriedades', action: 'delete', id: prop.id });
+  ok(delProp.ok, 'limpeza: delete da densidade de __teste__ aceito');
+  const propDepois = (await get('tipo=bqPropriedades')).data
+    .find((p) => String(p.id) === String(prop.id));
+  ok(propDepois && (propDepois.excluido === true || propDepois.excluido === 'true'),
+    'limpeza: densidade de __teste__ soft-deletada (sem órfãs)');
 
   /* ---------- 3) Q_Historico somente leitura ---------- */
   secao('§14.3(3) — Q_Historico rejeita escrita');

@@ -1068,11 +1068,12 @@ function bqAgrofitDetalhe_(numeroRegistro) {
   return det ? { ok: true, detalhe: det } : { ok: false, error: 'agrofit_produto_nao_encontrado' };
 }
 
-/* Busca por nome → registro exato (ou primeiro resultado, marcando aproximado). */
+/* Busca por nome → registro exato (ou primeiro resultado, marcando aproximado).
+   Docs oficiais: `q` só existe em /search/produtos-formulados (§4.1a). */
 function bqAgrofitBuscaNumero_(nome) {
   var q = bqNormalizar_(nome);
   if (!q) return { ok: false, error: 'campo_obrigatorio', campo: 'nome' };
-  var r = bqAgrofitFetch_('/produtos-formulados?q=' + encodeURIComponent(q) + '&page=1');
+  var r = bqAgrofitFetch_('/search/produtos-formulados?q=' + encodeURIComponent(q) + '&page=1');
   if (!r.ok) return r;
   var lista = bqAgrofitLista_(r.dados);
   if (!lista.length) return { ok: false, error: 'agrofit_produto_nao_encontrado' };

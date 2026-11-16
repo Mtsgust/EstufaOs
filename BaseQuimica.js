@@ -5,8 +5,10 @@
  * Regras da v1 (não negociáveis):
  *  - 13 planilhas Q_* numa pasta PRIVADA do Drive (bqPlanilha_), só acessível
  *    pelo Apps Script — nunca misturadas com as planilhas operacionais.
- *  - Nenhuma página do site consome tipos bq* (§12): endpoints existem para o
- *    backend/futuro, não são referenciados por nenhum HTML.
+ *  - Consumo de tipos bq*: apenas o motor de análise do bulario.html (fase 6,
+ *    §11.3/§12) em LEITURA via batch GET silencioso; nenhuma página expõe
+ *    estrutura e nenhuma ação de escrita bq* é chamada pelo frontend (guarda em
+ *    base_quimica.test.js §12).
  *  - Nenhum handler bq* escreve fora de planilhas Q_* (guarda em getSheet_).
  *  - Nenhum dado técnico entra sem evidência (§7.1); nulos nunca são inventados.
  *  - Q_Historico é append-only (somenteLeitura para a API).

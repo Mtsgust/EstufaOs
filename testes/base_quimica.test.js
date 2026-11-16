@@ -3,7 +3,7 @@
      §14.1 itens 1–9  — lógica pura + gravação com mocks do Apps Script
      §14.2            — sintaxe dos scripts do backend (vm.Script ~ node --check)
      §14.5            — guarda de escopo: código bq* só passa por bqSheet_ e Q_*
-     §12              — nenhuma página (.html/.js) referencia tipos bq*
+     §12              — só bulario.html referencia tipos bq* (leitura; nenhuma escrita)
    Uso: node testes/base_quimica.test.js
    (rede não é usada — o smoke da API publicada fica em api_smoke.test.js) */
 
@@ -104,7 +104,10 @@ ok(citouOperacional.length === 0,
   (citouOperacional.length ? ' — ' + citouOperacional.join(', ') : ''));
 
 /* ============================ §12 sem interface ============================ */
-secao('§12 — nenhuma página referencia tipos bq*');
+/* Fase 6 executada: o motor do bulario.html consome bq* em LEITURA silenciosa
+   (batch GET ?tipos=…, §11.3/§12). Nenhuma outra página referencia bq* e
+   bulario.html NUNCA grava em tipos bq* (sem ações add/update/delete/revisar). */
+secao('§12 — só o bulario.html referencia tipos bq* (leitura, sem escrita)');
 const PADRAO_BQ = /\btipo\s*=\s*bq|\btipos\s*=[^"'<>]*\bbq|\bbq(Visao|DoGet|DoPost|Produtos|Ingredientes|ProdIngredientes|Formulacoes|Propriedades|Evidencias|Documentos|Restricoes|Culturas|Interacoes|IntComponentes|Historico|Pesquisas|Sheet_|DadosTipo_|Pasta_|Planilha_)/;
 function caminhosHtmlJs(dir, acc) {
   fs.readdirSync(dir, { withFileTypes: true }).forEach((d) => {
@@ -117,9 +120,21 @@ function caminhosHtmlJs(dir, acc) {
 }
 const arquivosFront = caminhosHtmlJs(raiz, []);
 const comBq = arquivosFront.filter((f) => PADRAO_BQ.test(fs.readFileSync(f, 'utf8')));
-ok(comBq.length === 0,
-  arquivosFront.length + ' arquivos .html/.js sem nenhuma referência a bq*' +
-  (comBq.length ? ' — violadores: ' + comBq.map((f) => path.basename(f)).join(', ') : ''));
+const AUTORIZADO = ['bulario.html'];
+const violadores = comBq.filter((f) => AUTORIZADO.indexOf(path.basename(f)) === -1);
+ok(violadores.length === 0,
+  arquivosFront.length + ' arquivos .html/.js — nenhum além do autorizado referencia bq*' +
+  (violadores.length ? ' — violadores: ' + violadores.map((f) => path.basename(f)).join(', ') : ''));
+const srcBulario = comBq.find((f) => path.basename(f) === 'bulario.html');
+ok(!!srcBulario, 'bulario.html é o consumidor autorizado da fase 6 (consulta bq*)');
+if (srcBulario) {
+  const txtBul = fs.readFileSync(srcBulario, 'utf8');
+  ok(txtBul.indexOf("apiGet(['bqProdutos'") > -1, 'leitura via batch GET silencioso (?tipos=…)');
+  ok(!/tipo\s*:\s*'bq/i.test(txtBul) && !/tipo\s*:\s*"bq/i.test(txtBul),
+    'bulario.html NUNCA grava em tipos bq* (somente leitura)');
+  ok(!/\baction\s*:\s*'(ficha|revisar|processar|vincular|agrofit|restaurar)'[\s\S]{0,120}\bbq/i.test(txtBul),
+    'nenhuma ação administrativa bq* é chamada pelo frontend');
+}
 
 /* ================= mocks do Apps Script (§14.1 — sem rede) ================= */
 function criarMundo() {

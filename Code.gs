@@ -31,12 +31,14 @@ var SHEETS = {
   },
   caldas: {
     name: 'Caldas',
-    // +3 colunas do Montador de Caldas (migração automática no 1º acesso após o deploy)
-    headers: ['id', 'dataCriacao', 'nome', 'cultura', 'alvo', 'produtos', 'agua', 'ordem', 'estufas', 'condicoes', 'obs', 'resultado', 'sintomas', 'periodoAval', 'avaliacaoObs', 'atualizadoEm', 'data', 'qtdPlantas', 'compatibilidade']
+    // +3 colunas do Montador de Caldas + etapa/testeCopoId das etapas da Biblioteca
+    // (migração automática no 1º acesso após o deploy)
+    headers: ['id', 'dataCriacao', 'nome', 'cultura', 'alvo', 'produtos', 'agua', 'ordem', 'estufas', 'condicoes', 'obs', 'resultado', 'sintomas', 'periodoAval', 'avaliacaoObs', 'atualizadoEm', 'data', 'qtdPlantas', 'compatibilidade', 'etapa', 'testeCopoId']
   },
   testesCopo: {
     name: 'TestesCopo',
-    headers: ['id', 'dataCriacao', 'chave', 'produtos', 'proporcoes', 'ordem', 'agua', 'sinais', 'dataTeste', 'obs', 'resultado']
+    // +condicoes (água/ambiente do teste do copo) — migração automática no 1º acesso
+    headers: ['id', 'dataCriacao', 'chave', 'produtos', 'proporcoes', 'ordem', 'agua', 'sinais', 'dataTeste', 'obs', 'resultado', 'condicoes']
   },
   estoque: {
     name: 'Estoque',

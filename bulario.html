@@ -472,6 +472,14 @@
           <label for="mBusca">Buscar produto (Bulário + Estoque + Insumos, sem duplicar)</label>
           <input id="mBusca" type="text" placeholder="Digite o nome, ingrediente ou fabricante...">
         </div>
+        <div class="row2">
+          <div class="field"><label for="mFCat">Categoria</label>
+            <select id="mFCat"><option value="">Todas</option></select></div>
+          <div class="field"><label for="mFFab">Fabricante</label>
+            <select id="mFFab"><option value="">Todos</option></select></div>
+        </div>
+        <div class="field"><label for="mFCult">Cultura</label>
+          <select id="mFCult"><option value="">Todas</option></select></div>
         <div id="mCatalogo"></div>
         <div class="q-aviso" style="margin-top:10px; margin-bottom:0">Produtos com dados incompletos podem ser selecionados — a análise avisa exatamente o que falta. Esta aba <b>não altera</b> cadastros do Bulário nem move estoque.</div>
       </div>
@@ -527,6 +535,15 @@
           <option value="regular">Regular</option>
           <option value="ruim">Ruim</option>
           <option value="">Sem avaliação</option>
+        </select>
+      </div>
+      <div class="f-group"><label for="fCalEtapa">Etapa</label>
+        <select id="fCalEtapa">
+          <option value="todas">Todas</option>
+          <option value="montada">Mistura montada</option>
+          <option value="teste_copo">Teste do copo</option>
+          <option value="aplicada">Aplicação realizada</option>
+          <option value="avaliada">Avaliação de campo</option>
         </select>
       </div>
       <input id="fCalProd" class="f-busca" type="text" placeholder="Filtrar por produto da calda...">
@@ -813,6 +830,15 @@
         <option value="ruim">Ruim (fitotoxicidade / problema)</option>
       </select>
     </div>
+    <div class="field"><label for="cEtapa">Etapa</label>
+      <select id="cEtapa">
+        <option value="montada">Mistura montada</option>
+        <option value="teste_copo">Teste do copo</option>
+        <option value="aplicada">Aplicação realizada</option>
+        <option value="avaliada">Avaliação de campo</option>
+      </select>
+      <div class="hint">Etapa real desta calda. A aplicação em campo só entra aqui quando você registrar — nada é automático.</div>
+    </div>
     <div class="field"><label for="cSint">Sintomas observados</label><input id="cSint" type="text" placeholder="ex: queima foliar leve nas pontas"></div>
     <div class="row2">
       <div class="field"><label for="cPer">Período avaliado</label><input id="cPer" type="text" placeholder="ex: 7 dias"></div>
@@ -838,6 +864,10 @@
     <div class="field"><label for="tOrdem">Ordem de adição usada</label>
       <input id="tOrdem" type="text" placeholder="ex: A > B > C">
       <div class="hint">Preenchida automaticamente com a ordem atual da mistura. Ajuste se tiver adicionado em outra ordem.</div>
+    </div>
+    <div class="field"><label for="tCond">Condições do teste</label>
+      <input id="tCond" type="text" placeholder="ex: água a 22 °C, ambiente 25 °C">
+      <div class="hint">Registradas junto com o resultado (produtos, doses, unidades, água, ordem e condições formam a identidade do teste).</div>
     </div>
     <div class="field"><label>Sinais observados</label>
       <div class="sinais">
@@ -1190,11 +1220,16 @@ let estoque = [];
 let infos = [];
 let caldas = [];
 let testes = [];
+// Base Química (bq*) — só leitura pela análise; nunca altera valores originais.
+let bq = { produtos:[], propriedades:[], ingredientes:[], prodIngr:[], formacoes:[],
+  restricoes:[], culturas:[], interacoes:[], intComp:[] };
+let bqIdx = null;
 let busca = '';
 let editandoId = null;
 let pesquisaId = null;
 let fotoId = null;
 let avaliandoId = null;
+let caldaAbertaId = null;
 let bulaAtual = { link:'', fileId:'' };
 let analise = null;
 // ---- Área Fertilizantes e insumos (fichas técnicas na InsumosInfo) ----
@@ -1236,7 +1271,23 @@ async function carregar(){
   }catch(e){
     if(lista && lista.length){ render(); renderFerts(); return; }
     listEl.innerHTML = '<div class="loading">Demorou demais. <a href="#" onclick="carregar();return false">Tentar de novo</a></div>';
+    return;
   }
+  // Base Química (bq*): falha aqui NÃO derruba a análise — sem bq, o motor
+  // segue com SEM INFORMAÇÃO (ausência nunca vira compatibilidade).
+  try{
+    const jb = await apiGet(['bqProdutos','bqPropriedades','bqIngredientes','bqProdIngredientes',
+      'bqFormulacoes','bqRestricoes','bqCulturas','bqInteracoes','bqIntComponentes']);
+    const db = jb.dados || {};
+    bq = { produtos: db.bqProdutos||[], propriedades: db.bqPropriedades||[],
+      ingredientes: db.bqIngredientes||[], prodIngr: db.bqProdIngredientes||[],
+      formacoes: db.bqFormulacoes||[], restricoes: db.bqRestricoes||[],
+      culturas: db.bqCulturas||[],       interacoes: db.bqInteracoes||[],
+      intComp: db.bqIntComponentes||[] };
+    bqIdx = null;
+    renderCatalogo();
+  }catch(e){ bq = { produtos:[], propriedades:[], ingredientes:[], prodIngr:[], formacoes:[],
+    restricoes:[], culturas:[], interacoes:[], intComp:[] }; bqIdx = null; }
 }
 function catClass(cat){
   if(cat === 'Inseticida' || cat === 'Acaricida' || cat === 'Inseticida/Acaricida') return 'inset';
@@ -3302,6 +3353,15 @@ function catalogoUnico(){
       ingredienteAtivo:i.ingredienteAtivo||'', dose:i.dose||'',
       fabricante:i.fabricante||'', formula:i.formula||'', rec:i });
   }
+  // Produtos que existem só na Base Química entram no catálogo (rótulo honesto);
+  // o motor resolve os dados via bqProdutoDe.
+  for(const p of bq.produtos){
+    if(!p || p.excluido) continue;
+    const k = chave(p.nomeComercial || '');
+    if(!k || map.has(k)) continue;
+    map.set(k, { chave:k, nome:p.nomeComercial, categoria:p.categoria||'', origem:'bq',
+      ingredienteAtivo:'', dose:'', fabricante:p.fabricante||'', formula:p.formula||'', rec:{} });
+  }
   return [...map.values()].sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 // Resolve o registro técnico completo de um produto do catálogo (para a engine).
@@ -3327,27 +3387,69 @@ function resolverProduto(chaveNome){
   if(p && p.nome) base.nome = p.nome;
   else if(inf && inf.nome) base.nome = inf.nome;
   else if(e && e.nome) base.nome = e.nome;
+  // Base Química (§3): só preenche o que está vazio — nunca sobrescreve o cadastro,
+  // nunca usa status rejeitado/divergente (filtrado no índice), e registra a fonte
+  // de cada valor físico para a análise exibir de onde veio.
+  const bp = bqProdutoDe(base.nome);
+  if(bp){
+    if(!p && !inf && !e && bp.nomeComercial) base.nome = bp.nomeComercial;
+    base.bqProdutoId = bp.id;
+    if(!(base.formula||'').trim()) base.formula = bp.formula || '';
+    if(!(base.fabricante||'').trim()) base.fabricante = bp.fabricante || '';
+    if(!(base.categoria||'').trim()) base.categoria = bp.categoria || '';
+    if(!(base.ingredienteAtivo||'').trim()){ const ia = bqIADe(bp.id); if(ia) base.ingredienteAtivo = ia; }
+    for(const campo of ['ph','densidade','solubilidade','naturezaFisica','miscibilidade']){
+      if(String(base[campo]||'').trim()) continue;
+      const v = bqPropDe(bp.id, campo);
+      if(!v) continue;
+      base[campo] = v.valor + (v.unidade ? ' ' + v.unidade : '');
+      base['fonte_' + campo] = v.status || 'pendente';
+    }
+  }
   return base;
 }
 
 // ---- Montar calda ----
 let selProdutos = []; // [{chave, nome, dose, unidade}]
 let mBusca = '';
+let mFCat = '', mFFab = '', mFCult = '';
 const UNID_DOSE = ['', 'mL/100 L', 'L/100 L', 'mL/ha', 'L/ha', 'g/100 L', 'kg/ha', 'g/ha', '%', 'ppm'];
+function opcoesSelect(id, valores, atual){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = '<option value="">'+ (id==='mFFab' ? 'Todos' : 'Todas') +'</option>' +
+    valores.map(v => '<option value="'+escapeHtml(v)+'"'+(v===atual?' selected':'')+'>'+escapeHtml(v)+'</option>').join('');
+}
 function renderCatalogo(){
   const box = document.getElementById('mCatalogo');
   if(!box) return;
-  const termo = chave(mBusca);
   let cat = catalogoUnico();
+  // Preenche os filtros uma vez (mantém a escolha atual do usuário).
+  const selEl = document.getElementById('mFCat');
+  if(selEl && selEl.options.length === 1){
+    opcoesSelect('mFCat', [...new Set(cat.map(c => c.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')), mFCat);
+    opcoesSelect('mFFab', [...new Set(cat.map(c => c.fabricante).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')), mFFab);
+    const cults = new Set();
+    cat.forEach(c => String((c.rec && c.rec.culturas) || '').split(/[,;/]+/).forEach(x => { const t = x.trim(); if(t) cults.add(t); }));
+    opcoesSelect('mFCult', [...cults].sort((a,b)=>a.localeCompare(b,'pt-BR')), mFCult);
+  }
+  const termo = chave(mBusca);
   if(termo) cat = cat.filter(c => chave(c.nome).includes(termo) || chave(c.ingredienteAtivo).includes(termo) ||
     chave(c.fabricante).includes(termo) || chave(c.categoria).includes(termo));
+  if(mFCat) cat = cat.filter(c => c.categoria === mFCat);
+  if(mFFab) cat = cat.filter(c => c.fabricante === mFFab);
+  if(mFCult){
+    const kc = chave(mFCult);
+    cat = cat.filter(c => String((c.rec && c.rec.culturas) || '').split(/[,;/]+/)
+      .some(x => chave(x) === kc));
+  }
   const selK = new Set(selProdutos.map(s => s.chave));
   const mostra = cat.filter(c => !selK.has(c.chave)).slice(0, 40);
   box.innerHTML = mostra.length
     ? mostra.map(c => `
       <div class="cat-item" onclick="addSel('${escapeHtml(c.chave)}')">
         <span class="nm">${escapeHtml(c.nome)}<small style="color:var(--dim);display:block;font-weight:500;font-size:11.5px;">${[c.fabricante, c.ingredienteAtivo].filter(Boolean).map(escapeHtml).join(' · ') || escapeHtml(c.categoria || '')}</small></span>
-        <span class="src ${c.origem==='estoque'?'fab':c.origem==='ambos'?'foto':'doc'}">${c.origem==='estoque'?'Estoque':c.origem==='ambos'?'Bulário+Estoque':'Bulário'}</span>
+        <span class="src ${c.origem==='estoque'?'fab':c.origem==='ambos'?'foto':'doc'}">${c.origem==='estoque'?'Estoque':c.origem==='ambos'?'Bulário+Estoque':c.origem==='bq'?'Base Química':'Bulário'}</span>
         <span class="add">＋</span>
       </div>`).join('')
     : '<div class="empty" style="padding:18px 0">Nenhum produto no catálogo.</div>';
@@ -3411,12 +3513,17 @@ function renderSel(){
   }).join('');
 }
 document.getElementById('mBusca').addEventListener('input', (e) => { mBusca = e.target.value; renderCatalogo(); });
+document.getElementById('mFCat').addEventListener('change', (e) => { mFCat = e.target.value; renderCatalogo(); });
+document.getElementById('mFFab').addEventListener('change', (e) => { mFFab = e.target.value; renderCatalogo(); });
+document.getElementById('mFCult').addEventListener('change', (e) => { mFCult = e.target.value; renderCatalogo(); });
 
 // ---- Motor de compatibilidade ----
-// 4 classes apenas com dados registrados:
-// INCOMPATIBILIDADE / DOCUMENTADA / FÍSICA (teste do copo) / SEM INFORMAÇÃO.
+// 3 classes apenas com dados registrados (§3):
+// INCOMPATIBILIDADE / DOCUMENTADO / SEM INFORMAÇÃO.
 // Padrão nunca é "compatível". Ausência de informação nunca vira compatibilidade.
-// Teste do copo idêntico compatível NÃO vira DOCUMENTADA.
+// Hierarquia: base teórica/documental prevalece; teste do copo só entra quando
+// NÃO há base teórica aplicável e só com match exato (chaveTeste). Resultado
+// físico do copo vira DOCUMENTADO com viaCopo:true + caveats — nunca "compatível".
 // Pares compatíveis individualmente NÃO tornam a mistura segura sem documentação dela.
 function normTxt(s){
   let t = String(s ?? '').trim().toLowerCase();
@@ -3445,6 +3552,159 @@ function citaTexto(texto, alvos){
   const t = chave(texto);
   if(!t) return false;
   return alvos.some(x => t.includes(x));
+}
+
+// ---- Base Química (bq*): índices e acessores (somente leitura) ----
+function bqVazio(){ return { produtos:[], propriedades:[], ingredientes:[], prodIngr:[],
+  formacoes:[], restricoes:[], culturas:[], interacoes:[], intComp:[] }; }
+function montarBqIndice(){
+  const idx = { porChave:new Map(), props:new Map(), ings:new Map(), restr:new Map(),
+    cult:new Map(), ingPorId:new Map(), interacoes:[] };
+  for(const p of bq.produtos){
+    if(!p || p.excluido || p.excluido === true) continue;
+    idx.porChave.set(chave(p.nomeComercial || p.nome || ''), p);
+  }
+  for(const pr of bq.propriedades){
+    if(!pr || pr.excluido) continue;
+    if(pr.status === 'rejeitado' || pr.status === 'divergente') continue; // nunca usar valor não aprovado
+    if(!idx.props.has(pr.entidadeId)) idx.props.set(pr.entidadeId, []);
+    idx.props.get(pr.entidadeId).push(pr);
+  }
+  const ingPorId = new Map();
+  for(const i of bq.ingredientes){ if(i && !i.excluido) ingPorId.set(i.id, i); }
+  idx.ingPorId = ingPorId;
+  for(const pi of bq.prodIngr){
+    if(!pi || pi.excluido) continue;
+    const ing = ingPorId.get(pi.ingredienteId);
+    if(!ing) continue;
+    if(!idx.ings.has(pi.produtoId)) idx.ings.set(pi.produtoId, []);
+    idx.ings.get(pi.produtoId).push(ing);
+  }
+  for(const r of bq.restricoes){
+    if(!r || r.excluido || r.status === 'rejeitado') continue;
+    if(!idx.restr.has(r.produtoId)) idx.restr.set(r.produtoId, []);
+    idx.restr.get(r.produtoId).push(r);
+  }
+  for(const c of bq.culturas){
+    if(!c || c.excluido) continue;
+    if(!idx.cult.has(c.produtoId)) idx.cult.set(c.produtoId, []);
+    idx.cult.get(c.produtoId).push(c);
+  }
+  const compPorInt = new Map();
+  for(const ic of bq.intComp){
+    if(!ic || ic.excluido || ic.entidadeTipo !== 'produto') continue;
+    if(!compPorInt.has(ic.interacaoId)) compPorInt.set(ic.interacaoId, []);
+    compPorInt.get(ic.interacaoId).push(ic.entidadeId);
+  }
+  for(const it of bq.interacoes){
+    if(!it || it.excluido) continue;
+    const comps = compPorInt.get(it.id) || [];
+    if(comps.length >= 2) idx.interacoes.push({ it, comps });
+  }
+  bqIdx = idx;
+}
+function idxBq(){ if(!bqIdx) montarBqIndice(); return bqIdx; }
+function bqProdutoDe(nome){ return idxBq().porChave.get(chave(nome)) || null; }
+// Propriedade física do produto: aprovado > pendente (rejeitado/divergente já filtrados no índice).
+function bqPropDe(produtoId, campo){
+  const arr = idxBq().props.get(produtoId) || [];
+  const r = arr.filter(p => p.campo === campo && String(p.valor||'').trim() !== '');
+  if(!r.length) return null;
+  r.sort((x, y) => (x.status === 'aprovado' ? 0 : 1) - (y.status === 'aprovado' ? 0 : 1));
+  const p = r[0];
+  return { valor: String(p.valor).trim(), unidade: String(p.unidade||'').trim(), status: p.status||'' };
+}
+function bqIADe(produtoId){
+  const arr = idxBq().ings.get(produtoId) || [];
+  return arr.map(i => i.nome + (i.concentracao ? ' ' + i.concentracao + (i.unidade ? ' ' + i.unidade : '') : '')).join(' + ');
+}
+function bqFormDe(codigo){
+  const c = chave(codigo||'');
+  if(!c) return null;
+  return bq.formacoes.find(f => f && !f.excluido && chave(f.codigo) === c) || null;
+}
+function bqInteracoesDoPar(idA, idB){
+  const validas = [];
+  for(const e of idxBq().interacoes){
+    if(!e.comps.includes(idA) || !e.comps.includes(idB)) continue;
+    if(['revisado','validado'].indexOf(String(e.it.validacao||'')) === -1) continue;
+    validas.push(e.it);
+  }
+  const incomp = validas.find(i => ['incompatibilidade_fisica','incompatibilidade_quimica','antagonismo'].indexOf(i.tipo) > -1);
+  if(incomp) return incomp;
+  return validas.find(i => ['compatibilidade','sinergismo','neutro'].indexOf(i.tipo) > -1) || null;
+}
+function bqInteracaoCompleta(ids){
+  for(const e of idxBq().interacoes){
+    if(!ids.every(id => e.comps.includes(id))) continue;
+    if(['revisado','validado'].indexOf(String(e.it.validacao||'')) === -1) continue;
+    return e.it;
+  }
+  return null;
+}
+function bqRestricoesDe(sel){
+  const out = [];
+  for(const s of sel){
+    const bp = bqProdutoDe(s.nome);
+    if(!bp) continue;
+    for(const r of (idxBq().restr.get(bp.id) || [])) out.push({ produto:s.nome, r });
+  }
+  return out;
+}
+function bqCulturaDe(sel, cultura){
+  const c = chave(cultura||'');
+  if(!c) return [];
+  const out = [];
+  for(const s of sel){
+    const bp = bqProdutoDe(s.nome);
+    if(!bp) continue;
+    for(const row of (idxBq().cult.get(bp.id) || [])){
+      if(chave(row.cultura||'').includes(c) || c.includes(chave(row.cultura||''))) out.push({ produto:s.nome, row });
+    }
+  }
+  return out;
+}
+function bqComuns(sel){
+  const comuns = [];
+  let base = null;
+  for(const s of sel){
+    const bp = bqProdutoDe(s.nome);
+    if(!bp) continue;
+    const ids = new Set((idxBq().ings.get(bp.id) || []).map(i => i.id));
+    if(!ids.size) continue;
+    if(!base){ base = ids; continue; }
+    for(const id of ids) if(base.has(id) && !comuns.includes(id)) comuns.push(id);
+  }
+  return comuns.map(id => (idxBq().ingPorId.get(id) || {}).nome || '').filter(Boolean);
+}
+
+// ---- Identidade exata do teste do copo (§4): combinação + doses + unidades +
+// volume de água + ordem de adição. Só um match exato reaproveita evidência.
+function chaveTeste(){
+  const k = chaveCalda(selProdutos.map(s => s.nome));
+  const doses = selProdutos.map(s => chave(s.dose) + '~' + chave(s.unidade)).join(',');
+  const ordem = selProdutos.map(s => chave(s.nome)).join('>');
+  let agua = '';
+  try{
+    agua = String((document.getElementById('mAgua') && document.getElementById('mAgua').value) || '').trim();
+  }catch(e){}
+  return k + '::' + doses + '::' + chave(agua) + '::' + ordem;
+}
+// Base (só a combinação) de uma chave de teste — inclusive chaves legadas sem '::'.
+function chaveBase(chaveTesteStr){ return String(chaveTesteStr || '').split('::')[0]; }
+
+// ---- Etapas da Biblioteca (§6) ----
+const ETAPAS_CALDA = { montada:'Mistura montada', teste_copo:'Teste do copo',
+  aplicada:'Aplicação realizada', avaliada:'Avaliação de campo' };
+function etapaDaCalda(c){
+  if(c.etapa) return c.etapa;
+  if(c.testeCopoId) return 'teste_copo';
+  if(c.resultado) return 'avaliada';
+  return 'montada';
+}
+function tagEtapa(c){
+  const t = ETAPAS_CALDA[etapaDaCalda(c)] || ETAPAS_CALDA.montada;
+  return '<span class="mtag none">' + escapeHtml(t) + '</span>';
 }
 // Avalia UM par (a × b) com as fontes registradas. Nunca presume compatibilidade.
 function avaliarPar(a, b){
@@ -3476,38 +3736,64 @@ function avaliarPar(a, b){
     return { classe:'DOCUMENTADA',
       evidencia: 'Compatibilidade documentada (' + s.nome + '): "' + String(d).trim() + '"' };
   }
-  // 4) teste do copo registrado para este par
-  const parKey = [chave(a.nome), chave(b.nome)].filter(Boolean).sort().join('|');
+  // 4) Base Química: Q_Restricoes citando o parceiro e Q_Interacoes do par —
+  //    base teórica/documental consultada ANTES do teste do copo (§4 hierarquia).
+  const bpA = bqProdutoDe(a.nome);
+  const bpB = bqProdutoDe(b.nome);
+  if(bpA && bpB){
+    for(const r of (idxBq().restr.get(bpA.id) || [])){
+      if(['incompatibilidade_bula','mistura_restrita'].indexOf(r.tipo) === -1) continue;
+      if(!citaTexto(r.texto || '', alvosB)) continue;
+      return { classe:'INCOMPATIBILIDADE',
+        evidencia:'Q_Restricoes (status: ' + (r.status || 'sem status') + ') em ' + a.nome +
+          ': "' + String(r.texto || '').trim() + '"' };
+    }
+    const inter = bqInteracoesDoPar(bpA.id, bpB.id);
+    if(inter){
+      const t = inter.tipo || '';
+      const label = 'Q_Interacoes (' + t + ', validação: ' + inter.validacao + '): ' + String(inter.efeito || '').trim();
+      if(['incompatibilidade_fisica','incompatibilidade_quimica','antagonismo'].indexOf(t) > -1){
+        return { classe:'INCOMPATIBILIDADE', evidencia: label };
+      }
+      return { classe:'DOCUMENTADA', evidencia: label };
+    }
+  }
+  // 5) teste do copo: INCOMPATÍVEL vale como precaução em qualquer contexto;
+  //    COMPATÍVEL só com match exato da mistura atual (combinação+doses+unidades+
+  //    água+ordem — chaveTeste). Copo nunca libera sobre base teórica.
+  const kAtual = chaveTeste();
+  const kPar = [chave(a.nome), chave(b.nome)].filter(Boolean).sort().join('|');
   const tst = testes.filter(t => {
-    const ks = String(t.chave || '').split('|').filter(Boolean);
+    const ks = chaveBase(t.chave).split('|').filter(Boolean);
     return ks.includes(chave(a.nome)) && ks.includes(chave(b.nome));
   });
-  const exato = tst.filter(t => String(t.chave) === parKey);
-  const incomp = (exato.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat')) ||
-                  tst.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat')));
+  const incomp = tst.find(t => String(t.resultado || '').toLowerCase().startsWith('incompat'));
   if(incomp){
-    const onde = String(incomp.chave) === parKey ? 'para este par' : 'em mistura com outros produtos';
+    const onde = incomp.chave === kAtual ? 'para este par' : 'em mistura com outros produtos';
     return { classe:'INCOMPATIBILIDADE',
-      evidencia: 'Teste do copo ' + onde + ' com resultado INCOMPATÍVEL' +
+      evidencia:'Teste do copo ' + onde + ' com resultado INCOMPATÍVEL' +
         (incomp.dataTeste ? ' em ' + fmtData(incomp.dataTeste) : '') + '.' };
   }
-  const comp = exato.find(t => String(t.resultado||'').toLowerCase().startsWith('compat')) ||
-               tst.find(t => String(t.resultado||'').toLowerCase().startsWith('compat'));
-  if(comp){
-    const onde = String(comp.chave) === parKey ? 'para este par' : 'em mistura com outros produtos';
-    return { classe:'FÍSICA',
-      evidencia: 'Teste do copo ' + onde + ' compatível' + (comp.dataTeste ? ' em ' + fmtData(comp.dataTeste) : '') +
-        ' (só avalia compatibilidade física, não substitui a bula).' };
+  const exato = testes.find(t => t.chave === kAtual && chaveBase(t.chave) === kPar);
+  if(exato && String(exato.resultado || '').toLowerCase().startsWith('compat')){
+    return { classe:'DOCUMENTADA', viaCopo:true,
+      evidencia:'Teste do copo idêntico (combinação, doses, unidades, água e ordem) compatível' +
+        (exato.dataTeste ? ' em ' + fmtData(exato.dataTeste) : '') +
+        ' — cobre só a compatibilidade física no preparo; não substitui a bula.' };
   }
-  // 5) sem informação: dizer o que impede a conclusão neste par
+  // 6) sem informação: dizer o que impede a conclusão neste par
   const faltam = [];
   for(const s of [a, b]){
-    if(!(s.restricoes||'').trim()) faltam.push('restricoes (' + s.nome + ')');
-    if(!(s.compatDocs||'').trim()) faltam.push('compatDocs (' + s.nome + ')');
+    if(!(s.restricoes || '').trim()) faltam.push('restricoes (' + s.nome + ')');
+    if(!(s.compatDocs || '').trim()) faltam.push('compatDocs (' + s.nome + ')');
   }
+  const semExato = tst.find(t => String(t.resultado || '').toLowerCase().startsWith('compat'));
+  const extra = semExato
+    ? ' Há teste do copo compatível envolvendo este par, mas em outra combinação/doses/água/ordem — não reaproveitado (match exato obrigatório).'
+    : '';
   return { classe:'SEM INFORMAÇÃO',
-    evidencia: faltam.length ? 'Sem registro de restrições/compatibilidade: falta ' + faltam.join(', ') + '.'
-      : 'Há registros, mas nenhum deles cita esta combinação.' };
+    evidencia: (faltam.length ? 'Sem registro de restrições/compatibilidade: falta ' + faltam.join(', ') + '.'
+      : 'Há registros, mas nenhum deles cita esta combinação.') + extra };
 }
 // Dados que faltam em cada produto e o que cada falta limita na análise.
 function dadosFaltantes(sel){
@@ -3524,16 +3810,29 @@ function dadosFaltantes(sel){
       f.push({ c:'restrições', l:'não é possível afirmar ausência de incompatibilidade' });
     if(!(s.compatDocs||'').trim())
       f.push({ c:'compatibilidade documentada', l:'não há respaldo oficial para a mistura' });
+    if(!bqProdutoDe(s.nome))
+      f.push({ c:'Base Química', l:'não consta em Q_Produtos — propriedades físicas e usos oficiais não consultáveis' });
     if(f.length) out.push({ nome: s.nome, campos: f });
   }
   return out;
 }
 function dadosFisicos(sel){
   return sel.filter(s => (s.ph||s.naturezaFisica||s.solubilidade||s.densidade||s.miscibilidade))
-    .map(s => ({ nome:s.nome, ph:s.ph||'', natureza:s.naturezaFisica||'', sol:s.solubilidade||'',
-      dens:s.densidade||'', misc:s.miscibilidade||'' }));
+    .map(s => {
+      const fontes = ['ph','naturezaFisica','solubilidade','densidade','miscibilidade']
+        .map(c => s['fonte_' + c]).filter(Boolean);
+      const temCad = [s.ph, s.naturezaFisica, s.solubilidade, s.densidade, s.miscibilidade]
+        .some((v, i) => v && !s['fonte_' + ['ph','naturezaFisica','solubilidade','densidade','miscibilidade'][i]]);
+      let origem = '';
+      if(fontes.length) origem = 'Base Química (' + [...new Set(fontes)].join(', ') + ')' + (temCad ? ' + cadastro' : '');
+      else if(temCad) origem = 'cadastro';
+      return { nome:s.nome, ph:s.ph||'', natureza:s.naturezaFisica||'', sol:s.solubilidade||'',
+        dens:s.densidade||'', misc:s.miscibilidade||'', origem };
+    });
 }
 // Ordem de mistura: só quando há fundamentação (texto do fabricante ou formulações).
+// 3 níveis (§5): DOCUMENTADA / SUGESTÃO TÉCNICA / NÃO DETERMINADA — sempre com
+// justificativa e, quando houver, a fonte consultada.
 function recomendarOrdem(sel){
   for(const s of sel){
     for(const campo of ['cuidadosMistura', 'restricoes', 'obs']){
@@ -3542,7 +3841,8 @@ function recomendarOrdem(sel){
       const frases = String(txt).split(/(?<=[.;])\s+|\n+/);
       for(const f of frases){
         if(ORDEM_RE.test(normTxt(f))){
-          return { base:'fabricante',
+          return { base:'fabricante', nivel:'DOCUMENTADA',
+            fonte:'orientação registrada em "' + s.nome + '" (' + campo + ')',
             texto: 'Orientação registrada em "' + s.nome + '" (' + campo + '): "' + f.trim() + '"' };
         }
       }
@@ -3557,21 +3857,29 @@ function recomendarOrdem(sel){
     if(/\b(EC|ME|OD|EO)\b/.test(F)) return 4;
     return 0;
   }
+  const fonteQForm = (() => {
+    for(const s of sel){
+      const f = bqFormDe(s.formula);
+      if(f) return 'Q_Formulacoes (código ' + f.codigo + (f.ordemMistura ? ' — ordemMistura: ' + f.ordemMistura : '') + ')';
+    }
+    return '';
+  })();
   const graus = sel.map(s => ({ s, g: grau(s) }));
   const semFormula = graus.filter(x => !x.g).map(x => x.s.nome);
   if(semFormula.length){
-    return { base:'nenhuma',
+    return { base:'nenhuma', nivel:'NÃO DETERMINADA', fonte:'',
       texto:'Formulação de ' + semFormula.map(n => '"' + n + '"').join(', ') +
         ' não identificada — sem fundamentação para recomendar ordem de adição.' };
   }
   const seq = graus.slice().sort((x, y) => x.g - y.g).map(x => x.s.nome);
   const atual = sel.map(s => s.nome);
   const igual = atual.length === seq.length && atual.every((n, i) => n === seq[i]);
+  const fonte = fonteQForm || 'sequência heurística por tipo de formulação (não é norma)';
   if(igual){
-    return { base:'formula', sequencia: seq,
+    return { base:'formula', nivel:'SUGESTÃO TÉCNICA', fonte, sequencia: seq,
       texto:'A ordem atual já segue a sequência por formulação (pós → suspensão → solução → emulsível → adjuvante).' };
   }
-  return { base:'formula', sequencia: seq,
+  return { base:'formula', nivel:'SUGESTÃO TÉCNICA', fonte, sequencia: seq,
     texto:'Sequência sugerida pelas formulações dos produtos (base técnica, não substitui a bula):' };
 }
 function analisarCalda(){
@@ -3603,7 +3911,8 @@ function analisarCalda(){
   for(let i = 0; i < sel.length; i++){
     for(let j = i + 1; j < sel.length; j++){
       const r = avaliarPar(sel[i], sel[j]);
-      const par = { a: sel[i].nome, b: sel[j].nome, classe: r.classe, evidencia: r.evidencia };
+      const par = { a: sel[i].nome, b: sel[j].nome, classe: r.classe,
+        viaCopo: !!r.viaCopo, evidencia: r.evidencia };
       pares.push(par);
       if(r.classe === 'INCOMPATIBILIDADE' && !algumIncompat) algumIncompat = par;
     }
@@ -3611,8 +3920,10 @@ function analisarCalda(){
   if(algumIncompat){
     motivos.push('Par incompatível (' + algumIncompat.a + ' × ' + algumIncompat.b + '): ' + algumIncompat.evidencia);
   }
-  // 2) histórico idêntico de teste do copo
-  const k = chaveCalda(nomes);
+  // 2) histórico idêntico de teste do copo (match exato: combinação+doses+
+  //    unidades+água+ordem — chaveTeste; §4)
+  const k = chaveTeste();
+  const kCombo = chaveCalda(nomes);
   const histId = testes.filter(t => t.chave === k);
   const histIncomp = histId.find(t => String(t.resultado||'').toLowerCase().startsWith('incompat'));
   const histCompat = histId.find(t => String(t.resultado||'').toLowerCase().startsWith('compat'));
@@ -3634,6 +3945,25 @@ function analisarCalda(){
     motivos.push('Compatibilidade documentada registra INCOMPATIBILIDADE para esta combinação: "' + String(docNeg).trim() + '"');
     algumIncompat = { a:'documentação', b:'' };
   }
+  // 3b) Q_Interacoes da Base Química envolvendo TODOS os produtos selecionados
+  //     (só validação revisada/validada conta como base; pendente/refutado não).
+  const idsBq = sel.map(s => { const bp = bqProdutoDe(s.nome); return bp ? bp.id : null; }).filter(Boolean);
+  if(idsBq.length === sel.length && sel.length >= 2){
+    const interFull = bqInteracaoCompleta(idsBq);
+    if(interFull){
+      const tipo = String(interFull.tipo || '');
+      const label = 'Q_Interacoes (' + tipo + ', validação: ' + interFull.validacao + '): ' +
+        String(interFull.efeito || '').trim();
+      if(['incompatibilidade_fisica','incompatibilidade_quimica','antagonismo'].indexOf(tipo) > -1){
+        if(!algumIncompat){
+          motivos.push(label + ' — incompatibilidade documentada para a mistura completa.');
+          algumIncompat = { a:'Base Química', b:'' };
+        }
+      }else if(['compatibilidade','sinergismo','neutro'].indexOf(tipo) > -1 && !docOk){
+        docOk = label;
+      }
+    }
+  }
   // 4) restrições genéricas (sem par específico) viram alerta, não classificação
   for(const s of sel){
     const rest = chave(s.restricoes || '');
@@ -3645,9 +3975,10 @@ function analisarCalda(){
         '" — confira se vale para os parceiros escolhidos.');
     }
   }
-  // 5) histórico semelhante (mesmos produtos, parcial) → nota/alerta
-  const histSemelhante = testes.filter(t => t.chave !== k && t.chave &&
-    t.chave.split('|').some(p => k.split('|').includes(p)));
+  // 5) histórico semelhante (mesma combinação com doses/água/ordem diferentes,
+  //     ou sobreposição parcial) → alerta; nunca classifica (§4: só match exato)
+  const histSemelhante = testes.filter(t => t.chave !== k && chaveBase(t.chave) &&
+    chaveBase(t.chave).split('|').some(p => kCombo.split('|').includes(p)));
   for(const t of histSemelhante){
     if(String(t.resultado||'').toLowerCase().startsWith('incompat')){
       alertas.push('Teste anterior com resultado INCOMPATÍVEL envolvendo produtos semelhantes' +
@@ -3673,40 +4004,59 @@ function analisarCalda(){
       }
     }catch(e){ /* produtos em formato antigo: ignora */ }
   }
-  // 7) pares todos OK ≠ mistura segura
+  // 7) classificação final (§3): INCOMPATIBILIDADE > DOCUMENTADO > SEM INFORMAÇÃO.
+  //     Hierarquia (§4): base teórica/documental prevalece; teste do copo entra
+  //     só quando NÃO há base teórica aplicável e só com match exato.
   const todosParesOk = pares.length > 0 && pares.every(p => p.classe !== 'SEM INFORMAÇÃO' && p.classe !== 'INCOMPATIBILIDADE');
+  const temBaseTeoricaPar = pares.some(p => p.classe === 'DOCUMENTADA' && !p.viaCopo);
+  let culturaSel = '';
+  try{ culturaSel = String((document.getElementById('mCultura') || {}).value || '').trim(); }catch(e){}
   const base = {
     pares,
     faltantes: dadosFaltantes(sel),
     fisico: dadosFisicos(sel),
     ordem: recomendarOrdem(sel),
+    bq: { restricoes: bqRestricoesDe(sel), culturas: bqCulturaDe(sel, culturaSel), comuns: bqComuns(sel) },
     alertas
   };
   if(algumIncompat){
     return Object.assign(base, { classe:'INCOMPATIBILIDADE', klass:'bad', motivos });
   }
   if(docOk){
-    motivos.push('Compatibilidade documentada para a mistura completa: "' + String(docOk).trim() + '"');
+    motivos.push('Compatibilidade documentada para a mistura completa: ' + String(docOk).trim());
     return Object.assign(base, { classe:'DOCUMENTADA', klass:'ok', motivos });
   }
-  if(histCompat){
-    motivos.push('Teste do copo idêntico registrado como compatível em ' +
+  if(histCompat && !temBaseTeoricaPar){
+    motivos.push('Teste do copo idêntico (combinação, doses, unidades, água e ordem) registrado como compatível em ' +
       (histCompat.dataTeste ? fmtData(histCompat.dataTeste) : 'data não informada') +
       ' — vale só para a compatibilidade física no momento do preparo; não substitui a bula nem garante eficácia/segurança em campo.');
-    return Object.assign(base, { classe:'FÍSICA – TESTE DO COPO', klass:'fis', motivos });
+    return Object.assign(base, { classe:'DOCUMENTADA', klass:'ok', viaCopo:true, motivos });
   }
-  if(todosParesOk){
-    motivos.push('Todos os pares têm registro individual, mas não há documentação nem teste do copo para a MISTURA COMPLETA — pares compatíveis isoladamente não tornam a mistura segura.');
+  if(histCompat && temBaseTeoricaPar){
+    motivos.push('Existe teste do copo idêntico compatível (' +
+      (histCompat.dataTeste ? fmtData(histCompat.dataTeste) : 'data não informada') +
+      '), mas há base teórica parcial — o teste do copo não substitui nem anula a documentação.');
+  }
+  if(temBaseTeoricaPar){
+    const docs = pares.filter(p => p.classe === 'DOCUMENTADA' && !p.viaCopo).map(p => p.a + ' × ' + p.b);
+    if(docs.length) motivos.push('Permite concluir (parcial): compatibilidade documentada em ' + docs.join(', ') + '.');
+    motivos.push('Todos os pares podem ter registro individual, mas não há documentação da MISTURA COMPLETA — pares compatíveis isoladamente não tornam a mistura segura. Desconhecido: eficácia, segurança química e fitotoxicidade da combinação total.');
+  }else if(todosParesOk){
+    motivos.push('Todos os pares têm registro individual (sem base teórica documental para a mistura), mas não há documentação nem teste do copo idêntico para a MISTURA COMPLETA — pares compatíveis isoladamente não tornam a mistura segura.');
+  }
+  if(!motivos.length && histSemelhante.length){
+    motivos.push('Há teste(s) do copo com produtos semelhantes, mas nenhum com match exato desta mistura (combinação + doses + unidades + água + ordem) — não reaproveitado.');
   }
   if(!motivos.length){
     motivos.push('Sem informação registrada: não há restrição, compatibilidade documentada nem teste do copo para esta combinação.');
   }
   return Object.assign(base, { classe:'SEM INFORMAÇÃO', klass:'unk', motivos });
 }
-function tagCompat(c){
+function tagCompat(c, viaCopo){
   const t = String(c || '');
+  const copo = (viaCopo || t.toUpperCase().indexOf('TESTE DO COPO') > -1) ? ' · copo' : '';
   if(t.toUpperCase().startsWith('INCOMPAT')) return '<span class="mtag ruim">Incompatível</span>';
-  if(t.toUpperCase().startsWith('DOCUMENT')) return '<span class="mtag ok">Documentada</span>';
+  if(t.toUpperCase().startsWith('DOCUMENT')) return '<span class="mtag ok">Documentado'+copo+'</span>';
   if(t.toUpperCase().startsWith('F')) return '<span class="mtag fis">Física (copo)</span>';
   return '<span class="mtag none">Sem informação</span>';
 }
@@ -3718,14 +4068,15 @@ function analisarUI(silencioso){
   const box = document.getElementById('resBox');
   box.hidden = false;
   box.className = 'res-box ' + analise.klass;
-  let html = '<span class="res-tag">Compatibilidade: ' + escapeHtml(analise.classe) + '</span>' +
+  let html = '<span class="res-tag">Compatibilidade: ' +
+    escapeHtml(analise.classe + (analise.viaCopo ? ' (físico — teste do copo)' : '')) + '</span>' +
     '<ul>' + analise.motivos.map(m => '<li>' + escapeHtml(m) + '</li>').join('') + '</ul>';
   if(analise.pares && analise.pares.length){
     html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Análise par a par</div>' +
       '<table class="par-table"><tr><th>Par</th><th>Classe</th><th>Evidência / limitação</th></tr>' +
       analise.pares.map(p =>
         '<tr><td><b>' + escapeHtml(p.a) + ' × ' + escapeHtml(p.b) + '</b></td><td>' +
-        tagCompat(p.classe) + '</td><td>' + escapeHtml(p.evidencia) + '</td></tr>').join('') +
+        tagCompat(p.classe, p.viaCopo) + '</td><td>' + escapeHtml(p.evidencia) + '</td></tr>').join('') +
       '</table>';
   }
   if(analise.faltantes && analise.faltantes.length){
@@ -3737,17 +4088,40 @@ function analisarUI(silencioso){
   }
   if(analise.fisico && analise.fisico.length){
     html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Dados físicos registrados (só leitura, sem inferência)</div>' +
-      '<table class="fis-table"><tr><th>Produto</th><th>pH</th><th>Natureza</th><th>Solubilidade</th><th>Densidade</th></tr>' +
+      '<table class="fis-table"><tr><th>Produto</th><th>pH</th><th>Natureza</th><th>Solubilidade</th><th>Densidade</th><th>Fonte</th></tr>' +
       analise.fisico.map(f =>
         '<tr><td><b>' + escapeHtml(f.nome) + '</b></td><td>' + escapeHtml(f.ph || '—') + '</td><td>' +
         escapeHtml(f.natureza || '—') + '</td><td>' + escapeHtml(f.sol || '—') + '</td><td>' +
-        escapeHtml(f.dens || '—') + '</td></tr>').join('') + '</table>';
+        escapeHtml(f.dens || '—') + '</td><td>' + escapeHtml(f.origem || '—') + '</td></tr>').join('') + '</table>';
   }
   if(analise.ordem && analise.ordem.texto){
+    const nv = analise.ordem.nivel || '';
+    const nvKlass = nv === 'DOCUMENTADA' ? 'ok' : nv === 'SUGESTÃO TÉCNICA' ? 'reg' : nv ? 'none' : '';
     html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Ordem de mistura</div>' +
-      '<div class="ordem-box">' + escapeHtml(analise.ordem.texto) +
+      '<div class="ordem-box">' +
+      (nv ? '<span class="mtag ' + nvKlass + '">' + escapeHtml(nv) + '</span> ' : '') +
+      escapeHtml(analise.ordem.texto) +
+      (analise.ordem.fonte ? '<br><small style="color:var(--dim)">Fonte: ' + escapeHtml(analise.ordem.fonte) + '</small>' : '') +
       (analise.ordem.sequencia ? '<span class="seq">' + analise.ordem.sequencia.map((n, i) => (i + 1) + '. ' + escapeHtml(n)).join(' → ') + '</span>' : '') +
       '<br>Não há ordem universal para todos os produtos — confira a bula.</div>';
+  }
+  if(analise.bq && (analise.bq.restricoes.length || analise.bq.culturas.length || analise.bq.comuns.length)){
+    html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Base Química consultada (somente leitura)</div><div class="falta-list">';
+    for(const x of analise.bq.restricoes){
+      html += '<div><b>' + escapeHtml(x.produto) + '</b> (' + escapeHtml(x.r.tipo || '') + '): ' +
+        escapeHtml(String(x.r.texto || '')) + ' <span class="lim">(status: ' + escapeHtml(x.r.status || 'sem status') + ')</span></div>';
+    }
+    if(analise.bq.comuns.length){
+      html += '<div>Ingrediente(s) em comum entre os produtos: <b>' + escapeHtml(analise.bq.comuns.join(', ')) +
+        '</b> <span class="lim">(some a dose total — ingrediente em comum não é incompatibilidade por si só)</span></div>';
+    }
+    for(const x of analise.bq.culturas){
+      html += '<div><b>' + escapeHtml(x.produto) + '</b> × ' + escapeHtml(x.row.cultura || '') +
+        ': dose de referência ' + escapeHtml(x.row.doseReferencia || '—') +
+        (x.row.condicao ? ' — ' + escapeHtml(x.row.condicao) : '') +
+        ' <span class="lim">(status: ' + escapeHtml(x.row.status || 'sem status') + ')</span></div>';
+    }
+    html += '</div>';
   }
   if(analise.alertas.length){
     html += '<div class="res-warn">⚠ ' + analise.alertas.map(a => escapeHtml(a)).join('<br>⚠ ') + '</div>';
@@ -3762,11 +4136,15 @@ function analisarUI(silencioso){
 function abrirTeste(){
   if(selProdutos.length < 2){ alert('Selecione ao menos 2 produtos para o teste do copo.'); return; }
   document.getElementById('tLista').innerHTML = '<small>Produtos (na ordem do copo)</small><b>' +
-    selProdutos.map(s => escapeHtml(s.nome) +
-      (s.dose ? ' (' + escapeHtml(s.dose) + (s.unidade ? ' ' + escapeHtml(s.unidade) : '') + ')' : '')).join(' + ') + '</b>';
+    selProdutos.map(s => {
+      const fab = resolverProduto(s.chave).fabricante || '';
+      return escapeHtml(s.nome) + (fab ? ' <span style="font-weight:400;opacity:.75">(' + escapeHtml(fab) + ')</span>' : '') +
+        (s.dose ? ' (' + escapeHtml(s.dose) + (s.unidade ? ' ' + escapeHtml(s.unidade) : '') + ')' : '');
+    }).join(' + ') + '</b>';
   document.getElementById('tAgua').value = '';
   document.getElementById('tData').value = hojeISO();
   document.getElementById('tOrdem').value = selProdutos.map(s => s.nome).join(' > ');
+  document.getElementById('tCond').value = '';
   document.getElementById('tObs').value = '';
   document.getElementById('tRes').value = 'compativel';
   document.querySelectorAll('#dlgTeste .sinais input').forEach(cb => { cb.checked = false; });
@@ -3778,16 +4156,18 @@ async function salvarTeste(){
   const ordemUsada = (document.getElementById('tOrdem').value || '').trim() ||
     selProdutos.map(s => s.nome).join(' > ');
   const dados = {
-    chave: chaveCalda(selProdutos.map(s => s.nome)),
+    chave: chaveTeste(),
     produtos: JSON.stringify(selProdutos.map(s => {
       const rec = resolverProduto(s.chave);
-      return { nome: rec.nome || s.nome, ingredienteAtivo: rec.ingredienteAtivo || '' };
+      return { nome: rec.nome || s.nome, fabricante: rec.fabricante || '',
+        ingredienteAtivo: rec.ingredienteAtivo || '', dose: s.dose || '', unidade: s.unidade || '' };
     })),
     proporcoes: selProdutos.map(s => s.dose ? s.dose + (s.unidade ? ' ' + s.unidade : '') : '').join(' | '),
     ordem: ordemUsada,
     agua: document.getElementById('tAgua').value.trim(),
     sinais: sinais.join(', '),
     dataTeste: document.getElementById('tData').value || hojeISO(),
+    condicoes: document.getElementById('tCond').value.trim(),
     obs: document.getElementById('tObs').value.trim(),
     resultado: document.getElementById('tRes').value
   };
@@ -3796,6 +4176,16 @@ async function salvarTeste(){
     dados.id = res.id;
     testes.push(dados);
     document.getElementById('dlgTeste').close();
+    // Vincula à calda aberta (se houver) e registra a etapa "Teste do copo".
+    if(caldaAbertaId){
+      const c = caldas.find(x => x.id === caldaAbertaId);
+      if(c){
+        const upd = { etapa:'teste_copo', testeCopoId: res.id, atualizadoEm: hojeISO() };
+        Object.assign(c, upd);
+        await apiPost({ tipo:'caldas', action:'update', id: caldaAbertaId, data: upd });
+        renderCaldas();
+      }
+    }
     analisarUI(true);
     renderTestes();
     renderKpis();
@@ -3827,7 +4217,9 @@ async function salvarCalda(){
     obs: document.getElementById('mObs').value.trim(),
     data: document.getElementById('mData').value || '',
     qtdPlantas: document.getElementById('mQtd').value.trim(),
-    compatibilidade: a.classe,
+    compatibilidade: a.classe + (a.viaCopo ? ' (teste do copo)' : ''),
+    etapa: 'montada',
+    testeCopoId: '',
     resultado: '',
     sintomas: '', periodoAval: '', avaliacaoObs: '',
     atualizadoEm: hojeISO()
@@ -3836,9 +4228,10 @@ async function salvarCalda(){
   if(res && res.ok){
     dados.id = res.id;
     caldas.push(dados);
+    caldaAbertaId = res.id;
     renderKpis();
     if(!document.getElementById('secBiblio').hidden) renderCaldas();
-    alert('Calda "' + nome + '" salva na biblioteca.\nCompatibilidade na época do salvamento: ' + a.classe +
+    alert('Calda "' + nome + '" salva na biblioteca (etapa: Mistura montada).\nCompatibilidade na época do salvamento: ' + dados.compatibilidade +
       '\n\nSalvar não movimenta estoque — a aplicação só baixa estoque quando registrada em Pulverizações.');
   }else{
     alert('Erro ao salvar: ' + ((res && res.error) || 'falha'));
@@ -3848,9 +4241,11 @@ async function salvarCalda(){
 // ---- Biblioteca de caldas ----
 let filtroCalCult = 'todas';
 let filtroCalRes = 'todos';
+let filtroCalEtapa = 'todas';
 let filtroCalProd = '';
 document.getElementById('fCalCult').addEventListener('change', e => { filtroCalCult = e.target.value; renderCaldas(); });
 document.getElementById('fCalRes').addEventListener('change', e => { filtroCalRes = e.target.value; renderCaldas(); });
+document.getElementById('fCalEtapa').addEventListener('change', e => { filtroCalEtapa = e.target.value; renderCaldas(); });
 document.getElementById('fCalProd').addEventListener('input', e => { filtroCalProd = e.target.value; renderCaldas(); });
 function tagResultado(v){
   const r = String(v||'');
@@ -3877,6 +4272,7 @@ function renderCaldas(){
   let itens = caldas.slice().sort((a,b) => String(b.dataCriacao||'').localeCompare(String(a.dataCriacao||'')));
   if(filtroCalCult !== 'todas') itens = itens.filter(c => String(c.cultura||'').trim() === filtroCalCult);
   if(filtroCalRes !== 'todos') itens = itens.filter(c => String(c.resultado||'') === filtroCalRes);
+  if(filtroCalEtapa !== 'todas') itens = itens.filter(c => etapaDaCalda(c) === filtroCalEtapa);
   if(filtroCalProd){
     const q = chave(filtroCalProd);
     itens = itens.filter(c => produtosDaCalda(c).some(p => chave(p.nome).includes(q)));
@@ -3885,10 +4281,12 @@ function renderCaldas(){
   if(!itens.length){ box.innerHTML = '<div class="empty">Nenhuma calda salva ainda. Monte em "Montar calda".</div>'; return; }
   box.innerHTML = itens.map(c => {
     const prods = produtosDaCalda(c);
+    const temDetalhes = !!(c.condicoes || c.sintomas || c.periodoAval || c.avaliacaoObs || c.obs);
     return `
     <div class="hrow" id="cal-${escapeHtml(c.id||'')}">
       <div class="hrow-top">
         <b>${escapeHtml(c.nome)}</b>
+        ${tagEtapa(c)}
         ${c.compatibilidade ? tagCompat(c.compatibilidade) : ''}
         ${tagResultado(c.resultado)}
       </div>
@@ -3901,11 +4299,13 @@ function renderCaldas(){
         ${c.qtdPlantas ? ' · Plantas/área: <b>'+escapeHtml(c.qtdPlantas)+'</b>' : ''}
       </div>
       <div class="hrow-sub">Produtos: <b>${escapeHtml(prods.map(p => p.nome + (p.dose ? ' ('+p.dose+(p.unidade ? ' '+p.unidade : '')+')' : '')).join(' + '))}</b></div>
-      ${c.condicoes ? '<small>Condições: '+escapeHtml(c.condicoes)+'</small>' : ''}
-      ${c.sintomas ? '<small>Sintomas: '+escapeHtml(c.sintomas)+'</small>' : ''}
-      ${c.periodoAval ? '<small>Período avaliado: '+escapeHtml(c.periodoAval)+'</small>' : ''}
-      ${c.avaliacaoObs ? '<small>'+escapeHtml(c.avaliacaoObs)+'</small>' : ''}
-      ${c.obs ? '<small>Obs: '+escapeHtml(c.obs)+'</small>' : ''}
+      ${temDetalhes ? '<details class="det" style="margin-top:2px"><summary style="cursor:pointer;color:var(--dim);font-size:11.5px">Detalhes</summary>' +
+        (c.condicoes ? '<small>Condições: '+escapeHtml(c.condicoes)+'</small>' : '') +
+        (c.sintomas ? '<small>Sintomas: '+escapeHtml(c.sintomas)+'</small>' : '') +
+        (c.periodoAval ? '<small>Período avaliado: '+escapeHtml(c.periodoAval)+'</small>' : '') +
+        (c.avaliacaoObs ? '<small>'+escapeHtml(c.avaliacaoObs)+'</small>' : '') +
+        (c.obs ? '<small>Obs: '+escapeHtml(c.obs)+'</small>' : '') +
+        '</details>' : ''}
       <small>Salva em ${escapeHtml(fmtData(c.dataCriacao))}${c.atualizadoEm ? ' · atualizada em '+escapeHtml(fmtData(c.atualizadoEm)) : ''}</small>
       <div class="actions">
         <button class="btn-edit" onclick="abrirCaldaMontar('${escapeHtml(c.id||'')}')">Abrir</button>
@@ -3918,6 +4318,7 @@ function renderCaldas(){
 function abrirCaldaMontar(id){
   const c = caldas.find(x => x.id === id);
   if(!c) return;
+  caldaAbertaId = id;
   selProdutos = produtosDaCalda(c).map(p => ({ chave: chave(p.nome), nome: p.nome,
     dose: p.dose || '', unidade: p.unidade || '' }));
   document.getElementById('mNome').value = c.nome || '';
@@ -3940,6 +4341,7 @@ function avaliarCalda(id){
   avaliandoId = id;
   document.getElementById('cSub').textContent = 'Calda: ' + (c.nome || '');
   document.getElementById('cRes').value = c.resultado || '';
+  document.getElementById('cEtapa').value = etapaDaCalda(c);
   document.getElementById('cSint').value = c.sintomas || '';
   document.getElementById('cPer').value = c.periodoAval || '';
   document.getElementById('cObs').value = c.avaliacaoObs || '';
@@ -3950,6 +4352,7 @@ async function salvarAvaliacao(){
   if(!c) return;
   const dados = {
     resultado: document.getElementById('cRes').value,
+    etapa: document.getElementById('cEtapa').value || etapaDaCalda(c),
     sintomas: document.getElementById('cSint').value.trim(),
     periodoAval: document.getElementById('cPer').value.trim(),
     avaliacaoObs: document.getElementById('cObs').value.trim(),
@@ -3985,15 +4388,19 @@ function renderTestes(){
       : r.toLowerCase().startsWith('compat') ? '<span class="mtag fis">Compatível</span>'
       : '<span class="mtag none">Inconclusivo</span>';
     const nomes = prods.map(p => (p && p.nome) ? p.nome : String(p)).filter(Boolean).join(' + ');
+    const fabs = prods.map(p => (p && p.fabricante) ? p.fabricante : '').filter(Boolean);
+    const fabsUniq = [...new Set(fabs)].join(', ');
     return `
     <div class="hrow">
       <div class="hrow-top"><b>${escapeHtml(nomes || t.ordem || 'Mistura')}</b>${rt}</div>
+      ${fabsUniq ? '<div class="hrow-sub">Fabricante(s): <b>' + escapeHtml(fabsUniq) + '</b></div>' : ''}
       ${t.ordem ? '<div class="hrow-sub">Ordem: <b>' + escapeHtml(t.ordem) + '</b></div>' : ''}
       <div class="hrow-sub">
         ${t.proporcoes ? 'Proporções: <b>' + escapeHtml(t.proporcoes) + '</b>' : ''}
         ${t.agua ? ' · Água: <b>' + escapeHtml(t.agua) + '</b>' : ''}
         ${t.sinais ? ' · Sinais: <b>' + escapeHtml(t.sinais) + '</b>' : ''}
       </div>
+      ${t.condicoes ? '<small>Condições: ' + escapeHtml(t.condicoes) + '</small>' : ''}
       ${t.obs ? '<small>Obs: ' + escapeHtml(t.obs) + '</small>' : ''}
       <small>Testado em ${escapeHtml(fmtData(t.dataTeste || t.dataCriacao))}</small>
     </div>`;

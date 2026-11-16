@@ -73,7 +73,7 @@ Literatura científica               deduplicação · fila (Q_Pesquisas)
 | Armazenamento | Google Sheets, uma planilha por tabela `Q_*` em **pasta privada e independente** no Drive (decisão P5): **não** misturar com as planilhas operacionais; sem compartilhamento público; sem expor estrutura/links do Drive na interface (site vê **só a API**); acesso exclusivamente pelo Apps Script (pasta em Script Properties `BQ_FOLDER_ID`; se vazia, cria na 1ª execução) |
 | API | `Code.gs` atual — apenas **adição** de tipos `bq*` (nenhuma alteração dos tipos existentes) |
 | Cache | estender o padrão `cacheLer_`/`cacheSalvar_`/`cacheLimpar_` (Code.gs L226–238) aos tipos `bq*` |
-| Frontend | **nenhuma página nova** (decisão P4): sem `basequimica.html`, `sidebar.js` intocado; a base serve dados pelo backend existente quando o motor passar a consultá-la (fase 6) — **nenhuma página consome tipos `bq*` na v1** (§12) |
+| Frontend | **nenhuma página nova** (decisão P4): sem `basequimica.html`, `sidebar.js` intocado; a base serve dados pelo backend existente — **desde a fase 6 `bulario.html` consome `bq*` em leitura silenciosa** (única página autorizada, §12) |
 | Service worker | **nenhuma alteração** em `sw.js` — não há página nova; HTML e API já são *network-first* (L44, L32) |
 | Busca em lote | usar o endpoint existente `?tipos=a,b,c` (`doGet` L256, `config.js` `buscarLote`) para carregar as 13 tabelas de uma vez |
 | Texto vs número | colunas de valor **texto** recebem `setNumberFormat('@')` na criação da planilha (§5.3) |
@@ -610,13 +610,15 @@ Bulário · Estoque · InsumosInfo · Montador de Caldas · Biblioteca de caldas
 - Ao criar/importar produto, oferecer match automático por `nomeNormalizado` (+ fabricante) — ação `bqVincular` (§9.3), executada por chamada interna; sem sugestão em tela na v1 (§12).
 - **O caminho inverso não existe na v1:** nenhum campo de `estoque`/`bulario`/`insumosInfo` passa a ser preenchido pela Base Química.
 
-### 11.3 Consulta pelos módulos (futura, fase 6)
+### 11.3 Consulta pelos módulos (fase 6 — executada)
 
-Hoje o Montador lê só os três cadastros. Na fase 6 (após o motor maduro), `analisarPar` poderá consultar `bqInteracoes`/`bqPropriedades` **como mais uma fonte**, mantendo as 4 classes atuais e o teto "SEM INFORMAÇÃO" — mudança de motor só com testes novos de regressão (§14.4).
+O Montador lê os três cadastros **mais a Base Química**. Desde a fase 6, `analisarCalda`/`analisarPar`/`resolverProduto` consultam `bqProdutos`, `bqPropriedades`, `bqIngredientes`, `bqProdIngredientes`, `bqFormulacoes`, `bqRestricoes`, `bqCulturas`, `bqInteracoes` e `bqIntComponentes` **como mais uma fonte** (batch GET `?tipos=…` silencioso), com o teto "SEM INFORMAÇÃO" mantido — mudança de motor coberta por testes novos de regressão (§14.4, `bulario_check.js`).
+
+> **Classes (§3 do plano do Misturador):** a interface do motor passou a usar **3 classes** — `INCOMPATIBILIDADE` / `DOCUMENTADO` / `SEM INFORMAÇÃO` — conforme spec do Misturador de Caldas (o resultado físico do teste do copo é `DOCUMENTADO` com marcação `viaCopo`, nunca "compatível"). O teto "ausência nunca vira compatibilidade" permanece idêntico.
 
 ### 11.4 Sem ponte de interface na v1
 
-Nenhum link, seção ou endereço da Base Química é exposto nas páginas existentes (`bulario.html`, `sidebar.js`, etc.) — decisão P4 (§19). Quando o motor passar a consultar a base (fase 6, §17), os dados chegarão **silenciosamente pelo backend** (`?tipo=bq*`), sem revelar estrutura de planilhas nem pasta do Drive. Nenhum dado é escrito de volta aos cadastros existentes.
+Nenhum link, seção ou endereço da Base Química é exposto nas páginas existentes (`bulario.html`, `sidebar.js`, etc.) — decisão P4 (§19). Na fase 6 (executada) os dados chegam **silenciosamente pelo backend** (`?tipos=bq*…`, batch GET), sem revelar estrutura de planilhas nem pasta do Drive, e nenhum dado é escrito de volta aos cadastros existentes.
 
 ---
 
@@ -626,10 +628,10 @@ Nenhum link, seção ou endereço da Base Química é exposto nas páginas exist
 
 - **Não existe** `basequimica.html`, item no `sidebar.js`, seção nova ou qualquer página/elemento visível no site.
 - As 13 planilhas `Q_*` vivem na pasta privada do Drive (§3.1) e são acessadas **somente pelo Apps Script**.
-- A base **serve dados** ao Bulário e ao Montador de Caldas pelo **backend existente** — na v1 nenhum frontend consume tipos `bq*` (o motor só passa a consultá-la na fase 6, §17).
-- **Endpoints administrativos não são expostos ao frontend:** nenhuma página referencia `bq*`; importação, fila e validação (§9.3) são executadas por chamadas internas (script/ferramenta/editor do Apps Script), sem UI.
+- A base **serve dados** ao Bulário e ao Montador de Caldas pelo **backend existente** — desde a fase 6 o motor de `bulario.html` consome tipos `bq*` em **leitura silenciosa** (única página autorizada; guarda de regressão em `base_quimica.test.js` §12).
+- **Endpoints administrativos não são expostos ao frontend:** nenhuma página além do motor de `bulario.html` referencia `bq*`, e nenhuma ação de escrita (`add`/`update`/`ficha`/`revisar`/fila) é chamada pelo frontend — importação, fila e validação (§9.3) continuam por chamadas internas (script/ferramenta/editor do Apps Script), sem UI.
 - **Administração na v1:** pelas próprias planilhas `Q_*` (uso pessoal no Drive) e por funções `bq*` chamadas diretamente — sem tela no site.
-- **Interfaces existentes preservadas:** nenhum `*.html`, `sidebar.js` ou CSS é alterado na v1.0.
+- **Interfaces existentes preservadas:** nenhuma página nova; a fase 6 alterou apenas o motor de análise dentro de `bulario.html`, sem expor estrutura de planilhas.
 
 **As 9 seções do plano** (Visão geral · Produtos e ingredientes · Propriedades físico-químicas · Formulações · Interações · Evidências · Documentos · Pesquisas pendentes · Histórico de validação) ficam registradas aqui como **especificação de painel futuro**, fora do escopo v1 — se um dia existir, será superfície administrativa protegida, nunca uma aba pública.
 

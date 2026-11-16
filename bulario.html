@@ -3608,7 +3608,19 @@ function montarBqIndice(){
   bqIdx = idx;
 }
 function idxBq(){ if(!bqIdx) montarBqIndice(); return bqIdx; }
-function bqProdutoDe(nome){ return idxBq().porChave.get(chave(nome)) || null; }
+// Alias de resolução: nome curto do estoque/bulario → nomeComercial na Base Química
+// (AGROFIT importa o nome completo). Overrides documentados na spec §7.1:
+// Actara→Actara 250 WG, Trigard→Trigard 750 WP, Lanate→Bazuka 216 SL;
+// 'Abelto Pro' é typo do seed com o produto Asbelto Pro.
+const BQ_ALIAS = { 'actara':'Actara 250 WG', 'trigard':'Trigard 750 WP',
+  'lanate':'Bazuka 216 SL', 'abeltopro':'Asbelto Pro' };
+function bqProdutoDe(nome){
+  const k = chave(nome);
+  const direto = idxBq().porChave.get(k);
+  if(direto) return direto;
+  const alvo = BQ_ALIAS[k];
+  return alvo ? (idxBq().porChave.get(chave(alvo)) || null) : null;
+}
 // Propriedade física do produto: aprovado > pendente (rejeitado/divergente já filtrados no índice).
 function bqPropDe(produtoId, campo){
   const arr = idxBq().props.get(produtoId) || [];

@@ -414,6 +414,21 @@ ok(a.classe === 'SEM INFORMAÇÃO', 'mistura com 3o produto fora da regra -> SEM
 ok(a.pares.filter(p => p.classe === 'DOCUMENTADA').length === 1, 'par coberto segue DOCUMENTADA');
 setBq({});
 
+console.log('33) alias de resolução (estoque curto -> Base Química, §7.1)');
+setBq({ produtos:[
+  {id:'P250',nomeComercial:'Actara 250 WG'},
+  {id:'P750',nomeComercial:'Trigard 750 WP'},
+  {id:'PBAZ',nomeComercial:'Bazuka 216 SL'},
+  {id:'PASP',nomeComercial:'Asbelto Pro'}
+]});
+ok(bqProdutoDe('Actara') && bqProdutoDe('Actara').id === 'P250', 'Actara -> Actara 250 WG');
+ok(bqProdutoDe('Actara 250 WG') && bqProdutoDe('Actara 250 WG').id === 'P250', 'nome completo segue resolvendo');
+ok(bqProdutoDe('Trigard') && bqProdutoDe('Trigard').id === 'P750', 'Trigard -> Trigard 750 WP');
+ok(bqProdutoDe('Lanate') && bqProdutoDe('Lanate').id === 'PBAZ', 'Lanate -> Bazuka 216 SL (override §7.1)');
+ok(bqProdutoDe('Abelto Pro') && bqProdutoDe('Abelto Pro').id === 'PASP', 'typo Abelto Pro -> Asbelto Pro');
+ok(bqProdutoDe('Produto Inexistente') === null, 'sem alias continua null');
+setBq({});
+
 console.log('');
 console.log((total - falhas) + '/' + total + ' testes passaram.');
 if(falhas) process.exit(1);

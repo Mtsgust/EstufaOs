@@ -302,6 +302,106 @@ ok(a.bq && a.bq.comuns.join(',').indexOf('Glifosato') >= 0, 'ingrediente em comu
 ok(a.classe !== 'INCOMPATIBILIDADE', 'ingrediente em comum nao vira incompat (got ' + a.classe + ')');
 setBq({});
 
+console.log('25) passo 5.5 — avaliacao fisico-quimica VERDE (formula igual, sem alerta)');
+setBq({});
+setDados([rec('FqA',{formula:'SC - Suspensão Concentrada'}), rec('FqB',{formula:'SC - Suspensão Concentrada'})], [], []);
+setSel(selDe('FqA','FqB')); setTestes([]);
+a = analisarCalda();
+ok(a.classe === 'AVALIACAO_FISICO_QUIMICA', 'classe 5.5 (got ' + a.classe + ')');
+ok(a.fisicoQuimico === 'verde' && a.klass === 'ok', 'verde + klass ok (got ' + a.fisicoQuimico + '/' + a.klass + ')');
+ok(a.pares[0].classe === 'AVALIACAO_FISICO_QUIMICA' && a.pares[0].fisicoQuimico === 'verde', 'par com a cor');
+ok(a.motivos.some(m => m.indexOf('Sem conflito físico-químico aparente') >= 0), 'texto verde');
+ok(a.motivos.some(m => m.indexOf('validar com teste do copo') >= 0), 'orienta teste do copo');
+
+console.log('26) passo 5.5 — AMARELO por formulação diferente e por pH distante');
+setDados([rec('Fa',{formula:'SC - Suspensão Concentrada'}), rec('Fb',{formula:'WG - Grânulos Dispersíveis em Água'})], [], []);
+setSel(selDe('Fa','Fb'));
+a = analisarCalda();
+ok(a.classe === 'AVALIACAO_FISICO_QUIMICA' && a.fisicoQuimico === 'amarelo', 'formula diferente -> amarelo (got ' + a.fisicoQuimico + ')');
+ok(a.klass === 'atencao', 'klass atencao (got ' + a.klass + ')');
+ok(a.motivos.some(m => m.indexOf('mistura de formulações') >= 0), 'motivo cita formulações');
+setDados([rec('Pa',{ph:'5,1', naturezaFisica:'Liquido'}), rec('Pb',{ph:'7,2', naturezaFisica:'Liquido'})], [], []);
+setSel(selDe('Pa','Pb'));
+a = analisarCalda();
+ok(a.fisicoQuimico === 'amarelo', 'pH distante -> amarelo (got ' + a.fisicoQuimico + ')');
+ok(a.motivos.some(m => m.indexOf('diferença de pH') >= 0), 'motivo cita pH');
+
+console.log('27) passo 5.5 — SEM so com dado basico faltando; passos 1 e 5 vencem');
+setDados([rec('Gb',{formula:'SC'}), rec('Gv')], [], []);
+setSel(selDe('Gb','Gv'));
+a = analisarCalda();
+ok(a.classe === 'SEM INFORMAÇÃO', 'falta dado basico num lado -> SEM (got ' + a.classe + ')');
+ok(a.pares[0].classe === 'SEM INFORMAÇÃO', 'par SEM (5.5 so cai aqui)');
+setDados([rec('Haz',{formula:'SC', restricoes:'Nao misturar Haz com Hbz.'}), rec('Hbz',{formula:'WG'})], [], []);
+setSel(selDe('Haz','Hbz'));
+a = analisarCalda();
+ok(a.classe === 'INCOMPATIBILIDADE', 'passo 1 vence 5.5 (got ' + a.classe + ')');
+setDados([rec('Ca',{formula:'SC'}), rec('Cb',{formula:'WG'})], [], []);
+setSel(selDe('Ca','Cb'));
+setTestes([{ chave: chaveTeste(), resultado:'compativel', dataTeste:'2026-11-01', produtos:'[]' }]);
+a = analisarCalda();
+ok(a.classe === 'DOCUMENTADA' && a.viaCopo === true, 'passo 5 (copo exato) vence 5.5 (got ' + a.classe + ')');
+setTestes([]);
+
+console.log('28) Q_Formulacoes: formula descritiva vira fonte da ordem (AGROFIT)');
+setBq({ formacoes:[{id:'F1',codigo:'SC',nome:'Suspensão concentrada',ordemMistura:'2'},
+                   {id:'F2',codigo:'WP',nome:'Pó molhável',ordemMistura:'1'}] });
+r2 = recomendarOrdem([rec('O1',{formula:'SC - Suspensão Concentrada'}), rec('O2',{formula:'WP - Pó Molhável'})]);
+ok(r2.nivel === 'SUGESTÃO TÉCNICA', 'ordem sugestao tecnica (got ' + r2.nivel + ')');
+ok(r2.fonte.indexOf('Q_Formulacoes') >= 0, 'fonte Q_Formulacoes (got ' + r2.fonte + ')');
+ok(r2.sequencia && r2.sequencia[0] === 'O2', 'WP antes de SC (got ' + (r2.sequencia||[]).join(',') + ')');
+setBq({});
+
+console.log('29) interacao por INGREDIENTE ATIVO cobre marcas equivalentes');
+setBq({ produtos:[{id:'BA',nomeComercial:'MarcaClor'},{id:'BB',nomeComercial:'MarcaInf'},{id:'BC',nomeComercial:'MarcaOut'}],
+  ingredientes:[{id:'ICL',nome:'clorotalonil',grupoQuimico:'isoftalonitrila'},
+                {id:'IPR',nome:'Cloridrato de propamocarbe',grupoQuimico:'carbamato'},
+                {id:'IFL',nome:'fluopicolide',grupoQuimico:'benzamida'}],
+  prodIngr:[{produtoId:'BA',ingredienteId:'ICL'},
+            {produtoId:'BB',ingredienteId:'IPR'},{produtoId:'BB',ingredienteId:'IFL'}],
+  interacoes:[{id:'XR',tipo:'incompatibilidade_quimica',efeito:'nao misturar clorotalonil com propamocarbe+fluopicolide',validacao:'revisado'}],
+  intComp:[{interacaoId:'XR',entidadeTipo:'ingrediente',entidadeId:'ICL',ordem:1},
+           {interacaoId:'XR',entidadeTipo:'ingrediente',entidadeId:'IPR',ordem:2},
+           {interacaoId:'XR',entidadeTipo:'ingrediente',entidadeId:'IFL',ordem:3}] });
+setDados([rec('MarcaClor'), rec('MarcaInf')], [], []);
+setSel(selDe('MarcaClor','MarcaInf')); setTestes([]);
+a = analisarCalda();
+ok(a.classe === 'INCOMPATIBILIDADE', 'regra por ativo -> INCOMPAT (got ' + a.classe + ')');
+ok(a.pares[0].evidencia.indexOf('Q_Interacoes') >= 0, 'evidencia cita Q_Interacoes');
+setDados([rec('MarcaClor'), rec('MarcaOut')], [], []);
+setSel(selDe('MarcaClor','MarcaOut'));
+a = analisarCalda();
+ok(a.classe !== 'INCOMPATIBILIDADE', 'sem TODOS os componentes nao dispara (got ' + a.classe + ')');
+setBq({});
+
+console.log('30) interacao por GRUPO QUIMICO (outro ativo do mesmo grupo casa)');
+setBq({ produtos:[{id:'GA2',nomeComercial:'GrupoA'},{id:'GB2',nomeComercial:'GrupoB'}],
+  ingredientes:[{id:'I1g',nome:'outro triazol',grupoQuimico:'triazol'},
+                {id:'I2g',nome:'difenoconazol',grupoQuimico:'triazol'},
+                {id:'IPRg',nome:'Cloridrato de propamocarbe',grupoQuimico:'carbamato'}],
+  prodIngr:[{produtoId:'GA2',ingredienteId:'I1g'},{produtoId:'GB2',ingredienteId:'IPRg'}],
+  interacoes:[{id:'XG',tipo:'antagonismo',efeito:'difenoconazol com propamocarbe reduz eficacia',validacao:'validado'}],
+  intComp:[{interacaoId:'XG',entidadeTipo:'ingrediente',entidadeId:'I2g',ordem:1},
+           {interacaoId:'XG',entidadeTipo:'ingrediente',entidadeId:'IPRg',ordem:2}] });
+setDados([rec('GrupoA'), rec('GrupoB')], [], []);
+setSel(selDe('GrupoA','GrupoB')); setTestes([]);
+a = analisarCalda();
+ok(a.classe === 'INCOMPATIBILIDADE', 'grupo quimico casa componente (got ' + a.classe + ')');
+setBq({});
+
+console.log('31) mistura: todos os pares 5.5 -> classe 5.5; 1 produto sem dado -> SEM parcial');
+setBq({});
+setDados([rec('Ma',{formula:'SC'}), rec('Mb',{formula:'SC'}), rec('Mc',{formula:'SC'})], [], []);
+setSel(selDe('Ma','Mb','Mc')); setTestes([]);
+a = analisarCalda();
+ok(a.classe === 'AVALIACAO_FISICO_QUIMICA' && a.klass === 'ok', 'mistura verde (got ' + a.classe + '/' + a.klass + ')');
+setDados([rec('Ma',{formula:'SC'}), rec('Mb',{formula:'SC'}), rec('Mv')], [], []);
+setSel(selDe('Ma','Mb','Mv'));
+a = analisarCalda();
+ok(a.classe === 'SEM INFORMAÇÃO', 'falta dado em 1 -> SEM (got ' + a.classe + ')');
+ok(a.pares.filter(p => p.classe === 'AVALIACAO_FISICO_QUIMICA').length === 1, 'so o par com os dois lados cobertos avalia');
+ok(a.motivos.some(m => m.indexOf('físico-química teórica disponível') >= 0), 'motivo de informacao parcial');
+
 console.log('');
 console.log((total - falhas) + '/' + total + ' testes passaram.');
 if(falhas) process.exit(1);

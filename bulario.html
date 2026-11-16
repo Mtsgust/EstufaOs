@@ -251,6 +251,8 @@
   .res-box.ok{border-color:rgba(143,209,154,.4); background:rgba(143,209,154,.07);}
   .res-box.bad{border-color:rgba(224,120,95,.45); background:rgba(224,120,95,.07);}
   .res-box.unk{border-color:rgba(217,164,65,.4); background:rgba(217,164,65,.07);}
+  .res-box.atencao{border-color:rgba(224,180,80,.45); background:rgba(224,180,80,.08);}
+  .res-box.atencao .res-tag{color:var(--gold);}
   .res-tag{font-weight:800; text-transform:uppercase; letter-spacing:.05em; font-size:12px; display:block; margin-bottom:6px;}
   .res-box.ok .res-tag{color:var(--lime);}
   .res-box.bad .res-tag{color:var(--red);}
@@ -3592,9 +3594,11 @@ function montarBqIndice(){
   }
   const compPorInt = new Map();
   for(const ic of bq.intComp){
-    if(!ic || ic.excluido || ic.entidadeTipo !== 'produto') continue;
+    if(!ic || ic.excluido) continue;
+    // Guarda o tipo do componente: produto OU ingrediente (regras por ativo/grupo
+    // cobrem dezenas de marcas com um único cadastro).
     if(!compPorInt.has(ic.interacaoId)) compPorInt.set(ic.interacaoId, []);
-    compPorInt.get(ic.interacaoId).push(ic.entidadeId);
+    compPorInt.get(ic.interacaoId).push({ t: ic.entidadeTipo || 'produto', id: ic.entidadeId });
   }
   for(const it of bq.interacoes){
     if(!it || it.excluido) continue;
@@ -3619,28 +3623,71 @@ function bqIADe(produtoId){
   return arr.map(i => i.nome + (i.concentracao ? ' ' + i.concentracao + (i.unidade ? ' ' + i.unidade : '') : '')).join(' + ');
 }
 function bqFormDe(codigo){
-  const c = chave(codigo||'');
-  if(!c) return null;
-  return bq.formacoes.find(f => f && !f.excluido && chave(f.codigo) === c) || null;
+  const bruto = String(codigo||'').trim();
+  if(!bruto) return null;
+  // Vem como código puro ('SC') ou descritivo ('SC - Suspensão Concentrada',
+  // 'Formulação mista CS e SC'): tenta o texto inteiro, o token inicial antes
+  // de ' - ' e, por fim, qualquer código da Q_Formulacoes como palavra isolada.
+  const candidatos = [bruto, bruto.split(/\s+-\s+/)[0]];
+  for(const c of candidatos){
+    const k = chave(c);
+    if(!k) continue;
+    const f = bq.formacoes.find(f => f && !f.excluido && chave(f.codigo) === k);
+    if(f) return f;
+  }
+  for(const f of (bq.formacoes || [])){
+    if(!f || f.excluido || !f.codigo) continue;
+    try{ if(new RegExp('\\b' + String(f.codigo).replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b', 'i').test(bruto)) return f; }catch(e){}
+  }
+  return null;
+}
+// Uma regra vale quando TODOS os componentes estão cobertos pelo escopo
+// (produto + seus ingredientes) E ao menos 2 produtos distintos contribuem —
+// interação é entre produtos, não propriedade de um só. Componente do tipo
+// ingrediente casa pelo id OU pelo mesmo grupoQuimico (uma regra cobre dezenas
+// de marcas com os mesmos ativos/grupos).
+function entidadesDoProduto(bpId){
+  const s = new Set([bpId]);
+  for(const i of (idxBq().ings.get(bpId) || [])) s.add(i.id);
+  return s;
+}
+function cobreComp(c, ents){
+  if(ents.has(c.id)) return true;
+  if(c.t === 'ingrediente'){
+    const ing = idxBq().ingPorId.get(c.id);
+    const g = ing ? chave(ing.grupoQuimico || '') : '';
+    if(g){
+      for(const id of ents){
+        const noEscopo = idxBq().ingPorId.get(id);
+        if(noEscopo && chave(noEscopo.grupoQuimico || '') === g) return true;
+      }
+    }
+  }
+  return false;
+}
+function interacoesAplicaveis(idsProdutos){
+  const out = [];
+  if(!idsProdutos || idsProdutos.length < 2) return out;
+  const entsPorProd = new Map(idsProdutos.map(id => [id, entidadesDoProduto(id)]));
+  for(const e of idxBq().interacoes){
+    if(['revisado','validado'].indexOf(String(e.it.validacao||'')) === -1) continue;
+    if(!e.comps.length) continue;
+    const cobre = pid => e.comps.some(c => cobreComp(c, entsPorProd.get(pid)));
+    if(!e.comps.every(c => idsProdutos.some(pid => cobreComp(c, entsPorProd.get(pid))))) continue;
+    const contribuintes = idsProdutos.filter(pid => cobre(pid));
+    if(contribuintes.length < 2) continue;
+    out.push(e.it);
+  }
+  return out;
 }
 function bqInteracoesDoPar(idA, idB){
-  const validas = [];
-  for(const e of idxBq().interacoes){
-    if(!e.comps.includes(idA) || !e.comps.includes(idB)) continue;
-    if(['revisado','validado'].indexOf(String(e.it.validacao||'')) === -1) continue;
-    validas.push(e.it);
-  }
+  const validas = interacoesAplicaveis([idA, idB]);
   const incomp = validas.find(i => ['incompatibilidade_fisica','incompatibilidade_quimica','antagonismo'].indexOf(i.tipo) > -1);
   if(incomp) return incomp;
   return validas.find(i => ['compatibilidade','sinergismo','neutro'].indexOf(i.tipo) > -1) || null;
 }
 function bqInteracaoCompleta(ids){
-  for(const e of idxBq().interacoes){
-    if(!ids.every(id => e.comps.includes(id))) continue;
-    if(['revisado','validado'].indexOf(String(e.it.validacao||'')) === -1) continue;
-    return e.it;
-  }
-  return null;
+  return interacoesAplicaveis(ids)[0] || null;
 }
 function bqRestricoesDe(sel){
   const out = [];
@@ -3781,6 +3828,13 @@ function avaliarPar(a, b){
         (exato.dataTeste ? ' em ' + fmtData(exato.dataTeste) : '') +
         ' — cobre só a compatibilidade física no preparo; não substitui a bula.' };
   }
+  // 5.5) AVALIAÇÃO FISICO-QUIMICA: teoria pelos parâmetros cadastrados, só quando
+  //    os DOIS produtos têm dado físico-químico básico (formulação, ou natureza
+  //    física + pH/solubilidade). Fica ENTRE o copo e o SEM INFORMAÇÃO: nunca
+  //    sobe para DOCUMENTADO/INCOMPATIBILIDADE e nunca desce sozinha para SEM —
+  //    SEM só quando falta dado físico-químico básico em um dos produtos.
+  const fq = avaliarFisicoQuimico(a, b);
+  if(fq) return fq;
   // 6) sem informação: dizer o que impede a conclusão neste par
   const faltam = [];
   for(const s of [a, b]){
@@ -3794,6 +3848,46 @@ function avaliarPar(a, b){
   return { classe:'SEM INFORMAÇÃO',
     evidencia: (faltam.length ? 'Sem registro de restrições/compatibilidade: falta ' + faltam.join(', ') + '.'
       : 'Há registros, mas nenhum deles cita esta combinação.') + extra };
+}
+// Passo 5.5 — dado físico-químico básico presente? Fórmula, OU natureza física
+// combinada com pH ou solubilidade (qualquer um dos dois).
+function cobreFisico(s){
+  if(String(s.formula||'').trim()) return true;
+  return String(s.naturezaFisica||'').trim() !== '' &&
+    (String(s.ph||'').trim() !== '' || String(s.solubilidade||'').trim() !== '');
+}
+// Primeiro número do valor ('6,5', '5,5 - 7,0' → 5,5): comparação simples,
+// sem interpretar intervalos (anti-coerção: nada vira número onde não há).
+function phDe(v){
+  const m = String(v||'').replace(',', '.').match(/\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+function avaliarFisicoQuimico(a, b){
+  if(!cobreFisico(a) || !cobreFisico(b)) return null;
+  const motivos = [];
+  const pa = phDe(a.ph), pb = phDe(b.ph);
+  if(pa !== null && pb !== null && Math.abs(pa - pb) > 1.5){
+    motivos.push('diferença de pH: "' + a.nome + '" ' + a.ph + ' × "' + b.nome + '" ' + b.ph);
+  }
+  const fa = String(a.formula||'').trim().toUpperCase();
+  const fb = String(b.formula||'').trim().toUpperCase();
+  if(fa && fb && chave(fa) !== chave(fb)){
+    motivos.push('mistura de formulações: "' + a.nome + '" (' + fa + ') × "' + b.nome + '" (' + fb + ')');
+  }
+  const params = [];
+  if(fa || fb) params.push('formulação');
+  if(pa !== null && pb !== null) params.push('pH');
+  if(String(a.solubilidade||'').trim() || String(b.solubilidade||'').trim()) params.push('solubilidade');
+  if(String(a.naturezaFisica||'').trim() || String(b.naturezaFisica||'').trim()) params.push('natureza física');
+  if(!params.length) params.push('dados cadastrados');
+  if(motivos.length){
+    return { classe:'AVALIACAO_FISICO_QUIMICA', fisicoQuimico:'amarelo',
+      evidencia:'Atenção: diferença de pH / mistura de formulações — ' + motivos.join('; ') +
+        ' (parâmetros avaliados: ' + params.join(', ') + '). Confirme com bula e teste do copo.' };
+  }
+  return { classe:'AVALIACAO_FISICO_QUIMICA', fisicoQuimico:'verde',
+    evidencia:'Sem conflito físico-químico aparente pelos parâmetros avaliados (' + params.join(', ') +
+      ') — validar com teste do copo.' };
 }
 // Dados que faltam em cada produto e o que cada falta limita na análise.
 function dadosFaltantes(sel){
@@ -3912,7 +4006,7 @@ function analisarCalda(){
     for(let j = i + 1; j < sel.length; j++){
       const r = avaliarPar(sel[i], sel[j]);
       const par = { a: sel[i].nome, b: sel[j].nome, classe: r.classe,
-        viaCopo: !!r.viaCopo, evidencia: r.evidencia };
+        viaCopo: !!r.viaCopo, fisicoQuimico: r.fisicoQuimico || '', evidencia: r.evidencia };
       pares.push(par);
       if(r.classe === 'INCOMPATIBILIDADE' && !algumIncompat) algumIncompat = par;
     }
@@ -4037,6 +4131,20 @@ function analisarCalda(){
       (histCompat.dataTeste ? fmtData(histCompat.dataTeste) : 'data não informada') +
       '), mas há base teórica parcial — o teste do copo não substitui nem anula a documentação.');
   }
+  // 7b) Passo 5.5 na mistura: TODOS os pares com avaliação físico-química
+  //     teórica → a mistura herda a classe (amarelo se algum par alertou,
+  //     verde caso contrário). Nunca sobe para DOCUMENTADO nem desce para
+  //     SEM INFORMAÇÃO (faltar dado básico em UM par já fica no SEM com o
+  //     motivo de informação parcial abaixo).
+  const todosFQ = pares.length > 0 && pares.every(p => p.classe === 'AVALIACAO_FISICO_QUIMICA');
+  if(todosFQ){
+    const amarelo = pares.some(p => p.fisicoQuimico === 'amarelo');
+    motivos.push(amarelo
+      ? 'Atenção: diferença de pH / mistura de formulações em ao menos um par — avaliação físico-química teórica não conclusiva; confirme com bula e teste do copo.'
+      : 'Sem conflito físico-químico aparente pelos parâmetros avaliados — validar com teste do copo.');
+    return Object.assign(base, { classe:'AVALIACAO_FISICO_QUIMICA',
+      klass: amarelo ? 'atencao' : 'ok', fisicoQuimico: amarelo ? 'amarelo' : 'verde', motivos });
+  }
   if(temBaseTeoricaPar){
     const docs = pares.filter(p => p.classe === 'DOCUMENTADA' && !p.viaCopo).map(p => p.a + ' × ' + p.b);
     if(docs.length) motivos.push('Permite concluir (parcial): compatibilidade documentada em ' + docs.join(', ') + '.');
@@ -4047,36 +4155,52 @@ function analisarCalda(){
   if(!motivos.length && histSemelhante.length){
     motivos.push('Há teste(s) do copo com produtos semelhantes, mas nenhum com match exato desta mistura (combinação + doses + unidades + água + ordem) — não reaproveitado.');
   }
+  const fqPares = pares.filter(p => p.classe === 'AVALIACAO_FISICO_QUIMICA');
+  if(!motivos.length && fqPares.length){
+    motivos.push('Avaliação físico-química teórica disponível em ' + fqPares.length + ' de ' + pares.length +
+      ' par(es), mas falta dado físico-químico básico em ao menos um produto — conclusão limitada a SEM INFORMAÇÃO.');
+  }
   if(!motivos.length){
     motivos.push('Sem informação registrada: não há restrição, compatibilidade documentada nem teste do copo para esta combinação.');
   }
   return Object.assign(base, { classe:'SEM INFORMAÇÃO', klass:'unk', motivos });
 }
-function tagCompat(c, viaCopo){
+function tagCompat(c, viaCopo, fisicoQuimico){
   const t = String(c || '');
   const copo = (viaCopo || t.toUpperCase().indexOf('TESTE DO COPO') > -1) ? ' · copo' : '';
   if(t.toUpperCase().startsWith('INCOMPAT')) return '<span class="mtag ruim">Incompatível</span>';
   if(t.toUpperCase().startsWith('DOCUMENT')) return '<span class="mtag ok">Documentado'+copo+'</span>';
+  if(t.toUpperCase().startsWith('AVALIACAO')){
+    const amarelo = fisicoQuimico === 'amarelo' || t.toUpperCase().indexOf('ATEN') > -1;
+    return '<span class="mtag ' + (amarelo ? 'reg' : 'ok') + '">Físico-químico' +
+      (amarelo ? ' · atenção' : ' · sem conflito') + '</span>';
+  }
   if(t.toUpperCase().startsWith('F')) return '<span class="mtag fis">Física (copo)</span>';
   return '<span class="mtag none">Sem informação</span>';
 }
 const DISCLAIMER_ANALISE = 'Análise baseada apenas nos dados registrados no app. Ausência de informação não é compatibilidade. ' +
   'Compatibilidade física observada em teste do copo não garante segurança química, eficácia nem ausência de fitotoxicidade. ' +
   'Confira a bula antes de aplicar.';
+// Texto amigável da classe para o cabeçalho do resultado.
+function rotuloCompat(an){
+  if(an.classe === 'AVALIACAO_FISICO_QUIMICA')
+    return 'Avaliação físico-química' + (an.fisicoQuimico === 'amarelo' ? ' — atenção' : ' (teórica)');
+  return an.classe + (an.viaCopo ? ' (físico — teste do copo)' : '');
+}
 function analisarUI(silencioso){
   analise = analisarCalda();
   const box = document.getElementById('resBox');
   box.hidden = false;
   box.className = 'res-box ' + analise.klass;
   let html = '<span class="res-tag">Compatibilidade: ' +
-    escapeHtml(analise.classe + (analise.viaCopo ? ' (físico — teste do copo)' : '')) + '</span>' +
+    escapeHtml(rotuloCompat(analise)) + '</span>' +
     '<ul>' + analise.motivos.map(m => '<li>' + escapeHtml(m) + '</li>').join('') + '</ul>';
   if(analise.pares && analise.pares.length){
     html += '<div class="sec-title" style="margin:12px 0 0;font-size:11px;">Análise par a par</div>' +
       '<table class="par-table"><tr><th>Par</th><th>Classe</th><th>Evidência / limitação</th></tr>' +
       analise.pares.map(p =>
         '<tr><td><b>' + escapeHtml(p.a) + ' × ' + escapeHtml(p.b) + '</b></td><td>' +
-        tagCompat(p.classe, p.viaCopo) + '</td><td>' + escapeHtml(p.evidencia) + '</td></tr>').join('') +
+        tagCompat(p.classe, p.viaCopo, p.fisicoQuimico) + '</td><td>' + escapeHtml(p.evidencia) + '</td></tr>').join('') +
       '</table>';
   }
   if(analise.faltantes && analise.faltantes.length){
@@ -4217,7 +4341,8 @@ async function salvarCalda(){
     obs: document.getElementById('mObs').value.trim(),
     data: document.getElementById('mData').value || '',
     qtdPlantas: document.getElementById('mQtd').value.trim(),
-    compatibilidade: a.classe + (a.viaCopo ? ' (teste do copo)' : ''),
+    compatibilidade: a.classe + (a.viaCopo ? ' (teste do copo)' : '') +
+      (a.classe === 'AVALIACAO_FISICO_QUIMICA' && a.fisicoQuimico === 'amarelo' ? ' — atenção' : ''),
     etapa: 'montada',
     testeCopoId: '',
     resultado: '',

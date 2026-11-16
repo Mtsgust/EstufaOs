@@ -419,13 +419,15 @@ setBq({ produtos:[
   {id:'P250',nomeComercial:'Actara 250 WG'},
   {id:'P750',nomeComercial:'Trigard 750 WP'},
   {id:'PBAZ',nomeComercial:'Bazuka 216 SL'},
-  {id:'PASP',nomeComercial:'Asbelto Pro'}
+  {id:'PASP',nomeComercial:'Asbelto Pro'},
+  {id:'PNUT',nomeComercial:'Nutrilife B+'}
 ]});
 ok(bqProdutoDe('Actara') && bqProdutoDe('Actara').id === 'P250', 'Actara -> Actara 250 WG');
 ok(bqProdutoDe('Actara 250 WG') && bqProdutoDe('Actara 250 WG').id === 'P250', 'nome completo segue resolvendo');
 ok(bqProdutoDe('Trigard') && bqProdutoDe('Trigard').id === 'P750', 'Trigard -> Trigard 750 WP');
 ok(bqProdutoDe('Lanate') && bqProdutoDe('Lanate').id === 'PBAZ', 'Lanate -> Bazuka 216 SL (override §7.1)');
 ok(bqProdutoDe('Abelto Pro') && bqProdutoDe('Abelto Pro').id === 'PASP', 'typo Abelto Pro -> Asbelto Pro');
+ok(bqProdutoDe('Nutrileaf B+') && bqProdutoDe('Nutrileaf B+').id === 'PNUT', 'variante Nutrileaf B+ -> Nutrilife B+');
 ok(bqProdutoDe('Produto Inexistente') === null, 'sem alias continua null');
 setBq({});
 

@@ -3612,8 +3612,9 @@ function idxBq(){ if(!bqIdx) montarBqIndice(); return bqIdx; }
 // (AGROFIT importa o nome completo). Overrides documentados na spec §7.1:
 // Actara→Actara 250 WG, Trigard→Trigard 750 WP, Lanate→Bazuka 216 SL;
 // 'Abelto Pro' é typo do seed com o produto Asbelto Pro.
+// 'Nutrileaf B+' é variante do estoque p/ Nutrilife B+ (Nutrisoil).
 const BQ_ALIAS = { 'actara':'Actara 250 WG', 'trigard':'Trigard 750 WP',
-  'lanate':'Bazuka 216 SL', 'abeltopro':'Asbelto Pro' };
+  'lanate':'Bazuka 216 SL', 'abeltopro':'Asbelto Pro', 'nutrileafb':'Nutrilife B+' };
 function bqProdutoDe(nome){
   const k = chave(nome);
   const direto = idxBq().porChave.get(k);

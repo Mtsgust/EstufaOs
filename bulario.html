@@ -3665,7 +3665,7 @@ function cobreComp(c, ents){
   }
   return false;
 }
-function interacoesAplicaveis(idsProdutos){
+function interacoesAplicaveis(idsProdutos, todosContribuem){
   const out = [];
   if(!idsProdutos || idsProdutos.length < 2) return out;
   const entsPorProd = new Map(idsProdutos.map(id => [id, entidadesDoProduto(id)]));
@@ -3676,6 +3676,9 @@ function interacoesAplicaveis(idsProdutos){
     if(!e.comps.every(c => idsProdutos.some(pid => cobreComp(c, entsPorProd.get(pid))))) continue;
     const contribuintes = idsProdutos.filter(pid => cobre(pid));
     if(contribuintes.length < 2) continue;
+    // Nível mistura: a regra só classifica a MISTURA COMPLETA se todos os
+    // produtos participam — senão ela vale só no par (que já classifica).
+    if(todosContribuem && contribuintes.length < idsProdutos.length) continue;
     out.push(e.it);
   }
   return out;
@@ -3687,7 +3690,7 @@ function bqInteracoesDoPar(idA, idB){
   return validas.find(i => ['compatibilidade','sinergismo','neutro'].indexOf(i.tipo) > -1) || null;
 }
 function bqInteracaoCompleta(ids){
-  return interacoesAplicaveis(ids)[0] || null;
+  return interacoesAplicaveis(ids, true)[0] || null;
 }
 function bqRestricoesDe(sel){
   const out = [];

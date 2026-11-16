@@ -402,6 +402,18 @@ ok(a.classe === 'SEM INFORMAÇÃO', 'falta dado em 1 -> SEM (got ' + a.classe + 
 ok(a.pares.filter(p => p.classe === 'AVALIACAO_FISICO_QUIMICA').length === 1, 'so o par com os dois lados cobertos avalia');
 ok(a.motivos.some(m => m.indexOf('físico-química teórica disponível') >= 0), 'motivo de informacao parcial');
 
+console.log('32) regra entre 2 de 3 produtos NAO classifica a mistura toda');
+setBq({ produtos:[{id:'M1',nomeComercial:'MixA'},{id:'M2',nomeComercial:'MixB'},{id:'M3',nomeComercial:'MixC'}],
+  interacoes:[{id:'X32',tipo:'compatibilidade',efeito:'par compativel nas condicoes testadas',validacao:'validado'}],
+  intComp:[{interacaoId:'X32',entidadeTipo:'produto',entidadeId:'M1'},
+           {interacaoId:'X32',entidadeTipo:'produto',entidadeId:'M2'}] });
+setDados([rec('MixA'), rec('MixB'), rec('MixC')], [], []);
+setSel(selDe('MixA','MixB','MixC')); setTestes([]);
+a = analisarCalda();
+ok(a.classe === 'SEM INFORMAÇÃO', 'mistura com 3o produto fora da regra -> SEM (got ' + a.classe + ')');
+ok(a.pares.filter(p => p.classe === 'DOCUMENTADA').length === 1, 'par coberto segue DOCUMENTADA');
+setBq({});
+
 console.log('');
 console.log((total - falhas) + '/' + total + ' testes passaram.');
 if(falhas) process.exit(1);

@@ -266,7 +266,7 @@ let prodRowCount = 0;
 // ===== Helpers =====
 const num = v => { const n = parseFloat(String(v??'').replace(',','.')); return isNaN(n)?0:n; };
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtN = n => (Math.round(n*100)/100).toString().replace('.',',');
+const fmtN = n => (Math.round(n*100)/100).toLocaleString('pt-BR');
 const hojeISO = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 function fmtData(v){
   if(!v) return '—';
@@ -370,7 +370,7 @@ function parseLitrosPorEstufa(d){
   if(litros > 0 && estufas.length){
     const por = {};
     const igual = litros / estufas.length;
-    estufas.forEach(e => por[e] = fmtN(igual));
+    estufas.forEach(e => por[e] = igual);
     return por;
   }
   return {};
@@ -403,7 +403,7 @@ function itemCard(d){
     listaProdutos = '<ul class="prod-list">' + produtos.map(p => {
       let doseTxt = '';
       if(p.dose100 !== undefined && p.dose100 !== ''){
-        doseTxt = `${esc(p.dose100)} ${p.unidade || ''}/100L`;
+        doseTxt = `${esc(p.dose100)} ${p.unidade || ''}/100 L`;
       } else if(p.dose){
         doseTxt = esc(p.dose);
       }
@@ -582,7 +582,7 @@ function addProdutoRow(nome, dose100, unidade){
       <button type="button" class="rm-row" onclick="removeProdutoRow('${id}')">×</button>
     </div>
     <div class="prod-row-bottom">
-      <input type="number" step="any" inputmode="decimal" class="dose100-input" placeholder="Dose/100L" value="${dose100 !== undefined && dose100 !== '' ? esc(String(dose100)) : ''}">
+      <input type="number" step="any" inputmode="decimal" class="dose100-input" placeholder="Dose/100 L" value="${dose100 !== undefined && dose100 !== '' ? esc(String(dose100)) : ''}">
       <select class="unidade-input">
         <option value="mL" ${un==='mL'?'selected':''}>mL</option>
         <option value="g" ${un==='g'?'selected':''}>g</option>
@@ -725,7 +725,7 @@ async function salvar(){
     produto: JSON.stringify(produtos),
     alvo: document.getElementById('fAlvo').value,
     dose: '',
-    litrosAgua: fmtN(totalAgua),
+    litrosAgua: totalAgua,
     litrosPorEstufa: JSON.stringify(litrosPorEstufa),
     obs: document.getElementById('fObs').value,
     status: statusVal,

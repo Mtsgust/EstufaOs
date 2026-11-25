@@ -874,7 +874,7 @@ function mostrarSetupInicial(){
       localStorage.setItem('habitos-sync-chave', chave);
     }catch(e){}
     document.getElementById('setup-sync-msg').textContent = 'Conectado! Baixando dados...';
-    baixarAgora().then(()=>{ ov.style.display = 'none'; }).catch(()=>{
+    baixarAgora().then(()=>{ iniciarAutoPull(); ov.style.display = 'none'; }).catch(()=>{
       document.getElementById('setup-sync-msg').textContent = 'Falha. Confira a chave e internet.';
     });
   });
@@ -919,6 +919,7 @@ async function load(){
   loadTreino2();
   bindNav();
   render();
+  iniciarAutoPull();
   baixarSeNovo();
   // iPhone PWA: aparelho sem dados e sem sync configurado → mostra setup
   const temDados = !!(state.habits && state.habits.length) || !!(localStorage.getItem('treino-v2'));
@@ -927,6 +928,11 @@ async function load(){
     mostrarSetupInicial();
   }
 }
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ flushEnvioPendente(); }
+  else { baixarSeNovo(); }
+});
+window.addEventListener('focus', ()=>{ baixarSeNovo(); });
 const VIEWS = ['painel','habitos','treino','evolucao','historico','config'];
 const VIEW_TITLES = {painel:'Visão geral', habitos:'Hábitos', treino:'Treinamento', evolucao:'Evolução', historico:'Histórico', config:'Configurações'};
 const ICONS = {
@@ -3310,8 +3316,6 @@ function renderHabitos(){
       startEdit(btn.dataset.edit);
     });
   });
-  const cancelEditBtn = document.getElementById('cancel-edit-btn');
-  if(cancelEditBtn) cancelEditBtn.addEventListener('click', ()=>{ editingId = null; selDays = [0,1,2,3,4,5,6]; render(); });
   const moreToggle = document.getElementById('more-toggle');
   if(moreToggle) moreToggle.addEventListener('click', ()=>{ showAllTasks = !showAllTasks; render(); });
   root.querySelectorAll('.period-toggle button').forEach(btn=>{
@@ -3327,10 +3331,6 @@ function renderHabitos(){
       else toggleCheckin(cell.dataset.habit, cell.dataset.date);
     });
   });
-  root.querySelectorAll('.type-toggle button').forEach(btn=>{
-    if(btn.dataset.day!==undefined || btn.dataset.modo!==undefined) return;
-    btn.addEventListener('click', ()=>{ addType = btn.dataset.type; render(); focusNameInput(); });
-  });
   root.querySelectorAll('#modo-pick button').forEach(btn=>{
     btn.addEventListener('click', ()=>setModo(today, btn.dataset.modo));
   });
@@ -3338,14 +3338,6 @@ function renderHabitos(){
   if(motivoEl) motivoEl.addEventListener('change', ()=>setMotivo(today, motivoEl.value.trim()));
   root.querySelectorAll('[data-reduz]').forEach(btn=>{
     btn.addEventListener('click', e=>{ e.stopPropagation(); toggleReduzida(btn.dataset.reduz, today); });
-  });
-  root.querySelectorAll('#day-pick button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const d = parseInt(btn.dataset.day, 10);
-      if(selDays.includes(d)){ if(selDays.length>1) selDays = selDays.filter(x=>x!==d); }
-      else selDays.push(d);
-      render();
-    });
   });
 }
 function formatNum(n){
@@ -3410,12 +3402,16 @@ function bindBackup(){
       if(sem) syncMsg('Última sync: ' + fmtHoraCurta(sem) + '.');
     }catch(e){}
     document.getElementById('sync-salvar').addEventListener('click', ()=>{
+      let u = su.value.trim();
+      const k = sk.value.trim();
+      if(k && !u) u = SYNC_URL_PADRAO;
       try{
-        localStorage.setItem('habitos-sync-url', su.value.trim());
-        localStorage.setItem('habitos-sync-chave', sk.value.trim());
+        localStorage.setItem('habitos-sync-url', u);
+        localStorage.setItem('habitos-sync-chave', k);
+        su.value = u;
       }catch(e){}
-      syncMsg('Configuração salva.');
-      baixarSeNovo();
+      syncMsg(k ? 'Configuração salva. Sincronizando...' : 'Chave vazia.');
+      if(k){ iniciarAutoPull(); baixarSeNovo(); enviarAgora(true); }
     });
     document.getElementById('sync-env').addEventListener('click', ()=>enviarAgora(false));
     document.getElementById('sync-get').addEventListener('click', baixarAgora);
@@ -3443,7 +3439,16 @@ let tSyncT = null;
 function agendaEnvio(){
   if(!syncCfg()) return;
   if(tSyncT) clearTimeout(tSyncT);
-  tSyncT = setTimeout(()=>enviarAgora(true), 3000);
+  tSyncT = setTimeout(()=>{ tSyncT = null; enviarAgora(true); }, 3000);
+}
+function flushEnvioPendente(){
+  if(tSyncT){ clearTimeout(tSyncT); tSyncT = null; enviarAgora(true); }
+}
+let tAutoPull = null;
+function iniciarAutoPull(){
+  if(!syncCfg()) return;
+  if(tAutoPull) clearInterval(tAutoPull);
+  tAutoPull = setInterval(()=>{ baixarSeNovo(); }, 45000);
 }
 async function fetchTimeout(url, opts, ms){
   const ctrl = new AbortController();
@@ -3516,6 +3521,21 @@ function bindAdd(){
   const btn = document.getElementById('add-habit-btn');
   const input = document.getElementById('new-habit-input');
   const sel = document.getElementById('new-habit-cat');
+  const cancelEditBtn = document.getElementById('cancel-edit-btn');
+  if(cancelEditBtn) cancelEditBtn.addEventListener('click', ()=>{ editingId = null; selDays = [0,1,2,3,4,5,6]; render(); });
+  document.querySelectorAll('.type-toggle button').forEach(b=>{
+    if(b.dataset.day!==undefined || b.dataset.modo!==undefined) return;
+    if(!b.dataset.type) return;
+    b.addEventListener('click', ()=>{ addType = b.dataset.type; render(); focusNameInput(); });
+  });
+  document.querySelectorAll('#day-pick button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const d = parseInt(b.dataset.day, 10);
+      if(selDays.includes(d)){ if(selDays.length>1) selDays = selDays.filter(x=>x!==d); }
+      else selDays.push(d);
+      render();
+    });
+  });
   if(!btn) return;
   const submit = ()=>{
     const name = input.value.trim();

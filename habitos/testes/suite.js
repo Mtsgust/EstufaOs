@@ -169,10 +169,17 @@ ok(!!s, 'sessao ativa criada');
 eq(treino2.ativaId, s.id, 'ativaId definido');
 eq(s.itens.length, 2, 'itens copiados da ficha');
 eq(s.itens[0].meta.carga, 40, 'meta carga copiada');
+const hTreinar0 = state.habits.find(x => /trein/i.test(x.name || ''));
+if(!(hTreinar0 && state.checkins[hoje] && state.checkins[hoje][hTreinar0.id] === true)){
+  ok(true, 'iniciarSessao nao marca Treinar (so ao finalizar)');
+} else {
+  ok(false, 'iniciarSessao nao marca Treinar (so ao finalizar)');
+}
+marcarTreinoFeito();
 const hTreinar = state.habits.find(x => /trein/i.test(x.name || ''));
 ok(!!hTreinar, 'habito Treinar criado/existente');
 ok(state.habits.length >= nHabAntes, 'marcarTreinoFeito nao perde habitos');
-eq(state.checkins[hoje][hTreinar.id], true, 'checkin do treino hoje');
+eq(state.checkins[hoje][hTreinar.id], true, 'checkin do treino hoje apos finalizar');
 
 const p0 = posAtual(s);
 eq(p0.ex, 0, 'posAtual ex=0');

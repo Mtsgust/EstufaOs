@@ -1605,10 +1605,9 @@ function iniciarSessao(fid){
     treino2.sessoes.push(s);
     treino2.ativaId = s.id;
     saveTreino2();
-    marcarTreinoFeito();
     irTreino('exec');
 }
-// Começou a treinar = hábito "treinar" feito no dia (cria se não existir).
+// Treino salvo no resumo = hábito "treinar" feito no dia (cria se não existir).
 function marcarTreinoFeito(){
   const hoje = todayISO();
   let h = state.habits.find(x=>/trein/i.test(x.name||''));
@@ -2173,6 +2172,7 @@ function renderResumo(){
     s.descanso = null;
     if(treino2.ativaId===s.id) treino2.ativaId = null;
     saveTreino2();
+    marcarTreinoFeito();
     irTreino('home');
     setTimeout(()=>alert('Treino salvo! 💪'), 50);
   });

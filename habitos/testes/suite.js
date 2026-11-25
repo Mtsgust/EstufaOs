@@ -308,6 +308,20 @@ eq(addPeso(todayISO(), '78,5'), true, 'addPeso valido');
 eq(addPeso(todayISO(), 'abc'), false, 'addPeso invalido');
 eq(addPeso('', '78'), false, 'addPeso sem data');
 
+console.log('== Zerar habitos (preserva fichas) ==');
+const fichasAntes = treino2.fichas.length;
+const sessAntes = treino2.sessoes.length;
+const evolAntes = localStorage.getItem('evolucao-v1');
+ok(state.habits.length > 0, 'ha habitos antes de zerar');
+zerarHabitos();
+eq(state.habits.length, 0, 'zerarHabitos apaga habitos');
+eq(Object.keys(state.checkins||{}).length, 0, 'zerarHabitos apaga checkins');
+eq(Object.keys(state.modos||{}).length, 0, 'zerarHabitos apaga modos');
+eq(treino2.fichas.length, fichasAntes, 'zerarHabitos preserva fichas');
+eq(treino2.sessoes.length, sessAntes, 'zerarHabitos preserva sessoes');
+eq(localStorage.getItem('evolucao-v1'), evolAntes, 'zerarHabitos preserva evolucao');
+ok(localStorage.getItem('habits-v3') !== null, 'habits-v3 continua presente apos zerar');
+
 console.log('== Navegacao: novas views ==');
 irPara('evolucao');
 eq(view, 'evolucao', 'irPara evolucao');

@@ -2991,6 +2991,12 @@ function renderHistoricoGeral(){
 }
 
 // ===== CONFIGURAÇÕES =====
+function zerarHabitos(){
+  state.habits = [];
+  state.checkins = {};
+  state.modos = {};
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
 function renderConfig(){
   const root = document.getElementById('root');
   const nome = userName();
@@ -3038,6 +3044,14 @@ function renderConfig(){
     </div>
     <div class="msg" id="sync-msg"></div>
   </div>`;
+  html += `<div class="card" style="border-color:rgba(248,113,113,.35);">
+    <div class="card-head"><div class="card-title" style="color:var(--red);">${ic('trash')} Zerar hábitos</div></div>
+    <p class="text-dim" style="font-size:.85rem;margin-bottom:1rem;">Apaga todos os hábitos, checkins e modos do dia — do início até hoje. <b>Não toca</b> em fichas de treino, histórico de sessões nem evolução (peso/medidas).</p>
+    <div class="goto-row" style="margin-top:0;">
+      <button class="btn btn-danger" type="button" id="cfg-zera-hab" style="flex:0 0 auto;">${ic('trash',15)} Zerar hábitos agora</button>
+    </div>
+    <div class="msg" id="cfg-zera-msg"></div>
+  </div>`;
   root.innerHTML = html;
   bindBackup();
   const ns = document.getElementById('cfg-nome-save');
@@ -3050,6 +3064,14 @@ function renderConfig(){
     atualizarTopo();
     const av = document.getElementById('avatar');
     if(av) av.textContent = userInitial();
+  });
+  const zh = document.getElementById('cfg-zera-hab');
+  if(zh) zh.addEventListener('click', ()=>{
+    if(!confirm('Zerar TODOS os hábitos, checkins e modos? Fichas e treinos serão mantidos.')) return;
+    zerarHabitos();
+    const msg = document.getElementById('cfg-zera-msg');
+    if(msg){ msg.textContent = 'Hábitos zerados. Fichas e treinos mantidos.'; msg.className = 'msg ok'; }
+    render();
   });
 }
 let habCat = 'todos';

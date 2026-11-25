@@ -178,8 +178,12 @@ if(!(hTreinar0 && state.checkins[hoje] && state.checkins[hoje][hTreinar0.id] ===
 marcarTreinoFeito();
 const hTreinar = state.habits.find(x => /trein/i.test(x.name || ''));
 ok(!!hTreinar, 'habito Treinar criado/existente');
+eq(hTreinar.category, 'fisico', 'Treinar salvo como fisico');
 ok(state.habits.length >= nHabAntes, 'marcarTreinoFeito nao perde habitos');
 eq(state.checkins[hoje][hTreinar.id], true, 'checkin do treino hoje apos finalizar');
+hTreinar.category = 'mental';
+marcarTreinoFeito();
+eq(hTreinar.category, 'fisico', 'categoria corrige para fisico se estava outra');
 
 const p0 = posAtual(s);
 eq(p0.ex, 0, 'posAtual ex=0');

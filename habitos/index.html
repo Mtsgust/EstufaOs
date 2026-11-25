@@ -1614,6 +1614,8 @@ function marcarTreinoFeito(){
   if(!h){
     h = { id: 'h'+Date.now()+Math.floor(Math.random()*1000), name: 'Treinar', category: 'fisico', type: 'check', createdAt: hoje };
     state.habits.push(h);
+  } else if(h.category !== 'fisico'){
+    h.category = 'fisico';
   }
   if(!state.checkins[hoje]) state.checkins[hoje] = {};
   state.checkins[hoje][h.id] = true;

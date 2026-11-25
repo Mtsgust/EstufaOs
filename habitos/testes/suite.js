@@ -276,7 +276,6 @@ ok(raiz.indexOf('data-goto') > -1, 'painel: atalhos de navegacao');
 view = 'habitos'; renderHabitos();
 raiz = document.getElementById('root').innerHTML;
 ok(raiz.indexOf('RESUMO DO DIA') > -1, 'habitos: resumo do dia');
-ok(raiz.indexOf('BACKUP') > -1, 'habitos: card backup');
 ok(raiz.indexOf('streak-pill') > -1, 'habitos: selo de sequencia');
 ok(raiz.indexOf('VIS') > -1, 'habitos: visao geral');
 
@@ -289,6 +288,33 @@ raiz = document.getElementById('root').innerHTML;
 ok(raiz.indexOf('HIST') > -1, 'historico: titulo');
 ok(raiz.indexOf('8 semanas') > -1, 'historico: graficos 8 semanas');
 tTela = 'home';
+
+console.log('== Render: evolucao, historico geral, config ==');
+view = 'evolucao'; renderEvolucao();
+raiz = document.getElementById('root').innerHTML;
+ok(raiz.indexOf('Peso') > -1, 'evolucao: titulo Peso');
+ok(raiz.indexOf('Carga') > -1, 'evolucao: titulo Carga');
+
+view = 'historico'; renderHistoricoGeral();
+raiz = document.getElementById('root').innerHTML;
+ok(raiz.indexOf('Calend') > -1, 'historico geral: calendario');
+
+view = 'config'; renderConfig();
+raiz = document.getElementById('root').innerHTML;
+ok(raiz.indexOf('BACKUP') > -1, 'config: card backup');
+
+console.log('== Evolucao: addPeso ==');
+eq(addPeso(todayISO(), '78,5'), true, 'addPeso valido');
+eq(addPeso(todayISO(), 'abc'), false, 'addPeso invalido');
+eq(addPeso('', '78'), false, 'addPeso sem data');
+
+console.log('== Navegacao: novas views ==');
+irPara('evolucao');
+eq(view, 'evolucao', 'irPara evolucao');
+irPara('historico');
+eq(view, 'historico', 'irPara historico');
+irPara('config');
+eq(view, 'config', 'irPara config');
 view = 'painel';
 
 console.log('== Migracoes ==');
